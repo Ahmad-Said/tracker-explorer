@@ -14,12 +14,15 @@ So Happy Exploring ! [Download here](https://github.com/Ahmad-Said/tracker-explo
 ## Sketch Images
 
 ![Main](https://i.imgur.com/Bd63Udx.png)
+
 Main View
 
 ![Menu](https://i.imgur.com/Z7MCijy.png)
+
 Menu Tracker Options
 
 ![VLC Editor](https://i.imgur.com/hlV98fa.png)
+
 VLC Editor
 
 ## Features
@@ -46,6 +49,7 @@ VLC Editor
 ***
 
 ## Keyboard Shortcuts
+
 | Shortcuts | Action |
 | --------- | ------:|
 | Navigation| |
