@@ -1,0 +1,147 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.chart.*?>
+<?import javafx.geometry.*?>
+<?import javafx.scene.control.*?>
+<?import java.lang.*?>
+<?import javafx.scene.layout.*?>
+
+<BorderPane prefHeight="450.0" prefWidth="654.0" xmlns="http://javafx.com/javafx/8" xmlns:fx="http://javafx.com/fxml/1">
+   <center>
+      <TableView fx:id="TimeTable" editable="true" prefHeight="342.0" prefWidth="506.0" tableMenuButtonVisible="true" BorderPane.alignment="CENTER">
+        <columns>
+          <TableColumn fx:id="StartTimeColumn" maxWidth="148.0" minWidth="150.0" prefWidth="146.0" style="-fx-alignment: CENTER;" text="Start Time" />
+          <TableColumn fx:id="EndTimeColumn" maxWidth="130.0" minWidth="150.0" prefWidth="130.0" style="-fx-alignment: CENTER;" text="End Time" />
+            <TableColumn fx:id="DescriptionColumn" maxWidth="1.7976931348623157E308" minWidth="100.0" prefWidth="265.0" style="-fx-alignment: CENTER;" text="Description" />
+            <TableColumn fx:id="ActionsColumn" maxWidth="-1.0" minWidth="180.0" prefWidth="138.25" style="-fx-alignment: CENTER;" text="Actions" />
+        </columns>
+         <columnResizePolicy>
+            <TableView fx:constant="CONSTRAINED_RESIZE_POLICY" />
+         </columnResizePolicy>
+      </TableView>
+   </center>
+   <bottom>
+      <VBox prefHeight="131.0" prefWidth="654.0" BorderPane.alignment="CENTER">
+         <children>
+            <HBox alignment="CENTER" prefHeight="100.0" prefWidth="200.0">
+               <children>
+                  <Button fx:id="resetStart" mnemonicParsing="false" onAction="#ResetStart" styleClass="first" text=" " />
+                  <TextField fx:id="inputStart" alignment="TOP_LEFT" styleClass="middle" />
+                  <Button fx:id="pickStart" alignment="CENTER" mnemonicParsing="false" onAction="#PickStart" text="Pick Start">
+                     <HBox.margin>
+                        <Insets right="40.0" />
+                     </HBox.margin>
+                     <styleClass>
+                        <String fx:value="btn" />
+                        <String fx:value="last" />
+                     </styleClass>
+                  </Button>
+                  <Button fx:id="resetEnd" mnemonicParsing="false" onAction="#ResetEnd" styleClass="first" text=" " />
+                  <TextField fx:id="inputEnd" alignment="TOP_LEFT" styleClass="middle" />
+                  <Button fx:id="pickEnd" alignment="CENTER" mnemonicParsing="false" onAction="#PickEnd" text="Pick End">
+                     <styleClass>
+                        <String fx:value="btn" />
+                        <String fx:value="last" />
+                     </styleClass>
+                  </Button>
+               </children>
+            </HBox>
+            <HBox alignment="CENTER" prefHeight="100.0" prefWidth="200.0">
+               <children>
+                  <Label fx:id="labelDescription" prefHeight="35.0" prefWidth="149.0" text="Description (optional)">
+                     <HBox.margin>
+                        <Insets left="10.0" />
+                     </HBox.margin>
+                     <styleClass>
+                        <String fx:value="info" />
+                        <String fx:value="label" />
+                        <String fx:value="first" />
+                     </styleClass>
+                  </Label>
+                  <TextField fx:id="inputDescription" styleClass="last" HBox.hgrow="ALWAYS">
+                     <HBox.margin>
+                        <Insets right="20.0" />
+                     </HBox.margin>
+                  </TextField>
+                  <CheckBox fx:id="autoScene" mnemonicParsing="false" selected="true" text="Auto Scene">
+                     <HBox.margin>
+                        <Insets right="20.0" />
+                     </HBox.margin>
+                     <tooltip>
+                        <Tooltip text="This Auto Add Scene Numbering in Description" />
+                     </tooltip>
+                  </CheckBox>
+                  <Button fx:id="addToExclusion" alignment="CENTER" mnemonicParsing="false" onAction="#AddtoExclusion" styleClass="primary" text="Exclude this">
+                     <HBox.margin>
+                        <Insets right="20.0" />
+                     </HBox.margin>
+                  </Button>
+               </children>
+            </HBox>
+            <HBox alignment="CENTER" prefHeight="100.0" prefWidth="200.0">
+               <children>
+                  <HBox alignment="CENTER" prefHeight="100.0" prefWidth="200.0" HBox.hgrow="ALWAYS">
+                     <children>
+                        <Label text="Generation">
+                           <HBox.margin>
+                              <Insets right="20.0" />
+                           </HBox.margin>
+                           <styleClass>
+                              <String fx:value="label" />
+                              <String fx:value="warning" />
+                           </styleClass>
+                        </Label>
+                        <Button fx:id="copyRaw" mnemonicParsing="false" onAction="#getcopyRaw" text="Copy Raw">
+                           <styleClass>
+                              <String fx:value="first" />
+                              <String fx:value="btn" />
+                              <String fx:value="info" />
+                           </styleClass>
+                           <tooltip>
+                              <Tooltip text="Copy Current Table Data To Share with Other" />
+                           </tooltip>
+                        </Button>
+                        <Button fx:id="pasteRaw" mnemonicParsing="false" onAction="#pasteRaw" text="Paste Raw">
+                           <styleClass>
+                              <String fx:value="last" />
+                              <String fx:value="btn" />
+                              <String fx:value="info" />
+                           </styleClass>
+                           <tooltip>
+                              <Tooltip text="Paste Copeid Data Here If succeed You will change in Table" />
+                           </tooltip>
+                        </Button>
+                        <Pane prefHeight="36.0" prefWidth="168.0" />
+                        <Button fx:id="generateBatch" mnemonicParsing="false" onAction="#SaveBatchFile" text="Batch">
+                           <styleClass>
+                              <String fx:value="first" />
+                              <String fx:value="primary" />
+                           </styleClass>
+                           <HBox.margin>
+                              <Insets left="5.0" />
+                           </HBox.margin>
+                           <tooltip>
+                              <Tooltip text="Generate A batch File next to file To start it independent from this program" />
+                           </tooltip>
+                        </Button>
+                        <Button fx:id="Save" alignment="TOP_RIGHT" mnemonicParsing="false" onAction="#saveToMapAndFile" text="Save">
+                           <styleClass>
+                              <String fx:value="primary" />
+                              <String fx:value="action-btn" />
+                              <String fx:value="last" />
+                           </styleClass>
+                           <HBox.margin>
+                              <Insets right="20.0" />
+                           </HBox.margin>
+                           <tooltip>
+                              <Tooltip text="Save Data To my Tracker Data File." />
+                           </tooltip>
+                        </Button>
+                     </children>
+                  </HBox>
+               </children>
+            </HBox>
+         </children>
+      </VBox>
+   </bottom>
+</BorderPane>
