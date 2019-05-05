@@ -1,6 +1,6 @@
 # Tracker Explorer
 
-## You always been tracked, Why not to track yourself Too
+## You've always been tracked, why not track yourself Too!?
 
 ## General Description
 
