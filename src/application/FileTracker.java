@@ -41,6 +41,7 @@ public class FileTracker {
 	// path in general it always = mSplitViewController.getDirectoryPath();
 	// the question is does it worth to do ??
 	private Path mWorkingDirPath;
+	// conflict log will discard creating new File/Folder operations
 	private static String ConflictLog = "";
 
 	public FileTracker(SplitViewController splitViewController) {
@@ -117,7 +118,7 @@ public class FileTracker {
 		if (changed) {
 			ConflictLog = "\n\n* " + Setting.getActiveUser() + " <<>> " + mWorkingDirPath.toString() + "\n"
 					+ ConflictLog;
-			writeMapDir(mWorkingDirPath, true);
+			writeMapDir(mWorkingDirPath, false);
 		}
 
 		// this.writeMap();
@@ -155,7 +156,7 @@ public class FileTracker {
 	// easy access write map
 	// this method is just to easy call write map for the current view
 	public boolean writeMap() {
-		return writeMapDir(mWorkingDirPath, false);
+		return writeMapDir(mWorkingDirPath, true);
 	}
 
 	// important calling this function is dangerous since it delete a file in
@@ -164,7 +165,7 @@ public class FileTracker {
 	// loop
 	// @return boolean to confirm that the path is now tracked sometimes there is
 	// write permission access
-	public boolean writeMapDir(Path DirtoTrack, boolean fromconflict) {
+	public boolean writeMapDir(Path DirtoTrack, boolean doRefresh) {
 		try {
 			// this is not the returned value it just to separate it this
 			// function is called using writeMap() easy access
@@ -196,7 +197,7 @@ public class FileTracker {
 			writer.close();
 
 			// ensure refresh for both pages case where they are in the same folder
-			if (isEasy && !fromconflict) // this to handle easy access
+			if (isEasy && doRefresh) // this to handle easy access
 				mSplitViewController.getParentWelcome().refreshBothViews(mSplitViewController);
 			// from conflict parameter is to prevent call function that called this function
 			// and get loop
@@ -279,6 +280,13 @@ public class FileTracker {
 		this.writeMap();
 	}
 
+	void setTooltipText(List<TableViewModel> list, String note) {
+		if (isTracked())
+			for (TableViewModel t : list) {
+				mapDetails.get(t.getName()).set(2, note);
+			}
+	}
+
 	public Map<String, List<String>> getMapDetails() {
 		return mapDetails;
 	}
@@ -329,5 +337,49 @@ public class FileTracker {
 
 	public static void setConflictLog(String conflictLog) {
 		ConflictLog = conflictLog;
+	}
+
+	/**
+	 * when doing a copy or move operations copy parameter with them also added
+	 * handle of delete operation do not confuse
+	 * 
+	 * @param source
+	 * @param mfileTracker
+	 */
+	public void OperationUpdate(List<Path> source, FileTracker otherfileTracker, String operation) {
+		if(!isTracked() || (otherfileTracker != null && !otherfileTracker.isTracked()))
+		{
+			mSplitViewController.getParentWelcome().refreshBothViews(null);
+			return;
+		}
+		if (operation.equals("delete")) {
+			for (Path src : source) {
+				String key = src.getFileName().toString();
+				mapDetails.remove(key);
+			}
+		} else // handle copy and move
+			for (Path src : source) {
+				String key = src.getFileName().toString();
+				mapDetails.put(key, otherfileTracker.getMapDetails().get(key));
+				if (operation.equals("move"))
+					otherfileTracker.mapDetails.remove(key);
+			}
+		// will do refresh after moving all files
+		// these write will make them undetectable by resolve conflict
+		writeMapDir(mWorkingDirPath, true);
+		if (otherfileTracker != null) // enter except delete
+			otherfileTracker.writeMapDir(otherfileTracker.mWorkingDirPath, false);
+	}
+	public void OperationRename(String oldName,String newName) {
+		if(!isTracked())
+		{
+			mSplitViewController.getParentWelcome().refreshBothViews(mSplitViewController);
+			return;
+		}
+		List<String> options = mapDetails.get(oldName);
+		mapDetails.remove(oldName);
+		options.set(0, newName);
+		mapDetails.put(newName, options);
+		writeMapDir(mWorkingDirPath, false);
 	}
 }

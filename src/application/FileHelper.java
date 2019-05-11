@@ -12,17 +12,20 @@ import java.util.List;
 
 public class FileHelper {
 
-	public static void copy(List<Path> source, Path target) {
+	public static void copy(List<Path> source, Path targetDirectory) {
 		List<Path> uncopiable = new ArrayList<>();
 		for (Path path : source) {
+			// target String resolve printing if targetdir was a root folder like D:\
+			String target = targetDirectory.getRoot().equals(targetDirectory) ? targetDirectory.toString()
+					: targetDirectory.getFileName().toString();
 			Main.ProcessTitle("Please Wait..Copying " + path.getFileName().toString() + "  To  "
-					+ target.getFileName().toString());
+					+ target);
 			try {
 				File sourceFile = path.toFile();
 				if (sourceFile.isDirectory()) {
-					FileUtils.copyDirectoryToDirectory(sourceFile, target.toFile());
+					FileUtils.copyDirectoryToDirectory(sourceFile, targetDirectory.toFile());
 				} else {
-					FileUtils.copyFileToDirectory(sourceFile, target.toFile());
+					FileUtils.copyFileToDirectory(sourceFile, targetDirectory.toFile());
 				}
 			} catch (Exception e) {
 				uncopiable.add(path);
@@ -43,8 +46,10 @@ public class FileHelper {
 	public static void move(List<Path> source, Path targetDirectory) {
 		List<Path> unmovable = new ArrayList<>();
 		for (Path path : source) {
-			Main.ProcessTitle("Please Wait..Moving " + path.getFileName().toString() + "  To  "
-					+ targetDirectory.getFileName().toString());
+			String target = targetDirectory.getRoot().equals(targetDirectory) ? targetDirectory.toString()
+					: targetDirectory.getFileName().toString();
+
+			Main.ProcessTitle("Please Wait..Moving " + path.getFileName().toString() + "  To  " + target);
 			try {
 				FileUtils.moveToDirectory(path.toFile(), targetDirectory.toFile(), false);
 			} catch (Exception e) {
@@ -98,13 +103,15 @@ public class FileHelper {
 		}
 	}
 
-	public static void createDirectory(Path parent) {
+	public static void createDirectory(Path parent, SplitViewController focusedPane) {
 		String title = parent.toString();
 		String name = DialogHelper.showTextInputDialog(title, null, "New Directory", "My Directory");
 		if (name != null) {
 			Path path = parent.resolve(name);
 			try {
 				Files.createDirectory(path);
+				focusedPane.setmDirectoryThenRefresh(path.toFile());
+				focusedPane.getMfileTracker().trackNewFolder();
 			} catch (FileAlreadyExistsException e) {
 				DialogHelper.showAlert(Alert.AlertType.INFORMATION, title, "Directory already exists", path.toString());
 			} catch (Exception e) {
@@ -129,7 +136,7 @@ public class FileHelper {
 		}
 	}
 
-	public static void rename(Path source) {
+	public static Path rename(Path source, SplitViewController focusedPane) {
 		String title = "Rename";
 		String name = DialogHelper.showTextInputDialog(title, null, "Enter New Name", source.getFileName().toString());
 		if (name != null) {
@@ -141,10 +148,13 @@ public class FileHelper {
 					FileUtils.moveDirectory(source.toFile(), target.toFile());
 				else
 					FileUtils.moveFile(source.toFile(), target.toFile());
+				focusedPane.getMfileTracker().OperationRename(source.getFileName().toString(), name);
+				return target;
 			} catch (Exception e) {
 				DialogHelper.showAlert(Alert.AlertType.INFORMATION, source.getParent().toString(),
 						"File was not renamed", source.toString());
 			}
 		}
+		return null;
 	}
 }

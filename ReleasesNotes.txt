@@ -1,0 +1,15 @@
+v1.1:
+Richer notes:
+	support for multi-selection notes
+	save preferences on showing notes column
+Files operations:
+	clean conflict log for operations within the app
+	Allow files operations without losing tracker data
+	Auto Change directory upon rename/creation/deletion
+	Fix moving to root directory
+Other:
+	New Rule Comparator for Seen Column on click
+	Enhance Control of Auto Time Detection For Filtering Exclusion (VLC)
+	
+v1:
+First Release

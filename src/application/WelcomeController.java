@@ -11,6 +11,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.ResourceBundle;
@@ -203,7 +204,6 @@ public class WelcomeController implements Initializable {
 		try {
 
 			// Assign column to which property in model
-			// System.out.println("i;m here suces");
 
 			VLC.initializeDefaultVLCPath();
 			this.initializeMenuBar();
@@ -229,6 +229,11 @@ public class WelcomeController implements Initializable {
 			rightView.getPathField().setOnAction(e -> onTextEntered(rightView.getPathField()));
 			refreshBothViews(null);
 			initializeButtons();
+			// testing 
+			
+			// initialize coloumn preference
+			rightStatus.setVisible(Setting.getShowRightNotesColumn());
+			leftStatus.setVisible(Setting.getShowLeftNotesColumn());
 		} catch (Exception e1) {
 			DialogHelper.showException(e1);
 		}
@@ -264,9 +269,7 @@ public class WelcomeController implements Initializable {
 					return;
 				}
 				// removing from active user menu
-				System.out.println("i'm " + mn.getText());
 				for (RadioMenuItem item : allActiveUser) {
-					System.out.println(item.getText());
 
 					if (item.getText().equals(mn.getText()))
 						subMenuActiveUser.getItems().remove(item);
@@ -366,7 +369,6 @@ public class WelcomeController implements Initializable {
 
 			@Override
 			public void handle(ActionEvent event) {
-				// TODO Auto-generated method stub
 				String depthANS = DialogHelper.showTextInputDialog("Recursive Cleaner", "From Left Depth to consider",
 						"Enter depht value to consider begining from left view folder and track all sub directory in it\n"
 								+ "Input must be a number format if anything goes wrong '0' is the default value",
@@ -416,7 +418,7 @@ public class WelcomeController implements Initializable {
 		 * Set up helpMenu
 		 */
 		aboutMenuItem.setOnAction(e -> DialogHelper.showAlert(Alert.AlertType.INFORMATION, "About", null,
-				"Tracker Explorer\n\n" + "Copyright © 2019 by Ahmad Said"));
+				"Tracker Explorer v1.1\n\n" + "Copyright © 2019 by Ahmad Said"));
 	}
 
 	private void initializeButtons() {
@@ -470,48 +472,81 @@ public class WelcomeController implements Initializable {
 	}
 
 	public void copy() {
+		WatchServiceHelper.setRuning(false);
 		if (leftView.isFocused()) {
 			List<Path> source = leftView.getSelection();
 			Path target = rightView.getDirectoryPath();
 			FileHelper.copy(source, target);
+			rightView.getMfileTracker().OperationUpdate(source, leftView.getMfileTracker(), "copy");
 		} else if (rightView.isFocused()) {
 			List<Path> source = rightView.getSelection();
 			Path target = leftView.getDirectoryPath();
 			FileHelper.copy(source, target);
+			leftView.getMfileTracker().OperationUpdate(source, rightView.getMfileTracker(), "copy");
 		}
+		WatchServiceHelper.setRuning(true);
 	}
 
 	public void move() {
+		WatchServiceHelper.setRuning(false);
 		if (leftView.isFocused()) {
 			List<Path> source = leftView.getSelection();
 			Path target = rightView.getDirectoryPath();
 			FileHelper.move(source, target);
+			rightView.getMfileTracker().OperationUpdate(source, leftView.getMfileTracker(), "move");
 		} else if (rightView.isFocused()) {
 			List<Path> source = rightView.getSelection();
 			Path target = leftView.getDirectoryPath();
 			FileHelper.move(source, target);
+			leftView.getMfileTracker().OperationUpdate(source, rightView.getMfileTracker(), "move");
 		}
+		// refresh is committed from within FileTracker#insert function
+		WatchServiceHelper.setRuning(true);
 	}
 
 	public void delete() {
+		WatchServiceHelper.setRuning(false);
 		SplitViewController focusedPane = getFocusedPane();
-		if (focusedPane != null)
-			FileHelper.delete(focusedPane.getSelection());
+		if (focusedPane != null) {
+			List<Path> source = focusedPane.getSelection();
+			FileHelper.delete(source);
+			focusedPane.getMfileTracker().OperationUpdate(source, null, "delete");
+			focusedPane.refresh();
+			// refresh and change to parent directory if deleted folder was the other view
+			SplitViewController unfocused = getunFocusedPane();
+			if (source.contains(unfocused.getDirectoryPath())) {
+				unfocused.setmDirectory(unfocused.getmDirectory().getParentFile());
+				unfocused.refresh();
+			}
+		}
+		WatchServiceHelper.setRuning(true);
 	}
 
 	public void rename() {
+		WatchServiceHelper.setRuning(false);
 		SplitViewController focusedPane = getFocusedPane();
 		if (focusedPane != null) {
 			List<Path> selection = focusedPane.getSelection();
-			if (selection.size() == 1)
-				FileHelper.rename(selection.get(0));
+			if (selection.size() == 1) {
+				Path target = FileHelper.rename(selection.get(0), focusedPane);
+				focusedPane.refresh();
+				// refresh and change directory if rename was committed on same directory as the
+				// other view
+				SplitViewController unfocused = getunFocusedPane();
+				if (selection.get(0).equals(unfocused.getDirectoryPath())) {
+					unfocused.setmDirectory(target.toFile());
+					unfocused.refresh();
+				}
+			}
+			// tracker info is resolved in rename function
 		}
+		WatchServiceHelper.setRuning(true);
 	}
 
 	public void createDirectory() {
 		SplitViewController focusedPane = getFocusedPane();
 		if (focusedPane != null)
-			FileHelper.createDirectory(focusedPane.getDirectoryPath());
+			FileHelper.createDirectory(focusedPane.getDirectoryPath(),focusedPane);
 	}
 
 	public void createFile() {
@@ -858,6 +893,13 @@ public class WelcomeController implements Initializable {
 				+ "\n - Left / Right = Dominate Other Table View"
 				+ "\n - Trick        = Scroll up/down with mouse on clear button to toggle seen/unseen";
 		DialogHelper.showAlert(AlertType.INFORMATION, "KeyBoard Shortcuts", "KeyBoard Shortcuts", ky);
+	}
+
+	public void saveSetting() {
+		Setting.setLeftLastKnowLocation(getLeftLastKnowLocation());
+		Setting.setRightLastKnowLocation(getRightLastKnowLocation());
+		Setting.setShowLeftNotesColumn(leftStatus.isVisible());
+		Setting.setShowRightNotesColumn(rightStatus.isVisible());
 	}
 
 }

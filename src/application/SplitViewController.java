@@ -6,6 +6,7 @@ import java.io.IOException;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Comparator;
 import java.util.LinkedList;
 import java.util.List;
 
@@ -20,6 +21,7 @@ import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableRow;
 import javafx.scene.control.TableView;
 import javafx.scene.control.TextField;
+import javafx.scene.control.ToggleButton;
 import javafx.scene.control.Tooltip;
 import javafx.scene.input.KeyCode;
 import javafx.scene.input.KeyCodeCombination;
@@ -60,7 +62,7 @@ public class SplitViewController {
 	public SplitViewController(Path path, Boolean isleft, WelcomeController parent,
 			ObservableList<TableViewModel> dataTable, javafx.scene.control.TextField pathField, Button upButton,
 			javafx.scene.control.TextField searchFeild, Button searchButton, TableView<TableViewModel> table,
-			Button explorer, TableColumn<TableViewModel, HBox> lefthboxActions, Button backButton, Button nextButton) {
+			Button explorer, TableColumn<TableViewModel, HBox> hboxActions, Button backButton, Button nextButton) {
 		super();
 		// colIconTestResize=colIcon;
 		isLeft = isleft;
@@ -82,6 +84,19 @@ public class SplitViewController {
 
 		//
 		initializeTable();
+		// initialize column rule comparator
+		hboxActions.setComparator(new Comparator<HBox>() {
+			
+			@Override
+			public int compare(HBox o1, HBox o2) {
+				// TODO Auto-generated method stub
+				// first children is button watch status
+				ToggleButton markseen1 = (ToggleButton)o1.getChildren().get(0);
+				if(markseen1.getText().equals("S"))
+					return 1;
+				return 0;
+			}
+		});
 		mWatchServiceHelper = new WatchServiceHelper(this);
 		// refresh();
 		// will refresh both at once from welcome controller because resolve may call
@@ -204,9 +219,12 @@ public class SplitViewController {
 										mfileTracker.getTooltipText(t));
 								// if null set it to space like it was
 								if (note == null)
-									note = " ";
+									return; // keep note unchanged
+								if(note.isEmpty())
+									note=" "; // reset note if is empty
 								// ensure > is not used
 								note = note.replace('>', '<');
+								mfileTracker.setTooltipText(Table.getSelectionModel().getSelectedItems(), note);
 								mfileTracker.setTooltipText(t, note);
 							}
 						});
@@ -414,20 +432,20 @@ public class SplitViewController {
 		return selectedFile;
 	}
 
-	// public static int count = 1; // optimized !
+//	 public static int count = 1; // optimized !
 
 	public void refresh() {
-		// System.out.println(count);
-		// if(count>10)
-		// try {
-		// throw new Exception();
-		// } catch (Exception e) {
-		// // TODO Auto-generated catch block
-		// e.printStackTrace();
-		// }
+//		 System.out.println(count);
+//		  count++;
+//		 if(count>10)
+//		 try {
+//		 throw new Exception();
+//		 } catch (Exception e) {
+//		 // TODO Auto-generated catch block
+//		 e.printStackTrace();
+//		 }
 		mfileTracker.loadMap();
 		mfileTracker.resolveConflict();
-		// count++;
 		showList(getCurrentFilesList());
 
 		PathField.setText(mDirectory.getAbsolutePath());
@@ -487,7 +505,7 @@ public class SplitViewController {
 		DataTable.clear();
 		Path dirPath = this.getDirectoryPath();
 		for (String string : list) {
-			TableViewModel t = new TableViewModel("later", string, dirPath.resolve(string));
+			TableViewModel t = new TableViewModel(" ", string, dirPath.resolve(string));
 			// assgin later here the status and the button
 			initializeButtons(t);
 			DataTable.add(t);
@@ -619,7 +637,10 @@ public class SplitViewController {
 		this.mDirectory = mDirectory;
 		refresh();
 	}
-
+	// special use like for rename and do not Queue
+	public void setmDirectory(File mdirectory) {
+		  mDirectory=mdirectory;
+	}
 	public Path getDirectoryPath() {
 		return mDirectory.toPath();
 	}

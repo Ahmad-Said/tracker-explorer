@@ -4,10 +4,10 @@
 
 ## General Description
 
-In this application you will track yourself, it is a simple file explorer with 2 main views that can interact between each other, And for each file we have a status Seen or Unseen and filtering Media ...And so much more !
+In this application you will track yourself, it is a simple file explorer with 2 main views that can interact between each other, And for each file, we have a status Seen or Unseen and filtering Media ...And so much more!
 
-This application is not intended to be a replacement to windows explorer but it integrate with it to master Exploring Files.
-So Happy Exploring ! [Download here](https://github.com/Ahmad-Said/tracker-explorer/releases/latest)
+This application is not intended to be a replacement to windows explorer but it integrates with it to master Exploring Files.
+So Happy Exploring! [Download here](https://github.com/Ahmad-Said/tracker-explorer/releases/latest)
 
 ***
 
@@ -21,10 +21,6 @@ Main View
 
 Menu Tracker Options
 
-![VLC Editor](https://i.imgur.com/hlV98fa.png)
-
-VLC Editor
-
 ## Features
 
 * File Arguments
@@ -35,16 +31,16 @@ VLC Editor
 * File operations
   * Copy/Move/Paste between views
   * Create/Rename file or directory
-  * Reveal in windows Explorer
+  * Reveal in Windows Explorer
 * Quick Search Field
-* Support Resizing and auto Scaling
+* Support Resizing and Auto Scaling
 * Navigation Button (Up/Back/Next)
 * Auto expand on click directory to right view on click
 * Full keyboard Navigation support
 * MultiUser Mode with without restriction
 * Windows Context menu support (open Tracker here)
 * Recursive Tacker/Cleaner so you don't do things over and over
-* Conflict Log State to show New and Deleted/Moved items from last state
+* Conflict Log State to show New and Deleted/Moved items from the last state
 
 ***
 
@@ -64,13 +60,13 @@ VLC Editor
 |Shift + D | Focus On Path Field|
 |||
 |File Operations on Focus | |
-|Space | Toogle MarkSeen|
+|Space | Toggle MarkSeen|
 |Ctrl + N | New File|
 |Ctrl + Shift + N | New Directory|
 |Ctrl + C | Copy to the other Table|
 |Ctrl + X | Move to the other Table|
-|Ctrl + X | Delete Selected Files|
-|F2| Rename Seleted File|
+|Del | Delete Selected Files|
+|F2| Rename Selected File|
 |||
 |Within Table View| |
 |F| Focus Search Field|
@@ -80,20 +76,58 @@ VLC Editor
 
 ***
 
+## [Fight The New Drug](https://fightthenewdrug.org/)
+
+### Your Brain was Made To take Care of you, So take care of it! [Click Here](https://fightthenewdrug.org/)
+
+### Quick Workflow for VLC Filtering Video
+
+![VLC Editor](https://i.imgur.com/OR2oaWx.png)
+
+TO DO List:
+
+1. Track The current folder if it is unTracked
+2. Click on 'V' button next to media file to open control windows
+3. hit the button pick start
+     * A VLC instance will start the media
+     * Go to start scene to exclude
+     * close VLC.
+4. hit pick end Button and do the same
+5. Add Description (optionally):
+    * Why you exclude the scene
+    * Summary of events happened
+6. hit the button Exclude this
+7. Repeat The process from 3. until you've done.
+
+### Exporting Result (Generation)
+
+After Creating Exclusion of the media you could do any of the following:
+
+* Hit Run button at any row to start the media from the current scene and above
+* Hit Save button to save exclusion information to data tracker.
+  * Exit editor windows
+  * right click on V button to start the media respecting rules created.
+* Generate Batch File:
+  * will create a .bat file next to media file with the same name
+  * starting this bat file from explorer will start media following the rule independently from the application
+* Copy raw Data will copy to clipboard the exclusion information in the table
+  * Pasting these data in any media file using paste button will automatically Detect configurations and add them to the table.
+
+Note: To close running video the batch 'Black Screen' should be closed first
+
 ## Tips and Tricks
 
-* Scroll up/down with mouse on clear button to toggle Seen/Unseen search. (or put yes/un)
-* Right click on V button to quickly lunch Media withsaved Configuration
+* Scroll up/down with mouse on the clear button to toggle Seen/Unseen search. (or put yes/un)
+* Right-click on V button to quickly lunch Media with saved Configuration
 * Hold Shift or Ctrl to make various Selection
 * Do you know Search also search your notes
-* Click on plus mark on table to display note table
+* Click on the plus mark on the table to display note table
 
   ***
 
 * Advanced
-  * Create a temp user, turn off sync by toggling off the '<>' button, set search seen yes on the left and un on the right. Make your files to take, Create a directory in the folder and Select all Seen files(ctrl +A) then Ctrl +X/v to media device to move them and so you did a smart operation selection without changing the structure of folder.
+  * Create a temp user, turn off sync by toggling off the '<>' button, set search seen yes on the left and un on the right. Make your files to take, Create a directory in the folder and Select all Seen files(Ctrl +A) then Ctrl +X/v to media device to move them and so you did a smart operation selection without changing the structure of folder.
 
-## Specials Thanks to
+### Release Notes
 
-* [konvio](https://github.com/konvio/javafx-file-manager) for his File Explorer approach using JavaFX.
-* [dicolar](https://github.com/dicolar/jbootx) for bootstrap design.
+[Click Here For Full log](ReleasesNotes.txt)

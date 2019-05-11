@@ -100,8 +100,7 @@ public class Main extends Application {
 			@Override
 			public void handle(WindowEvent t) {
 				primaryStage.hide();
-				Setting.setLeftLastKnowLocation((mWelcomeController.getLeftLastKnowLocation()));
-				Setting.setRightLastKnowLocation((mWelcomeController.getRightLastKnowLocation()));
+				mWelcomeController.saveSetting();
 				Platform.exit();
 				Setting.saveSetting();
 				System.exit(0);
@@ -146,7 +145,6 @@ public class Main extends Application {
 		}
 		VLC.initializeDefaultVLCPath();
 		FileTracker.updateUserFileName(Setting.getActiveUser());
-		// System.out.println(VLC.RecentTracker);
 		launch(args);
 	}
 

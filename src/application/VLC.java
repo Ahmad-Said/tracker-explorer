@@ -41,10 +41,14 @@ public class VLC {
 			String times = "";
 			Scanner scan = null;
 			try {
-				scan = new Scanner(new File(new URI("file:///" + Path_Config.replace('\\', '/'))));
+				// replace space with %20 to resolve spaces in path
+				scan = new Scanner(new File(new URI("file:///" + Path_Config.replace('\\', '/').replace(" ", "%20"))));
 			} catch (URISyntaxException e) {
 				// TODO Auto-generated catch block
 				// e.printStackTrace();
+				DialogHelper.showAlert(AlertType.ERROR, "Auto Detect", "Something went wrong",
+						"Could not Get Data From VLC.\nPlease Choose manually");
+
 			}
 			// line=scan.next();
 			while (scan.hasNextLine()) {
@@ -68,11 +72,13 @@ public class VLC {
 					String tim = Times_Parsed[i];
 					String lis = List_Parsed[i].trim();
 					// System.out.println("tim is " + tim + " and lis is " + lis);
+					lis = lis.replace("\"", "");
 					try {
 						RecentTracker.put(Paths.get(URI.create(lis)), Integer.parseInt(tim.trim()));
 					} catch (Exception e) {
 						// TODO: handle exception
-						// some error in parse link happened never mind
+						// DialogHelper.showAlert(AlertType.ERROR, "Error", "Failed To parse VLC Config
+						// URI", lis);
 					}
 				}
 			}
@@ -107,8 +113,11 @@ public class VLC {
 	public static int pickTime(Path path) {
 		Runtime runtime = Runtime.getRuntime();
 		try {
-			Process p = runtime.exec(Path_Setup + " " + path.toUri());
-
+			ReloadRecentMRL();
+			String Resume = "";
+			if (RecentTracker.containsKey(path))
+				Resume = " --start-time " + RecentTracker.get(path) / 1000;
+			Process p = runtime.exec(Path_Setup + Resume + " " + path.toUri());
 			p.waitFor();
 		} catch (InterruptedException | IOException e) {
 		}
@@ -118,7 +127,7 @@ public class VLC {
 			return RecentTracker.get(path);
 		else {
 			DialogHelper.showAlert(AlertType.ERROR, "VLC Picker", "Something went wrong",
-					"Possible Reason: vlc not in default path\n not turned recent mrl..");
+					"Try Again.\nPossible Reason: \n Recent mrl is turned Off.");
 			return 0;
 		}
 	}
@@ -184,7 +193,7 @@ public class VLC {
 			if (isFullPath) {
 				Desktop.getDesktop().open(tempFile);
 				// Runtime runtime = Runtime.getRuntime();
-				System.out.println(tempFile.getAbsolutePath());
+				// System.out.println(tempFile.getAbsolutePath());
 				// Process p1 = runtime.exec("cmd \""+ tempFile.getAbsolutePath() +"\"");
 			}
 		} catch (IOException e) {

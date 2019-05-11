@@ -28,6 +28,8 @@ public class Setting {
 	private static Boolean LoadAllIcon = true;
 	private static Path LeftLastKnowLocation = null;
 	private static Path RightLastKnowLocation = null;
+	private static Boolean ShowLeftNotesColumn = false;
+	private static Boolean ShowRightNotesColumn = false;
 	private static String ActiveUser = "default";
 	private static ArrayList<String> UserNames = new ArrayList<String>();
 	/**
@@ -46,6 +48,8 @@ public class Setting {
 		LoadAllIcon = true;
 		LeftLastKnowLocation = null;
 		RightLastKnowLocation = null;
+		ShowLeftNotesColumn = false;
+		ShowRightNotesColumn = false;
 		ActiveUser = "default";
 		// UserNames = new ArrayList<String>() {
 		// {
@@ -67,7 +71,9 @@ public class Setting {
 			p.println("AutoExpand=" + AutoExpand);
 			p.println("LoadAllIcon=" + LoadAllIcon);
 			p.println("ActiveUser=" + ActiveUser);
-
+			p.println("ShowLeftNotesColumn=" + ShowLeftNotesColumn);
+			p.println("ShowRightNotesColumn=" + ShowRightNotesColumn);
+			
 			if (LeftLastKnowLocation != null)
 				p.println("LeftLastKnowLocation=" + LeftLastKnowLocation.toUri().toString());
 			else
@@ -118,6 +124,10 @@ public class Setting {
 					AutoExpand = Boolean.parseBoolean(value);
 				if (key.equalsIgnoreCase("LoadAllIcon"))
 					LoadAllIcon = Boolean.parseBoolean(value);
+				if (key.equalsIgnoreCase("ShowLeftNotesColumn"))
+					ShowLeftNotesColumn = Boolean.parseBoolean(value);
+				if (key.equalsIgnoreCase("ShowRightNotesColumn"))
+					ShowRightNotesColumn = Boolean.parseBoolean(value);
 				if (key.equals("LeftLastKnowLocation"))
 					LeftLastKnowLocation = Paths.get(URI.create(value));
 				if (key.equals("RightLastKnowLocation"))
@@ -403,6 +413,22 @@ public class Setting {
 
 	public static void setActiveUser(String activeUser) {
 		ActiveUser = activeUser;
+	}
+
+	public static Boolean getShowLeftNotesColumn() {
+		return ShowLeftNotesColumn;
+	}
+
+	public static void setShowLeftNotesColumn(Boolean showLeftNotesColumn) {
+		ShowLeftNotesColumn = showLeftNotesColumn;
+	}
+
+	public static Boolean getShowRightNotesColumn() {
+		return ShowRightNotesColumn;
+	}
+
+	public static void setShowRightNotesColumn(Boolean showRightNotesColumn) {
+		ShowRightNotesColumn = showRightNotesColumn;
 	}
 
 }
