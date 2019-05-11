@@ -2,6 +2,19 @@
 
 ## You've always been tracked, why not track yourself Too!?
 
+### Table of Contents
+
+* [General Description](#General-Description)
+* [Sketch Images](#sketch-images)
+* [Features](#Features)
+* [Keyboard Shortcuts](#Keyboard-Shortcuts)  
+* [Fight The New Drug](#fight-the-new-drug)
+* [Quick Workflow for VLC Filtering Video](#fight-the-new-drug)
+  * [Making Exclusion](#fight-the-new-drug)
+  * [Exporting Result](#exporting-result-generation)
+* [Tips and Tricks](#tips-and-tricks)
+* [Release Notes](#release-notes)
+
 ## General Description
 
 In this application you will track yourself, it is a simple file explorer with 2 main views that can interact between each other, And for each file, we have a status Seen or Unseen and filtering Media ...And so much more!
@@ -121,7 +134,7 @@ Note: To close running video the batch 'Black Screen' should be closed first
 * Right-click on V button to quickly lunch Media with saved Configuration
 * Hold Shift or Ctrl to make various Selection
 * Do you know Search also search your notes
-* Click on the plus mark on the table to display note table
+* Click on the plus mark on the table header to display note column
 
   ***
 
