@@ -5,6 +5,8 @@ import javafx.application.Platform;
 import java.io.IOException;
 import java.nio.file.*;
 
+import application.controller.SplitViewController;
+
 public class WatchServiceHelper {
 
 	private WatchService mWatchService;

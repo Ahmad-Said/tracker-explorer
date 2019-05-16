@@ -1,7 +1,10 @@
-package application;
+package application.model;
 
 import java.nio.file.Path;
 
+import application.SystemIconsHelper;
+import application.VLC;
+import application.controller.SplitViewController;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.scene.control.Button;
 import javafx.scene.control.ToggleButton;
@@ -11,6 +14,9 @@ import javafx.scene.image.ImageView;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 
+/**
+ * This is the table used in each split view
+ */
 public class TableViewModel {
 
 	/// most important note that took me hours to catch

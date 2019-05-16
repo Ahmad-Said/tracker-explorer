@@ -3,6 +3,8 @@ package application;
 import javafx.scene.control.Alert;
 import org.apache.commons.io.FileUtils;
 
+import application.controller.SplitViewController;
+
 import java.io.File;
 import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Files;

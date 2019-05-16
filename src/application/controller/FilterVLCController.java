@@ -1,4 +1,4 @@
-package application;
+package application.controller;
 
 import java.awt.HeadlessException;
 import java.awt.Toolkit;
@@ -13,6 +13,12 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
+import application.DialogHelper;
+import application.FileTracker;
+import application.Main;
+import application.VLC;
+import application.model.FilterVLCTableView;
+import application.model.MediaCutData;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.event.ActionEvent;
@@ -44,6 +50,9 @@ public class FilterVLCController {
 
 	@FXML
 	private Button generateBatch;
+
+	@FXML
+	private Button generatePlaylist;
 
 	@FXML
 	private Button copyRaw;
@@ -282,8 +291,8 @@ public class FilterVLCController {
 	private void AddtoExclusion() {
 		String sStart = inputStart.getText();
 		String sEnd = inputEnd.getText();
-		Duration start = studyFormat(sStart, "Start");
-		Duration end = studyFormat(sEnd, "End");
+		Duration start = studyFormat(sStart, "Start", true);
+		Duration end = studyFormat(sEnd, "End", true);
 		if (start == null || end == null)
 			return;
 		if (studyConflict(start, end)) {
@@ -300,10 +309,11 @@ public class FilterVLCController {
 		}
 	}
 
-	public static Duration studyFormat(String sduration, String where) {
+	public static Duration studyFormat(String sduration, String where, Boolean warn) {
 		if (sduration == null || sduration.isEmpty()) {
-			DialogHelper.showAlert(AlertType.ERROR, "Add Exclusion", "Missing " + where + " input",
-					"Please fill" + where + " Input , use Picker button to get help");
+			if (warn)
+				DialogHelper.showAlert(AlertType.ERROR, "Add Exclusion", "Missing " + where + " input",
+						"Please fill" + where + " Input , use Picker button to get help");
 			return null;
 		}
 		try {
@@ -341,9 +351,10 @@ public class FilterVLCController {
 
 		} catch (Exception e) {
 			// TODO Auto-generated catch block
-			DialogHelper.showAlert(AlertType.ERROR, "Add Exclusion", "Format Exception at " + where + " Input",
-					"Please Accepted format are:" + "\n\tss\t\t\t(example: 6660)" + "\n\tmm:ss\t\t(example: 110:20)"
-							+ "\n\thh:mm:ss\t\t(example: 1:50:20)\n\tOr just use picker button to auto detect");
+			if (warn)
+				DialogHelper.showAlert(AlertType.ERROR, "Add Exclusion", "Format Exception at " + where + " Input",
+						"Please Accepted format are:" + "\n\tss\t\t\t(example: 6660)" + "\n\tmm:ss\t\t(example: 110:20)"
+								+ "\n\thh:mm:ss\t\t(example: 1:50:20)\n\tOr just use picker button to auto detect");
 			// e.printStackTrace();
 			return null;
 		}
@@ -446,6 +457,17 @@ public class FilterVLCController {
 		VLC.RunMovieasBatch(mPath, list, false, true);
 	}
 
+	@FXML // this generate a batch file with same name next to movie to start it
+	// Intendedly
+	public void SavePlayListFile() {
+		ArrayList<MediaCutData> list = new ArrayList<MediaCutData>();
+		for (FilterVLCTableView other : mDataTable) {
+			list.add(
+					new MediaCutData(other.getStart().toSeconds(), other.getEnd().toSeconds(), other.getDescription()));
+		}
+		VLC.SavePlayListFile(mPath, list);
+	}
+
 	@FXML
 	public void ResetStart() {
 		inputStart.setText("00     :00     :00");
@@ -477,7 +499,17 @@ public class FilterVLCController {
 					"Note: \n- VLC will now open the file" + "\n- Sometimes start and end video are not well detected"
 							+ "\n- The program in suspend waiting vlc do not close it"
 							+ "\n- Press OK to not Show Again");
-		int sec = VLC.pickTime(mPath);
+		Duration resume = null;
+		if (where.equals("Start")) {
+			String sStart = inputStart.getText();
+			resume = studyFormat(sStart, "Start", false);
+		} else {
+			String sEnd = inputEnd.getText();
+			resume = studyFormat(sEnd, "End", false);
+		}
+		if(resume.toSeconds() == 0)
+			resume= null;
+		int sec = VLC.pickTime(mPath, resume);
 		// this transition can be used to get focus but annoying
 		// filterStage.hide();
 		// filterStage.show();

@@ -15,6 +15,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Scanner;
 
+import application.controller.SplitViewController;
+import application.model.Setting;
+import application.model.TableViewModel;
 import javafx.scene.control.Alert.AlertType;
 
 public class FileTracker {
@@ -256,7 +259,7 @@ public class FileTracker {
 		return tracker.exists();
 	}
 
-	String getSeen(TableViewModel t) {
+	public String getSeen(TableViewModel t) {
 		String keyName = t.getName().toString();
 		return mapDetails.get(keyName).get(1);
 	}
@@ -266,7 +269,7 @@ public class FileTracker {
 		mapDetails.get(keyName).set(1, status);
 	}
 
-	String getTooltipText(TableViewModel t) {
+	public String getTooltipText(TableViewModel t) {
 		if (isTracked()) {
 			String ans = mapDetails.get(t.getName()).get(2);
 			return (ans.equals(" ") ? null : ans);
@@ -274,13 +277,13 @@ public class FileTracker {
 		return null;
 	}
 
-	void setTooltipText(TableViewModel t, String note) {
+	public void setTooltipText(TableViewModel t, String note) {
 		if (isTracked())
 			mapDetails.get(t.getName()).set(2, note);
 		this.writeMap();
 	}
 
-	void setTooltipText(List<TableViewModel> list, String note) {
+	public void setTooltipText(List<TableViewModel> list, String note) {
 		if (isTracked())
 			for (TableViewModel t : list) {
 				mapDetails.get(t.getName()).set(2, note);

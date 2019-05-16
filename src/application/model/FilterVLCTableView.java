@@ -1,4 +1,4 @@
-package application;
+package application.model;
 
 import javafx.beans.property.SimpleStringProperty;
 import javafx.scene.control.Button;

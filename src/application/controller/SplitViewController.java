@@ -1,4 +1,4 @@
-package application;
+package application.controller;
 
 import java.awt.Desktop;
 import java.io.File;
@@ -10,6 +10,15 @@ import java.util.Comparator;
 import java.util.LinkedList;
 import java.util.List;
 
+import application.DialogHelper;
+import application.FileTracker;
+import application.Main;
+import application.StringHelper;
+import application.VLC;
+import application.WatchServiceHelper;
+import application.model.MediaCutData;
+import application.model.Setting;
+import application.model.TableViewModel;
 import javafx.collections.ObservableList;
 import javafx.collections.transformation.FilteredList;
 import javafx.collections.transformation.SortedList;

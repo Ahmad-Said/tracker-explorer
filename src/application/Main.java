@@ -6,6 +6,8 @@ package application;
 import java.io.File;
 import java.io.IOException;
 
+import application.controller.WelcomeController;
+import application.model.Setting;
 import javafx.application.Application;
 import javafx.application.Platform;
 import javafx.event.EventHandler;
@@ -23,12 +25,12 @@ import javafx.stage.WindowEvent;
 public class Main extends Application {
 	static final KeyCombination SHORTCUT_COPY = new KeyCodeCombination(KeyCode.C, KeyCombination.CONTROL_DOWN);
 	static final KeyCombination SHORTCUT_MOVE = new KeyCodeCombination(KeyCode.X, KeyCombination.CONTROL_DOWN);
-	static final KeyCombination SHORTCUT_DELETE = new KeyCodeCombination(KeyCode.DELETE);
-	static final KeyCombination SHORTCUT_NEW_FILE = new KeyCodeCombination(KeyCode.N, KeyCombination.SHORTCUT_DOWN);
-	static final KeyCombination SHORTCUT_NEW_DIRECTORY = new KeyCodeCombination(KeyCode.N, KeyCombination.SHORTCUT_DOWN,
+	public static final KeyCombination SHORTCUT_DELETE = new KeyCodeCombination(KeyCode.DELETE);
+	public static final KeyCombination SHORTCUT_NEW_FILE = new KeyCodeCombination(KeyCode.N, KeyCombination.SHORTCUT_DOWN);
+	public static final KeyCombination SHORTCUT_NEW_DIRECTORY = new KeyCodeCombination(KeyCode.N, KeyCombination.SHORTCUT_DOWN,
 			KeyCombination.SHIFT_DOWN);
 	static final KeyCombination SHORTCUT_FOCUS_VIEW = new KeyCodeCombination(KeyCode.TAB);
-	static final KeyCombination SHORTCUT_RENAME = new KeyCodeCombination(KeyCode.F2);
+	public static final KeyCombination SHORTCUT_RENAME = new KeyCodeCombination(KeyCode.F2);
 	static final KeyCombination SHORTCUT_FOCUS_SWITCH_VIEW = new KeyCodeCombination(KeyCode.TAB,
 			KeyCombination.CONTROL_DOWN);
 	static final KeyCombination SHORTCUT_SEARCH = new KeyCodeCombination(KeyCode.F, KeyCombination.CONTROL_ANY);

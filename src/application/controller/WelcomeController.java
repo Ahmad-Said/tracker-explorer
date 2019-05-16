@@ -1,4 +1,4 @@
-package application;
+package application.controller;
 
 import java.awt.Desktop;
 import java.io.File;
@@ -11,7 +11,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.ResourceBundle;
@@ -22,6 +21,15 @@ import java.util.stream.Collectors;
 
 import org.jetbrains.annotations.Nullable;
 
+import application.DialogHelper;
+import application.FileHelper;
+import application.FileTracker;
+import application.Main;
+import application.StringHelper;
+import application.VLC;
+import application.WatchServiceHelper;
+import application.model.Setting;
+import application.model.TableViewModel;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.event.ActionEvent;
@@ -229,8 +237,8 @@ public class WelcomeController implements Initializable {
 			rightView.getPathField().setOnAction(e -> onTextEntered(rightView.getPathField()));
 			refreshBothViews(null);
 			initializeButtons();
-			// testing 
-			
+			// testing
+
 			// initialize coloumn preference
 			rightStatus.setVisible(Setting.getShowRightNotesColumn());
 			leftStatus.setVisible(Setting.getShowLeftNotesColumn());
@@ -418,7 +426,7 @@ public class WelcomeController implements Initializable {
 		 * Set up helpMenu
 		 */
 		aboutMenuItem.setOnAction(e -> DialogHelper.showAlert(Alert.AlertType.INFORMATION, "About", null,
-				"Tracker Explorer v1.1\n\n" + "Copyright © 2019 by Ahmad Said"));
+				"Tracker Explorer v1.2\n\n" + "Copyright © 2019 by Ahmad Said"));
 	}
 
 	private void initializeButtons() {
@@ -546,7 +554,7 @@ public class WelcomeController implements Initializable {
 	public void createDirectory() {
 		SplitViewController focusedPane = getFocusedPane();
 		if (focusedPane != null)
-			FileHelper.createDirectory(focusedPane.getDirectoryPath(),focusedPane);
+			FileHelper.createDirectory(focusedPane.getDirectoryPath(), focusedPane);
 	}
 
 	public void createFile() {
@@ -774,7 +782,7 @@ public class WelcomeController implements Initializable {
 				"00     :00     :00");
 		if (answer == null)
 			return;
-		Duration ans = FilterVLCController.studyFormat(answer, " Feild");
+		Duration ans = FilterVLCController.studyFormat(answer, " Feild", true);
 		if (ans == null || ans.toSeconds() <= 0)
 			return;
 

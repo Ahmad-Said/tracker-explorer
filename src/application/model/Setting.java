@@ -1,4 +1,4 @@
-package application;
+package application.model;
 
 import java.awt.Desktop;
 import java.io.File;
@@ -16,6 +16,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Scanner;
 
+import application.DialogHelper;
 import javafx.scene.control.Alert.AlertType;
 
 public class Setting {

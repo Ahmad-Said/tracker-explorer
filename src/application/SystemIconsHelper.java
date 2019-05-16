@@ -7,6 +7,7 @@ import java.util.HashMap;
 
 import javax.swing.filechooser.FileSystemView;
 
+import application.model.Setting;
 import javafx.embed.swing.SwingFXUtils;
 import javafx.scene.image.Image;
 
