@@ -49,9 +49,6 @@ import javafx.util.Duration;
 public class FilterVLCController {
 
 	@FXML
-	private Button generateBatch;
-
-	@FXML
 	private Button generatePlaylist;
 
 	@FXML
@@ -62,6 +59,9 @@ public class FilterVLCController {
 
 	@FXML
 	private CheckBox autoScene;
+
+	@FXML
+	private CheckBox notifyend;
 
 	@FXML
 	private Button pickEnd;
@@ -189,7 +189,6 @@ public class FilterVLCController {
 			initisalizeTable();
 
 		} catch (IOException e) {
-			// TODO Auto-generated catch block
 			// e.printStackTrace();
 		}
 	}
@@ -257,7 +256,6 @@ public class FilterVLCController {
 
 						@Override
 						public void handle(ActionEvent event) {
-							// TODO Auto-generated method stub
 							boolean enter = false;
 							ArrayList<MediaCutData> list = new ArrayList<MediaCutData>();
 							for (FilterVLCTableView other : mDataTable) {
@@ -272,7 +270,7 @@ public class FilterVLCController {
 							boolean isFirst = false;
 							if (mDataTable.get(0) == t)
 								isFirst = true;
-							VLC.RunMovieasBatch(mPath, list, true, isFirst);
+							VLC.SavePlayListFile(mPath, list, true, isFirst, notifyend.isSelected());
 						}
 					});
 					t.getRemove().setOnAction(new EventHandler<ActionEvent>() {
@@ -350,7 +348,6 @@ public class FilterVLCController {
 			// throw new Exception();
 
 		} catch (Exception e) {
-			// TODO Auto-generated catch block
 			if (warn)
 				DialogHelper.showAlert(AlertType.ERROR, "Add Exclusion", "Format Exception at " + where + " Input",
 						"Please Accepted format are:" + "\n\tss\t\t\t(example: 6660)" + "\n\tmm:ss\t\t(example: 110:20)"
@@ -402,7 +399,6 @@ public class FilterVLCController {
 	}
 
 	private void reGenerateSceneNumbering() {
-		// TODO Auto-generated method stub
 		int i = 1;
 		for (FilterVLCTableView t : mDataTable) {
 			// 'Scene xx: '...
@@ -446,26 +442,17 @@ public class FilterVLCController {
 		mfileTracker.writeMap();
 	}
 
-	@FXML // this generate a batch file with same name next to movie to start it
-			// Intendedly
-	public void SaveBatchFile() {
-		ArrayList<MediaCutData> list = new ArrayList<MediaCutData>();
-		for (FilterVLCTableView other : mDataTable) {
-			list.add(
-					new MediaCutData(other.getStart().toSeconds(), other.getEnd().toSeconds(), other.getDescription()));
-		}
-		VLC.RunMovieasBatch(mPath, list, false, true);
-	}
-
-	@FXML // this generate a batch file with same name next to movie to start it
-	// Intendedly
+	@FXML // this generate a PlayList XSPF file with same name next to movie to start it
+			// Independently
 	public void SavePlayListFile() {
 		ArrayList<MediaCutData> list = new ArrayList<MediaCutData>();
 		for (FilterVLCTableView other : mDataTable) {
 			list.add(
 					new MediaCutData(other.getStart().toSeconds(), other.getEnd().toSeconds(), other.getDescription()));
 		}
-		VLC.SavePlayListFile(mPath, list);
+		if (list.isEmpty())
+			return;
+		VLC.SavePlayListFile(mPath, list, false, true, notifyend.isSelected());
 	}
 
 	@FXML
@@ -507,8 +494,8 @@ public class FilterVLCController {
 			String sEnd = inputEnd.getText();
 			resume = studyFormat(sEnd, "End", false);
 		}
-		if(resume.toSeconds() == 0)
-			resume= null;
+		if (resume.toSeconds() == 0)
+			resume = null;
 		int sec = VLC.pickTime(mPath, resume);
 		// this transition can be used to get focus but annoying
 		// filterStage.hide();

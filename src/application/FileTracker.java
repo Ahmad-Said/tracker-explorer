@@ -218,7 +218,7 @@ public class FileTracker {
 		}
 	}
 
-	public void ToogleSingleSeenItem(TableViewModel t) {
+	public void toggleSingleSeenItem(TableViewModel t) {
 		Integer intSeen = Integer.parseInt(getSeen(t));
 		Integer invertSeen = (intSeen == 0) ? 1 : 0;
 		setSeen(t, invertSeen.toString());
@@ -230,7 +230,7 @@ public class FileTracker {
 						+ "so nothing dangerous just a file !");
 	}
 
-	public void toogleSelectionSeen(List<TableViewModel> list, TableViewModel clicked) {
+	public void toggleSelectionSeen(List<TableViewModel> list, List<TableViewModel> xspflist, TableViewModel clicked) {
 		if (!isTracked()) {
 			boolean ans = getAns();
 			if (ans) {
@@ -244,12 +244,15 @@ public class FileTracker {
 				return;
 			}
 		}
-		ToogleSingleSeenItem(clicked);
+		toggleSingleSeenItem(clicked);
 		if (list.size() > 1) // to make it easier for user to not mistake
 			for (TableViewModel t : list) {
 				if (t != clicked)
-					ToogleSingleSeenItem(t);
+					toggleSingleSeenItem(t);
 			}
+		if (xspflist != null)
+			for (TableViewModel t : xspflist)
+				toggleSingleSeenItem(t);
 		// System.out.println("i enter here once ");
 		writeMap();
 	}
@@ -264,7 +267,7 @@ public class FileTracker {
 		return mapDetails.get(keyName).get(1);
 	}
 
-	void setSeen(TableViewModel t, String status) {
+	public void setSeen(TableViewModel t, String status) {
 		String keyName = t.getName().toString();
 		mapDetails.get(keyName).set(1, status);
 	}
@@ -350,8 +353,7 @@ public class FileTracker {
 	 * @param mfileTracker
 	 */
 	public void OperationUpdate(List<Path> source, FileTracker otherfileTracker, String operation) {
-		if(!isTracked() || (otherfileTracker != null && !otherfileTracker.isTracked()))
-		{
+		if (!isTracked() || (otherfileTracker != null && !otherfileTracker.isTracked())) {
 			mSplitViewController.getParentWelcome().refreshBothViews(null);
 			return;
 		}
@@ -373,9 +375,9 @@ public class FileTracker {
 		if (otherfileTracker != null) // enter except delete
 			otherfileTracker.writeMapDir(otherfileTracker.mWorkingDirPath, false);
 	}
-	public void OperationRename(String oldName,String newName) {
-		if(!isTracked())
-		{
+
+	public void OperationRename(String oldName, String newName) {
+		if (!isTracked()) {
 			mSplitViewController.getParentWelcome().refreshBothViews(mSplitViewController);
 			return;
 		}

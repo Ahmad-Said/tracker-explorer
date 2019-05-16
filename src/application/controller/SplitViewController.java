@@ -7,8 +7,10 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 
 import application.DialogHelper;
 import application.FileTracker;
@@ -95,13 +97,12 @@ public class SplitViewController {
 		initializeTable();
 		// initialize column rule comparator
 		hboxActions.setComparator(new Comparator<HBox>() {
-			
+
 			@Override
 			public int compare(HBox o1, HBox o2) {
-				// TODO Auto-generated method stub
 				// first children is button watch status
-				ToggleButton markseen1 = (ToggleButton)o1.getChildren().get(0);
-				if(markseen1.getText().equals("S"))
+				ToggleButton markseen1 = (ToggleButton) o1.getChildren().get(0);
+				if (markseen1.getText().equals("S"))
 					return 1;
 				return 0;
 			}
@@ -139,11 +140,7 @@ public class SplitViewController {
 				if (Table.isFocused()) {
 					TableViewModel temp = Table.getSelectionModel().getSelectedItem();
 					if (temp != null) {
-						int toScroll = Table.getSelectionModel().getSelectedIndex();
-						mfileTracker.toogleSelectionSeen(Table.getSelectionModel().getSelectedItems(),
-								Table.getSelectionModel().getSelectedItem());
-						// Table.scrollTo(toScroll);
-						Table.getSelectionModel().select(toScroll);
+						temp.getMarkSeen().fire();
 					}
 				}
 				break;
@@ -229,8 +226,8 @@ public class SplitViewController {
 								// if null set it to space like it was
 								if (note == null)
 									return; // keep note unchanged
-								if(note.isEmpty())
-									note=" "; // reset note if is empty
+								if (note.isEmpty())
+									note = " "; // reset note if is empty
 								// ensure > is not used
 								note = note.replace('>', '<');
 								mfileTracker.setTooltipText(Table.getSelectionModel().getSelectedItems(), note);
@@ -239,6 +236,12 @@ public class SplitViewController {
 						});
 						if (VLC.isVLCExt(t.getName())) {
 							t.getOpenVLC().setOnMouseClicked(m -> {
+								Path path = getDirectoryPath().resolve(t.getName());
+
+								if (VLC.isPlaylist(t.getName())) {
+									VLC.startXSPF(path);
+									return;
+								}
 								if (m.getButton().equals(MouseButton.PRIMARY)) {
 									new FilterVLCController(t.getmFilePath(), mfileTracker);
 								} else {
@@ -251,7 +254,7 @@ public class SplitViewController {
 											list.add(new MediaCutData(options.get(i), options.get(i + 1),
 													options.get(i + 2)));
 										}
-										VLC.RunMovieasBatch(getDirectoryPath().resolve(t.getName()), list, true, true);
+										VLC.SavePlayListFile(path, list, true, true, true);
 									} else
 										new FilterVLCController(t.getmFilePath(), mfileTracker);
 								}
@@ -441,18 +444,18 @@ public class SplitViewController {
 		return selectedFile;
 	}
 
-//	 public static int count = 1; // optimized !
+	// public static int count = 1; // optimized !
 
 	public void refresh() {
-//		 System.out.println(count);
-//		  count++;
-//		 if(count>10)
-//		 try {
-//		 throw new Exception();
-//		 } catch (Exception e) {
-//		 // TODO Auto-generated catch block
-//		 e.printStackTrace();
-//		 }
+		// System.out.println(count);
+		// count++;
+		// if(count>10)
+		// try {
+		// throw new Exception();
+		// } catch (Exception e) {
+		// // TODO Auto-generated catch block
+		// e.printStackTrace();
+		// }
 		mfileTracker.loadMap();
 		mfileTracker.resolveConflict();
 		showList(getCurrentFilesList());
@@ -535,7 +538,7 @@ public class SplitViewController {
 	 */
 	private void initializeButtons(TableViewModel t) {
 
-		// property of toogle button from map
+		// property of toggle button from map
 		if (mfileTracker.isTracked()) {
 			boolean isSeen = false;
 			isSeen = (mfileTracker.getSeen(t).equals("0")) ? false : true;
@@ -555,15 +558,64 @@ public class SplitViewController {
 			t.getMarkSeen().setSelected(false);
 		}
 
-		// action method for toogle will make all selection to toogle
+		// action method for toggle will make all selection to toggle
 		t.getMarkSeen().setOnAction(new EventHandler<ActionEvent>() {
 			@Override
 			public void handle(ActionEvent event) {
-				// a button can be clicked with being in selection so i add it
-
-				mfileTracker.toogleSelectionSeen(Table.getSelectionModel().getSelectedItems(), t);
+				// toggle all selected items
+				// reserve selection before refreshing the table
+				int[] toSelect = new int[Table.getSelectionModel().getSelectedItems().size()];
+				// int tothis = DataTable.indexOf(t);
+				int j = 0;
+				for (int i : Table.getSelectionModel().getSelectedIndices())
+					toSelect[j++] = i;
+				mfileTracker.toggleSelectionSeen(Table.getSelectionModel().getSelectedItems(),
+						XSPFrelatedWithSelection(t), t);
+				// restore reserve
+				Table.getSelectionModel().selectIndices(-1, toSelect);
+				Table.requestFocus();
 			}
 		});
+	}
+
+	private ArrayList<TableViewModel> XSPFrelatedWithSelection(TableViewModel clicked) {
+
+		// if XSPF is clicked also auto sync seen its video files if exist
+
+		// to collect all model to sync
+		ArrayList<TableViewModel> Allrelated = new ArrayList<>();
+
+		// to collect all base name of XSPF
+		Map<String, TableViewModel> mapAllXSPF = new HashMap<String, TableViewModel>();
+		;
+
+		// to include clicked in below for loop
+		// Table.getSelectionModel().select(DataTable.indexOf(clicked));
+		ArrayList<TableViewModel> tempover = new ArrayList<>();
+		tempover.addAll(Table.getSelectionModel().getSelectedItems());
+		tempover.add(clicked);
+
+		for (TableViewModel t : tempover) {
+			String ext = StringHelper.getExtention(t.getName());
+			if (ext.equals("XSPF")) {
+				String basename = t.getName().substring(0, t.getName().length() - 15).toUpperCase();
+				mapAllXSPF.put(basename, t);
+			}
+		}
+		for (TableViewModel tsearch : DataTable) {
+			String tbase = StringHelper.getBaseName(tsearch.getName());
+			if (mapAllXSPF.containsKey(tbase)) {
+				mfileTracker.setSeen(tsearch, mfileTracker.getSeen(mapAllXSPF.get(tbase)));
+				// first if -> to force toggle if only video is selected and clicked on XSPF
+				// second if ->to prevent double toggle
+				if (Table.getSelectionModel().getSelectedItems().size() == 1
+						|| !Table.getSelectionModel().getSelectedItems().contains(tsearch))
+					Allrelated.add(tsearch);
+			}
+		}
+		if (Allrelated.size() == 0)
+			return null;
+		return Allrelated;
 	}
 
 	public void openFile(File file) {
@@ -646,10 +698,12 @@ public class SplitViewController {
 		this.mDirectory = mDirectory;
 		refresh();
 	}
+
 	// special use like for rename and do not Queue
 	public void setmDirectory(File mdirectory) {
-		  mDirectory=mdirectory;
+		mDirectory = mdirectory;
 	}
+
 	public Path getDirectoryPath() {
 		return mDirectory.toPath();
 	}

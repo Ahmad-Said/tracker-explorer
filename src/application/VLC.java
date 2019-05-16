@@ -1,6 +1,5 @@
 package application;
 
-import java.awt.Desktop;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
@@ -15,7 +14,10 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Scanner;
 
+import application.controller.FilterVLCController;
+import application.model.MediaCutData;
 import javafx.scene.control.Alert.AlertType;
+import javafx.util.Duration;
 
 public class VLC {
 
@@ -32,6 +34,9 @@ public class VLC {
 			Arrays.asList("AAC", "AC3", "ALAC", "AMR", "DTS", "DVAudio", "XM", "FLAC", "It", "MACE", "MOD", "MP3",
 					"Opus", "PLS", "QCP", "QDM2", "QDMC", "S3M", "TTA", "WMA"));
 
+	private static ArrayList<String> ArrayPlayListExt = new ArrayList<String>(
+			Arrays.asList("XSPF"));
+
 	public static void ReloadRecentMRL() {
 		try {
 
@@ -44,7 +49,6 @@ public class VLC {
 				// replace space with %20 to resolve spaces in path
 				scan = new Scanner(new File(new URI("file:///" + Path_Config.replace('\\', '/').replace(" ", "%20"))));
 			} catch (URISyntaxException e) {
-				// TODO Auto-generated catch block
 				// e.printStackTrace();
 				DialogHelper.showAlert(AlertType.ERROR, "Auto Detect", "Something went wrong",
 						"Could not Get Data From VLC.\nPlease Choose manually");
@@ -76,7 +80,6 @@ public class VLC {
 					try {
 						RecentTracker.put(Paths.get(URI.create(lis)), Integer.parseInt(tim.trim()));
 					} catch (Exception e) {
-						// TODO: handle exception
 						// DialogHelper.showAlert(AlertType.ERROR, "Error", "Failed To parse VLC Config
 						// URI", lis);
 					}
@@ -85,7 +88,6 @@ public class VLC {
 			scan.close();
 
 		} catch (FileNotFoundException e) {
-			// TODO Auto-generated catch block
 			// e.printStackTrace();
 		}
 	}
@@ -110,12 +112,14 @@ public class VLC {
 		return false;
 	}
 
-	public static int pickTime(Path path) {
+	public static int pickTime(Path path, Duration resumeTime) {
 		Runtime runtime = Runtime.getRuntime();
 		try {
 			ReloadRecentMRL();
 			String Resume = "";
-			if (RecentTracker.containsKey(path))
+			if (resumeTime != null)
+				Resume = " --start-time " + resumeTime.toSeconds();
+			else if (RecentTracker.containsKey(path))
 				Resume = " --start-time " + RecentTracker.get(path) / 1000;
 			Process p = runtime.exec(Path_Setup + Resume + " " + path.toUri());
 			p.waitFor();
@@ -140,119 +144,151 @@ public class VLC {
 	 * 
 	 * @param path
 	 *            the Path fo media to run
-	 * @param tripletData
+	 * @param MediaCutData
 	 *            1 >> start; 2 >> end; 3 >> title
 	 */
-	public static File RunMovieasBatch(Path path, ArrayList<MediaCutData> list, boolean isFullPath, boolean isfirst) {
+	public static File SavePlayListFile(Path path, ArrayList<MediaCutData> list, boolean isFullPath, boolean isfirst,
+			boolean notifyEnd) {
 
 		File tempFile = null;
+		String mediaLocation = null;
+		String mediaName = path.getFileName().toString();
+
 		try {
 			if (isFullPath) // this run when testing from preview table
 			{
-				// System.out.println("i'm hree");
-				tempFile = File.createTempFile("Watch", ".bat");
+				tempFile = File.createTempFile("Watch", ".xspf");
+				mediaLocation = path.toUri().toString();
 			} else // this to generate the file next to media
 			{
 				WatchServiceHelper.setRuning(false); // prevent overload
-				String mediaName = path.getFileName().toString();
-				String name = mediaName.replace(SystemIconsHelper.getFileExt(path.toString()), ".bat");
-				// System.out.println(name);
+				String name = mediaName.replace(SystemIconsHelper.getFileExt(path.toString()), "[Filtered].xspf");
 				tempFile = path.getParent().resolve(name).toFile();
+				mediaLocation = path.toUri().toString().substring((path.toUri().toString().lastIndexOf('/') + 1));
 			}
 			if (tempFile.exists())
 				tempFile.delete();
 			PrintStream p = new PrintStream(tempFile);
 			// initialize things: template
-			// set a="Jurassic.World.Fallen.Kingdom.2018.BluRay.1080p.x264.mp4"
-			// set path="%ProgramFiles%\VideoLAN\VLC\vlc.exe"
-			// %path% --one-instance --meta-title="some one line" --video-title-timeout
-			// 50000 --start-time 50 --stop-time 55 %a%
-			// vlc://quit
-			// %path% -f --one-instance --no-video-title-show --start-time 60 %a%
-			if (isFullPath)
-				p.println("set media=\"" + path.toAbsolutePath() + "\"");
-			else
-				p.println("set media=\"" + path.getFileName() + "\"");
-
-			p.println("set path=\"%PROGRAMFILES%\\VideoLAN\\VLC\\vlc.exe\"");
-			if (list.get(0).getStart() != 0 && isfirst)
+			String initi = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\r\n" + "<playlist version=\"1\" \r\n"
+					+ "    xmlns=\"http://xspf.org/ns/0/\" \r\n"
+					+ "    xmlns:vlc=\"http://www.videolan.org/vlc/playlist/ns/0/\">\r\n" + "    <title>" + mediaName
+					+ " Filtred" + " </title>\r\n" + "    <trackList>";
+			int id = 1;
+			p.println(initi);
+			if (list.get(0).getStart() != 0 && isfirst) {
 				// the first condition to prevent opening windows twice and
 				// closing it if user want to skip some intro
 				// the second condition if user want to test an interval other than first then
-				// start from it's end and do not join with the begining of video
-				p.println(getVLCcmd("", 0, list.get(0).getStart()));
+				// start from it's end and do not join with the beginning of video
+				int gasp = 0;
+				if (notifyEnd && list.get(0).getStart() > 20)
+					gasp = 10;
+				p.println(getVLCxspf("Scene 00: " + mediaName + " [Filtered]", mediaLocation, id++, 0,
+						list.get(0).getStart() - gasp));
+				if (gasp != 0)
+					p.println(getVLCxspf("End Scene 00", mediaLocation, id++, list.get(0).getStart() - gasp,
+							list.get(0).getStart()));
+			}
+
 			for (int i = 0; i < list.size(); i++) {
 				if (i + 1 < list.size()) // mean there exist another cut
-					p.println(getVLCcmd(list.get(i).getTitle(), list.get(i).getEnd(), list.get(i + 1).getStart()));
-				else // this is that last cut
-					p.println(getVLCcmd(list.get(i).getTitle(), list.get(i).getEnd(), 0));
+				{
+					// gasp is the time to split filter in half
+					// this is meant to show playList entry at the end of the scene
+					// with time back of 10 second before switching to next scene
+					int gasp = 0;
+					if (notifyEnd && list.get(i + 1).getStart() - list.get(i).getEnd() > 20)
+						gasp = 10;
+					p.println(getVLCxspf(list.get(i).getTitle(), mediaLocation, id++, list.get(i).getEnd(),
+							list.get(i + 1).getStart() - gasp));
+					if (gasp != 0)
+						p.println(getVLCxspf("End " + list.get(i).getTitle().substring(0, 8), mediaLocation, id++,
+								list.get(i + 1).getStart() - gasp, list.get(i + 1).getStart()));
+				} else // this is that last cut
+				{
+
+					p.println(getVLCxspf(list.get(i).getTitle().replace("Scene", "Last Scene"), mediaLocation, id++,
+							list.get(i).getEnd(), 0));
+				}
 
 			}
+			p.println("    </trackList>\r\n" + "</playlist>");
 			p.close();
-			WatchServiceHelper.setRuning(true); // prevent overload
 			if (isFullPath) {
-				Desktop.getDesktop().open(tempFile);
-				// Runtime runtime = Runtime.getRuntime();
-				// System.out.println(tempFile.getAbsolutePath());
-				// Process p1 = runtime.exec("cmd \""+ tempFile.getAbsolutePath() +"\"");
-			}
+				startXSPF(tempFile.toPath());
+				tempFile.deleteOnExit();
+			} else
+				WatchServiceHelper.setRuning(true); // </prevent overload
 		} catch (IOException e) {
-			// TODO Auto-generated catch block
 			// e.printStackTrace();
 		}
 		return tempFile;
 	}
 
-	private static String getVLCcmd(String title, int start, int end) {
-		String cmd = "";
-		cmd += "%path% -f --one-instance";
+	private static String getVLCxspf(String title, String location, int id, int start, int end) {
+		String track = "        <track>\r\n" + "            <location>" + location + "</location>\r\n"
+				+ "            <album>https://ahmad-said.github.io/tracker-explorer/</album>\r\n"
+				+ "            <image>https://dummyimage.com/25x25/ffffff/000000.png&amp;text=" + id + "</image>\r\n";
+		if (title != null && !title.trim().isEmpty()) {
+			track += "            <title>" + title + "</title>\r\n" + "            <annotation>Duration: "
+					+ (end - start) + title + "</annotation>\r\n";
+
+		} else {
+			track += "            <title>" + "." + "</title>\r\n";
+		}
+		track += "            <extension application=\"http://www.videolan.org/vlc/playlist/0\">\r\n"
+				+ "                <vlc:id>" + id + "</vlc:id>\r\n";
 		if (start != 0) {
-			if (title != null && !title.trim().isEmpty()) {
-				int countSpace = title.length() - title.replace(" ", "").length(); // count spaces in title
-				// http://www.execuread.com/facts/
-				int time = (int) Math.floor(countSpace * 0.6) * 1000 + 10000; // to millisecond 2000 due to open
-				cmd += " --meta-title=\"" + title + "\"" + " --video-title-timeout " + time
-						+ " --video-title-position=4";
-			} else
-				cmd += " --no-video-title-show";
-			cmd += " --start-time " + start;
+			track += "                <vlc:option>start-time=" + start + "</vlc:option>\r\n";
 		}
 		if (end != 0)
-			cmd += " --stop-time " + end;
-		if (end != 0)
-			cmd += " --play-and-exit";
-		cmd += " %media%";
-		// if (end != 0)
-		// cmd += " vlc://quit"; // found alternative --play-and-exit
-		// System.out.println(cmd);
-		return cmd;
+			track += "                <vlc:option>stop-time=" + end + "</vlc:option>\r\n";
+		track += "            </extension>\r\n" + "        </track>";
+		return track;
 	}
 
 	public static void StartVlc(String arg) {
 		try {
 			Runtime.getRuntime().exec(Path_Setup + " " + arg);
 		} catch (IOException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
 	}
 
+	public static void startXSPF(Path path) {
+		try {
+			Runtime.getRuntime()
+			.exec(Path_Setup + "  --qt-recentplay-filter=watch* --video-title-timeout 12000 --video-title-position=4 "
+					+path.toUri());
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+	}
+	private static boolean isInExt(String name, ArrayList<String> ext) {
+//		int index = name.lastIndexOf('.') + 1;
+//		if (index < name.length())
+//			return ext.contains(name.substring(index).toUpperCase());
+			return ext.contains(StringHelper.getExtention(name));
+//		return false;
+	}
+	
+	
 	public static boolean isVideo(String name) {
-		int index = name.lastIndexOf('.') + 1;
-		if (index < name.length())
-			return VLC.ArrayVideoExt.contains(name.substring(index).toUpperCase());
-		return false;
+		return isInExt(name, ArrayVideoExt);
 	}
 
 	public static boolean isAudio(String name) {
-		int index = name.lastIndexOf('.') + 1;
-		if (index < name.length())
-			return VLC.ArrayAudioExt.contains(name.substring(index).toUpperCase());
-		return false;
+		return isInExt(name, ArrayAudioExt);
+	}
+
+	public static boolean isPlaylist(String name) {
+		return isInExt(name, ArrayPlayListExt);
 	}
 
 	public static boolean isVLCExt(String name) {
-		return isAudio(name) || isVideo(name);
+		return isAudio(name) || isVideo(name) || isPlaylist(name);
 	}
 
 	public static String getPath_Setup() {

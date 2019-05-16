@@ -426,7 +426,7 @@ public class WelcomeController implements Initializable {
 		 * Set up helpMenu
 		 */
 		aboutMenuItem.setOnAction(e -> DialogHelper.showAlert(Alert.AlertType.INFORMATION, "About", null,
-				"Tracker Explorer v1.2\n\n" + "Copyright © 2019 by Ahmad Said"));
+				"Tracker Explorer v2.0\n\n" + "Copyright © 2019 by Ahmad Said"));
 	}
 
 	private void initializeButtons() {
@@ -513,11 +513,12 @@ public class WelcomeController implements Initializable {
 	}
 
 	public void delete() {
-		WatchServiceHelper.setRuning(false);
 		SplitViewController focusedPane = getFocusedPane();
 		if (focusedPane != null) {
 			List<Path> source = focusedPane.getSelection();
-			FileHelper.delete(source);
+			if(!FileHelper.delete(source)) // if not confirmed do nothing
+				return;
+			WatchServiceHelper.setRuning(false);
 			focusedPane.getMfileTracker().OperationUpdate(source, null, "delete");
 			focusedPane.refresh();
 			// refresh and change to parent directory if deleted folder was the other view

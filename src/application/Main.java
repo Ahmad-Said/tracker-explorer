@@ -26,9 +26,10 @@ public class Main extends Application {
 	static final KeyCombination SHORTCUT_COPY = new KeyCodeCombination(KeyCode.C, KeyCombination.CONTROL_DOWN);
 	static final KeyCombination SHORTCUT_MOVE = new KeyCodeCombination(KeyCode.X, KeyCombination.CONTROL_DOWN);
 	public static final KeyCombination SHORTCUT_DELETE = new KeyCodeCombination(KeyCode.DELETE);
-	public static final KeyCombination SHORTCUT_NEW_FILE = new KeyCodeCombination(KeyCode.N, KeyCombination.SHORTCUT_DOWN);
-	public static final KeyCombination SHORTCUT_NEW_DIRECTORY = new KeyCodeCombination(KeyCode.N, KeyCombination.SHORTCUT_DOWN,
-			KeyCombination.SHIFT_DOWN);
+	public static final KeyCombination SHORTCUT_NEW_FILE = new KeyCodeCombination(KeyCode.N,
+			KeyCombination.SHORTCUT_DOWN);
+	public static final KeyCombination SHORTCUT_NEW_DIRECTORY = new KeyCodeCombination(KeyCode.N,
+			KeyCombination.SHORTCUT_DOWN, KeyCombination.SHIFT_DOWN);
 	static final KeyCombination SHORTCUT_FOCUS_VIEW = new KeyCodeCombination(KeyCode.TAB);
 	public static final KeyCombination SHORTCUT_RENAME = new KeyCodeCombination(KeyCode.F2);
 	static final KeyCombination SHORTCUT_FOCUS_SWITCH_VIEW = new KeyCodeCombination(KeyCode.TAB,

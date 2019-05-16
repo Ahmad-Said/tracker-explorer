@@ -16,6 +16,19 @@ public class StringHelper {
 		}
 		return false;
 	}
+	
+	public static String getExtention(String fileName) {
+		int index = fileName.lastIndexOf('.') + 1;
+		if (index >= 0 )
+			return fileName.substring(index).toUpperCase();
+		return "";
+	}
+	public static String getBaseName(String fileName) {
+		int index = fileName.lastIndexOf('.');
+		if (index >= 0)
+			return fileName.substring(0,index).toUpperCase();
+		return fileName;
+	}
 
 	public static String[] getWords(String text) {
 		return text.toLowerCase().split("\\W+");

@@ -111,18 +111,26 @@
                               <Tooltip text="Paste Copeid Data Here If succeed You will change in Table" />
                            </tooltip>
                         </Button>
-                        <Pane prefHeight="36.0" prefWidth="168.0" />
-                        <Button fx:id="generateBatch" mnemonicParsing="false" onAction="#SaveBatchFile" text="Batch">
+                        <Pane prefHeight="42.0" prefWidth="71.0" />
+                        <CheckBox fx:id="notifyend" mnemonicParsing="false" selected="true" text="Notify End">
+                           <tooltip>
+                              <Tooltip text="This add end of scene as playlist entry" />
+                           </tooltip>
+                           <HBox.margin>
+                              <Insets right="10.0" />
+                           </HBox.margin>
+                        </CheckBox>
+                        <Button fx:id="generatePlaylist" layoutX="493.0" layoutY="17.0" mnemonicParsing="false" onAction="#SavePlayListFile" text="Playlist">
                            <styleClass>
-                              <String fx:value="first" />
+                              <String fx:value="middle" />
                               <String fx:value="primary" />
                            </styleClass>
-                           <HBox.margin>
-                              <Insets left="5.0" />
-                           </HBox.margin>
                            <tooltip>
-                              <Tooltip text="Generate A batch File next to file To start it independent from this program" />
+                              <Tooltip text="Generate A XSPF File next to file To start it independent from this program" />
                            </tooltip>
+                           <HBox.margin>
+                              <Insets />
+                           </HBox.margin>
                         </Button>
                         <Button fx:id="Save" alignment="TOP_RIGHT" mnemonicParsing="false" onAction="#saveToMapAndFile" text="Save">
                            <styleClass>

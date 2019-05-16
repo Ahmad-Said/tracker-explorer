@@ -71,7 +71,7 @@ public class FileHelper {
 
 	}
 
-	public static void delete(List<Path> source) {
+	public static boolean delete(List<Path> source) {
 		String sourceDirectory = source.get(0).getParent().toString();
 
 		String filesToDelete = "";
@@ -103,6 +103,7 @@ public class FileHelper {
 			}
 			Main.ResetTitle();
 		}
+		return isConfirmed;
 	}
 
 	public static void createDirectory(Path parent, SplitViewController focusedPane) {

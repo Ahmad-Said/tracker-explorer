@@ -90,19 +90,27 @@ public class TableViewModel {
 		if (VLC.isVLCExt(this.getName())) {
 			openVLC = new Button();
 			Tooltip ms = new Tooltip();
-			ms.setText("Click to Configure or right click for a quick start");
 			ms.setStyle("-fx-font-size:12;-fx-font-weight:bold");
 			ms.getStyleClass().addAll("tooltip", "warning");
 			openVLC.setTooltip(ms);
 			openVLC.setText("V");
-			hboxActions.getChildren().add(getOpenVLC());
-			MarkSeen.getStyleClass().add("first");
-			mNoteButton.getStyleClass().add("middle");
-			openVLC.getStyleClass().addAll("warning", "last");
-			// TODO Auto-generated method stub
 
+			if (VLC.isPlaylist(this.getName())) {
+				ms.setText("Click to Run PlayList!"); // this will run with postion 4 and timeout 12
+				hboxActions.getChildren().remove(mNoteButton);
+				HBox.setHgrow(openVLC, Priority.ALWAYS);
+				openVLC.setMaxWidth(200);
+			} else {
+				ms.setText("Click to Configure or right click for a quick start");
+				MarkSeen.getStyleClass().add("first");
+				mNoteButton.getStyleClass().add("middle");
+				openVLC.getStyleClass().add("last");
+			}
+			openVLC.getStyleClass().addAll("warning", "btn");
+			hboxActions.getChildren().add(getOpenVLC());
 		} else
-			mNoteButton.getStyleClass().addAll("last");
+			mNoteButton.getStyleClass().add("last");
+
 	}
 
 	@Override
