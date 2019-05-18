@@ -17,6 +17,8 @@ import java.util.Map;
 import java.util.Scanner;
 
 import application.DialogHelper;
+import application.RunMenu;
+import application.VLC;
 import javafx.scene.control.Alert.AlertType;
 
 public class Setting {
@@ -24,6 +26,7 @@ public class Setting {
 	// this things are temporary solution later will use :
 	// lightbend refrence.conf see testimagewthatable project
 	// these initial definition are even if not initialized
+	private static String Version = "2.0";
 	private static Boolean BackSync = false;
 	private static Boolean AutoExpand = true;
 	private static Boolean LoadAllIcon = true;
@@ -32,6 +35,8 @@ public class Setting {
 	private static Boolean ShowLeftNotesColumn = false;
 	private static Boolean ShowRightNotesColumn = false;
 	private static String ActiveUser = "default";
+	private static String VLCHttpPass = "1234";
+	private static String VLCPath = null;
 	private static ArrayList<String> UserNames = new ArrayList<String>();
 	/**
 	 * backsync > BackSync loadallicon > LoadAllIcon LeftLastKnowLocation >
@@ -41,9 +46,11 @@ public class Setting {
 	private static Map<String, String> mapOptions = new HashMap<String, String>();
 	private static List<String> extIconLoad;
 	private static List<String> Recentlocation;
-	private static File mSettingFile = new File(System.getenv("APPDATA") + "\\FileTrackerSetting.txt");
+	private static File mSettingFile = new File(
+			System.getenv("APPDATA") + "\\Tracker Explorer\\TrackerExplorerSetting.txt");
 
 	public static void initializeSetting() {
+		Version = "2.0";
 		BackSync = false;
 		AutoExpand = true;
 		LoadAllIcon = true;
@@ -52,29 +59,46 @@ public class Setting {
 		ShowLeftNotesColumn = false;
 		ShowRightNotesColumn = false;
 		ActiveUser = "default";
+
+		setVLCHttpPass("1234");
+
+		if (VLC.initializeDefaultVLCPath())
+			VLCPath = VLC.getPath_Setup().toUri().toString();
 		// UserNames = new ArrayList<String>() {
 		// {
 		// add("default");
 		// }
 		// };
 		UserNames.add("default");
+		try {
+			RunMenu.initialize();
+			migrateOldSetting();
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
 	}
 
 	public static void saveSetting() {
 		PrintStream p = null;
 		try {
+			File dirsetting = new File(System.getenv("APPDATA") + "\\Tracker Explorer");
+			if (!dirsetting.exists())
+				Files.createDirectory(dirsetting.toPath());
 			if (mSettingFile.exists())
 				mSettingFile.delete();
 			p = new PrintStream(getmSettingFile().toString());
 			Files.setAttribute(getmSettingFile().toPath(), "dos:hidden", true);
 			p.println("/this is a generated folder by application to Save Setting");
+			p.println("Version=" + Version);
+			p.println("VLCHttpPass=" + getVLCHttpPass());
+			p.println("VLCPath=" + VLCPath);
 			p.println("BackSync=" + BackSync);
 			p.println("AutoExpand=" + AutoExpand);
 			p.println("LoadAllIcon=" + LoadAllIcon);
 			p.println("ActiveUser=" + ActiveUser);
 			p.println("ShowLeftNotesColumn=" + ShowLeftNotesColumn);
 			p.println("ShowRightNotesColumn=" + ShowRightNotesColumn);
-			
+
 			if (LeftLastKnowLocation != null)
 				p.println("LeftLastKnowLocation=" + LeftLastKnowLocation.toUri().toString());
 			else
@@ -86,8 +110,7 @@ public class Setting {
 			p.println("UserNames=" + String.join(";", UserNames));
 			p.close();
 		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			// e.printStackTrace();
+			e.printStackTrace();
 		}
 	}
 
@@ -111,14 +134,19 @@ public class Setting {
 			scan.close();
 
 		} catch (FileNotFoundException e) {
-			// TODO Auto-generated catch block
-			// e.printStackTrace();
+			e.printStackTrace();
 		}
 		// those assuming they are in order
 		// very bad as same as quicly on the go just for now
 		for (String key : mapOptions.keySet()) {
 			String value = mapOptions.get(key);
 			if (!value.equals("null")) {
+				if (key.equals("Version"))
+					Version = value;
+				if (key.equals("VLCHttpPass"))
+					setVLCHttpPass(value);
+				if (key.equals("VLCPath"))
+					setVLCPath(value);
 				if (key.equals("BackSync"))
 					BackSync = Boolean.parseBoolean(value);
 				if (key.equals("AutoExpand"))
@@ -142,6 +170,20 @@ public class Setting {
 			}
 		}
 		scan.close();
+	}
+
+	public static void setVLCPath(String uriPath) {
+		VLCPath = uriPath;
+		VLC.setPath_Setup(Paths.get(URI.create(uriPath)));
+	}
+
+	public static void migrateOldSetting() throws IOException {
+		File oldSettingfile = new File(System.getenv("APPDATA") + "\\FileTrackerSetting.txt");
+		if (oldSettingfile.exists()) {
+			oldSettingfile.renameTo(mSettingFile);
+			oldSettingfile.delete(); // if cannot move it delete it
+		}
+
 	}
 
 	public static Boolean isBackSync() {
@@ -430,6 +472,33 @@ public class Setting {
 
 	public static void setShowRightNotesColumn(Boolean showRightNotesColumn) {
 		ShowRightNotesColumn = showRightNotesColumn;
+	}
+
+	public static String getVersion() {
+		return Version;
+	}
+
+	public static void setVersion(String version) {
+		Version = version;
+	}
+
+	/**
+	 * @return the vLCHttpPass
+	 */
+	public static String getVLCHttpPass() {
+		return VLCHttpPass;
+	}
+
+	/**
+	 * @param vLCHttpPass
+	 *            the vLCHttpPass to set
+	 */
+	public static void setVLCHttpPass(String vLCHttpPass) {
+		VLCHttpPass = vLCHttpPass;
+	}
+
+	public static String getVLCPath() {
+		return VLCPath;
 	}
 
 }

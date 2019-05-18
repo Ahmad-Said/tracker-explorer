@@ -1,11 +1,9 @@
 package application;
 
 import java.io.File;
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.PrintStream;
 import java.net.URI;
-import java.net.URISyntaxException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
@@ -16,6 +14,7 @@ import java.util.Scanner;
 
 import application.controller.FilterVLCController;
 import application.model.MediaCutData;
+import application.model.Setting;
 import javafx.scene.control.Alert.AlertType;
 import javafx.util.Duration;
 
@@ -23,8 +22,8 @@ public class VLC {
 
 	public static Map<Path, Integer> RecentTracker = new HashMap<Path, Integer>();
 	// private static String Path_Config= "%appdata%/vlc/vlc-qt-interface.ini";
-	private static String Path_Config = System.getenv("APPDATA") + "\\vlc\\vlc-qt-interface.ini";
-	private static String Path_Setup;
+	private static Path Path_Config = new File(System.getenv("APPDATA") + "\\vlc\\vlc-qt-interface.ini").toPath();
+	private static Path Path_Setup;
 
 	private static ArrayList<String> ArrayVideoExt = new ArrayList<String>(
 			Arrays.asList("3GP", "ASF", "AVI", "DVR-MS", "FLV", "MKV", "MIDI", "MP4", "Ogg", "OGM", "WAV", "MPEG-2",
@@ -34,62 +33,54 @@ public class VLC {
 			Arrays.asList("AAC", "AC3", "ALAC", "AMR", "DTS", "DVAudio", "XM", "FLAC", "It", "MACE", "MOD", "MP3",
 					"Opus", "PLS", "QCP", "QDM2", "QDMC", "S3M", "TTA", "WMA"));
 
-	private static ArrayList<String> ArrayPlayListExt = new ArrayList<String>(
-			Arrays.asList("XSPF"));
+	private static ArrayList<String> ArrayPlayListExt = new ArrayList<String>(Arrays.asList("XSPF"));
 
 	public static void ReloadRecentMRL() {
+		// Thread.sleep(1000); // to let vlc write it's data not necessary because i
+		// waited the process...
+		String list = "";
+		String times = "";
+		Scanner scan = null;
 		try {
+			scan = new Scanner(Path_Config.toFile());
+		} catch (Exception e) {
+			// e.printStackTrace();
+			DialogHelper.showAlert(AlertType.ERROR, "Auto Detect", "Something went wrong",
+					"Could not Get Data From VLC.\nPlease Choose manually");
 
-			// Thread.sleep(1000); // to let vlc write it's data not necessary because i
-			// waited the process...
-			String list = "";
-			String times = "";
-			Scanner scan = null;
-			try {
-				// replace space with %20 to resolve spaces in path
-				scan = new Scanner(new File(new URI("file:///" + Path_Config.replace('\\', '/').replace(" ", "%20"))));
-			} catch (URISyntaxException e) {
-				// e.printStackTrace();
-				DialogHelper.showAlert(AlertType.ERROR, "Auto Detect", "Something went wrong",
-						"Could not Get Data From VLC.\nPlease Choose manually");
+		}
+		// line=scan.next();
+		while (scan.hasNextLine()) {
+			list = scan.nextLine();
+			String temp = list.split("=")[0];
 
-			}
-			// line=scan.next();
-			while (scan.hasNextLine()) {
-				list = scan.nextLine();
-				String temp = list.split("=")[0];
-
-				if (temp.equals("list"))
-					break;
-			}
-			times = scan.nextLine();
-			list = list.substring(5);
-			times = times.substring(6);
-			if (!list.equals("@Invalid()")) // this how vlc show if recent was not set
-			{
-				// System.out.println(list);
-				// System.out.println(times);
-				String List_Parsed[] = list.split(",");
-				String Times_Parsed[] = times.split(",");
-				// iterate in reverse way so if key exist twice get the most recent one !
-				for (int i = Times_Parsed.length - 1; i >= 0; i--) {
-					String tim = Times_Parsed[i];
-					String lis = List_Parsed[i].trim();
-					// System.out.println("tim is " + tim + " and lis is " + lis);
-					lis = lis.replace("\"", "");
-					try {
-						RecentTracker.put(Paths.get(URI.create(lis)), Integer.parseInt(tim.trim()));
-					} catch (Exception e) {
-						// DialogHelper.showAlert(AlertType.ERROR, "Error", "Failed To parse VLC Config
-						// URI", lis);
-					}
+			if (temp.equals("list"))
+				break;
+		}
+		times = scan.nextLine();
+		list = list.substring(5);
+		times = times.substring(6);
+		if (!list.equals("@Invalid()")) // this how vlc show if recent was not set
+		{
+			// System.out.println(list);
+			// System.out.println(times);
+			String List_Parsed[] = list.split(",");
+			String Times_Parsed[] = times.split(",");
+			// iterate in reverse way so if key exist twice get the most recent one !
+			for (int i = Times_Parsed.length - 1; i >= 0; i--) {
+				String tim = Times_Parsed[i];
+				String lis = List_Parsed[i].trim();
+				// System.out.println("tim is " + tim + " and lis is " + lis);
+				lis = lis.replace("\"", "");
+				try {
+					RecentTracker.put(Paths.get(URI.create(lis)), Integer.parseInt(tim.trim()));
+				} catch (Exception e) {
+					// DialogHelper.showAlert(AlertType.ERROR, "Error", "Failed To parse VLC Config
+					// URI", lis);
 				}
 			}
-			scan.close();
-
-		} catch (FileNotFoundException e) {
-			// e.printStackTrace();
 		}
+		scan.close();
 	}
 
 	// private static boolean is86 = false; // use later when generating the batch
@@ -105,7 +96,7 @@ public class VLC {
 
 		// check existence of vlc in system
 		if (file.exists()) {
-			Path_Setup = file.getAbsolutePath();
+			Path_Setup = file.toPath();
 			return true;
 		}
 		// System.out.println(Path_Setup);
@@ -113,7 +104,6 @@ public class VLC {
 	}
 
 	public static int pickTime(Path path, Duration resumeTime) {
-		Runtime runtime = Runtime.getRuntime();
 		try {
 			ReloadRecentMRL();
 			String Resume = "";
@@ -121,9 +111,10 @@ public class VLC {
 				Resume = " --start-time " + resumeTime.toSeconds();
 			else if (RecentTracker.containsKey(path))
 				Resume = " --start-time " + RecentTracker.get(path) / 1000;
-			Process p = runtime.exec(Path_Setup + Resume + " " + path.toUri());
-			p.waitFor();
-		} catch (InterruptedException | IOException e) {
+			Process p = StartVlc(Resume + " " + path.toUri());
+			if (p != null)
+				p.waitFor();
+		} catch (InterruptedException e) {
 		}
 		// System.out.println("i;m closed");
 		ReloadRecentMRL();
@@ -248,33 +239,33 @@ public class VLC {
 		return track;
 	}
 
-	public static void StartVlc(String arg) {
+	public static Process StartVlc(String arg) {
 		try {
-			Runtime.getRuntime().exec(Path_Setup + " " + arg);
+			Process p = Runtime.getRuntime().exec(Path_Setup.toAbsolutePath() + " " + arg);
+			return p;
 		} catch (IOException e) {
-			e.printStackTrace();
+			DialogHelper.showAlert(AlertType.ERROR, "Run VLC", "Could Not Run VLC",
+					"VLC is not installed on the system or misconfigured.\n\n Please Get VLC from the menu.");
+			// e.printStackTrace();
 		}
+		return null;
 	}
 
 	public static void startXSPF(Path path) {
-		try {
-			Runtime.getRuntime()
-			.exec(Path_Setup + "  --qt-recentplay-filter=watch* --video-title-timeout 12000 --video-title-position=4 "
-					+path.toUri());
-		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
+		watchWithRemote(path, "");
 	}
+
+	public static void watchWithRemote(Path path, String addArgument) {
+		if (path != null)
+			addArgument += " " + path.toUri();
+		StartVlc(" --one-instance" + " --extraintf=http --http-password=" + Setting.getVLCHttpPass()
+				+ " --qt-recentplay-filter=watch* --video-title-timeout 12000 --video-title-position=4" + addArgument);
+	}
+
 	private static boolean isInExt(String name, ArrayList<String> ext) {
-//		int index = name.lastIndexOf('.') + 1;
-//		if (index < name.length())
-//			return ext.contains(name.substring(index).toUpperCase());
-			return ext.contains(StringHelper.getExtention(name));
-//		return false;
+		return ext.contains(StringHelper.getExtention(name));
 	}
-	
-	
+
 	public static boolean isVideo(String name) {
 		return isInExt(name, ArrayVideoExt);
 	}
@@ -287,15 +278,22 @@ public class VLC {
 		return isInExt(name, ArrayPlayListExt);
 	}
 
-	public static boolean isVLCExt(String name) {
-		return isAudio(name) || isVideo(name) || isPlaylist(name);
+	public static boolean isVLCMediaExt(String name) {
+		return isAudio(name) || isVideo(name);
 	}
 
-	public static String getPath_Setup() {
+	/**
+	 * @return the path_Setup
+	 */
+	public static Path getPath_Setup() {
 		return Path_Setup;
 	}
 
-	public static void setPath_Setup(String path_Setup) {
+	/**
+	 * @param path_Setup
+	 *            the path_Setup to set
+	 */
+	public static void setPath_Setup(Path path_Setup) {
 		Path_Setup = path_Setup;
 	}
 

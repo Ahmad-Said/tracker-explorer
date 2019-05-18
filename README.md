@@ -65,7 +65,7 @@ Menu Tracker Options
 | Tab|Focus Table View
 |Ctrl + F | Focus on search Field|
 |Escape | Clear Search Field|
-|Ctrl + Tab | Switch Focus between Tables|
+|Ctrl + Tab or F3 | Switch Focus between Tables|
 |Alt + Up or BackSpace | Go To parent Directory|
 |Alt + Left Arrow | Go Back To Previous Folder|
 |Alt + Right Arrow | Go Next|

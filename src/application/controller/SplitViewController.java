@@ -15,6 +15,7 @@ import java.util.Map;
 import application.DialogHelper;
 import application.FileTracker;
 import application.Main;
+import application.RunMenu;
 import application.StringHelper;
 import application.VLC;
 import application.WatchServiceHelper;
@@ -45,8 +46,8 @@ import javafx.scene.layout.HBox;
 public class SplitViewController {
 	static final KeyCombination SHORTCUT_FOCUS_TEXT_FIELD = new KeyCodeCombination(KeyCode.D,
 			KeyCombination.SHIFT_DOWN);
-	static final KeyCombination SHORTCUT_SEARCH = new KeyCodeCombination(KeyCode.F, KeyCombination.CONTROL_ANY);
-	static final KeyCombination SHORTCUT_Clear_Search = new KeyCodeCombination(KeyCode.S, KeyCombination.CONTROL_ANY);
+	static final KeyCombination SHORTCUT_SEARCH = new KeyCodeCombination(KeyCode.F, KeyCombination.CONTROL_DOWN);
+	static final KeyCombination SHORTCUT_Clear_Search = new KeyCodeCombination(KeyCode.S, KeyCombination.CONTROL_DOWN);
 	static final KeyCombination SHORTCUT_GO_UP = new KeyCodeCombination(KeyCode.UP, KeyCombination.ALT_DOWN);
 	static final KeyCombination SHORTCUT_GO_BACK = new KeyCodeCombination(KeyCode.LEFT, KeyCombination.ALT_DOWN);
 	static final KeyCombination SHORTCUT_GO_NEXT = new KeyCodeCombination(KeyCode.RIGHT, KeyCombination.ALT_DOWN);
@@ -66,14 +67,15 @@ public class SplitViewController {
 	private Button SearchButton;
 	private WelcomeController parentWelcome;
 	private FileTracker mfileTracker;
-
+	private TextField PredictNavigation;
 	private boolean isLeft;
 
 	// TableColumn<TableViewModel, ImageView> colIconTestResize;
 	public SplitViewController(Path path, Boolean isleft, WelcomeController parent,
 			ObservableList<TableViewModel> dataTable, javafx.scene.control.TextField pathField, Button upButton,
 			javafx.scene.control.TextField searchFeild, Button searchButton, TableView<TableViewModel> table,
-			Button explorer, TableColumn<TableViewModel, HBox> hboxActions, Button backButton, Button nextButton) {
+			Button explorer, TableColumn<TableViewModel, HBox> hboxActions, Button backButton, Button nextButton,
+			TextField predictNavigation) {
 		super();
 		// colIconTestResize=colIcon;
 		isLeft = isleft;
@@ -87,6 +89,7 @@ public class SplitViewController {
 		SearchButton = searchButton;
 		Table = table;
 		parentWelcome = parent;
+		PredictNavigation = predictNavigation;
 		mDirectory = new File(path.toString());
 		initializeSplitButton();
 		Table.getSelectionModel().setSelectionMode(SelectionMode.MULTIPLE);
@@ -134,7 +137,12 @@ public class SplitViewController {
 				}
 				break;
 			case BACK_SPACE:
+				// if(searchNavigation.isEmpty())
 				back();
+				// else
+				// searchNavigation = searchNavigation.substring(0,
+				// searchNavigation.length()-1);
+				// System.out.println(searchNavigation);
 				break;
 			case SPACE:
 				if (Table.isFocused()) {
@@ -160,11 +168,20 @@ public class SplitViewController {
 					parentWelcome.SynctoRight(pathName2);
 				}
 				break;
-			// TODO check declartion there is alot of key to define
+			// TODO check declaration there is a lot of key to define
+			case ESCAPE:
+				PredictNavigation.setText("");
+				break;
 			default:
+
+				// PredictNavigation.setText(PredictNavigation.getText()+key.getText());
+				// System.out.println(searchNavigation);
+
+				// processSearchNavigation(key.getCode());
 				break;
 			}
 		});
+
 		Table.addEventFilter(KeyEvent.KEY_RELEASED, e -> {
 			if (SHORTCUT_FOCUS_TEXT_FIELD.match(e)) {
 				PathField.requestFocus();
@@ -183,6 +200,17 @@ public class SplitViewController {
 
 		Table.setOnMouseClicked(m -> {
 			TableViewModel t = Table.getSelectionModel().getSelectedItem();
+			if (m.getButton().equals(MouseButton.SECONDARY)) {
+				if (t != null) {
+					ArrayList<Path> toShow = new ArrayList<>();
+					for (TableViewModel tsel : Table.getSelectionModel().getSelectedItems()) {
+						toShow.add(tsel.getmFilePath());
+					}
+					RunMenu.showMenu(toShow);
+					return;
+				} else
+					RunMenu.showMenu(Arrays.asList(mDirectory.toPath()));
+			}
 			if (t == null)
 				return;
 			String temp = t.getName();
@@ -192,10 +220,9 @@ public class SplitViewController {
 				navigate(temp);
 				if (!isLeft && Setting.isBackSync() && tempisDirectory)
 					parentWelcome.SynctoLeftParent();
-			} else {
-				if (isLeft && m.getButton().equals(MouseButton.PRIMARY) && tempisDirectory && Setting.getAutoExpand()) {
-					parentWelcome.SynctoRight(temp);
-				}
+			} else if (isLeft && m.getButton().equals(MouseButton.PRIMARY) && tempisDirectory
+					&& Setting.getAutoExpand()) {
+				parentWelcome.SynctoRight(temp);
 			}
 		});
 		// https://stackoverflow.com/questions/26220896/showing-tooltips-in-javafx-at-specific-row-position-in-the-tableview
@@ -208,6 +235,12 @@ public class SplitViewController {
 				if (t == null) {
 					setTooltip(null);
 				} else {
+					// is XSPF start the file directly with custom argument
+					if (VLC.isPlaylist(t.getName())) {
+						t.getOpenVLC().setOnMouseClicked(m -> {
+							VLC.startXSPF(t.getmFilePath());
+						});
+					}
 					if (mfileTracker.isTracked()) {
 						String st = mfileTracker.getTooltipText(t);
 						if (st != null) {
@@ -234,15 +267,13 @@ public class SplitViewController {
 								mfileTracker.setTooltipText(t, note);
 							}
 						});
-						if (VLC.isVLCExt(t.getName())) {
+						if (VLC.isVLCMediaExt(t.getName())) {
 							t.getOpenVLC().setOnMouseClicked(m -> {
 								Path path = getDirectoryPath().resolve(t.getName());
 
-								if (VLC.isPlaylist(t.getName())) {
-									VLC.startXSPF(path);
-									return;
-								}
+								// if it is media file
 								if (m.getButton().equals(MouseButton.PRIMARY)) {
+									// load the preview
 									new FilterVLCController(t.getmFilePath(), mfileTracker);
 								} else {
 									List<String> options = mfileTracker.getMapDetails().get(t.getName());
@@ -250,16 +281,19 @@ public class SplitViewController {
 									// System.out.println(options);
 									// later try to remove this if
 									if (options.size() > 3) {
+										// if the media does contain a setting do load it
 										for (int i = 3; i < options.size(); i = i + 3) {
 											list.add(new MediaCutData(options.get(i), options.get(i + 1),
 													options.get(i + 2)));
 										}
 										VLC.SavePlayListFile(path, list, true, true, true);
 									} else
-										new FilterVLCController(t.getmFilePath(), mfileTracker);
+										// just start the file with remote features
+										VLC.watchWithRemote(t.getmFilePath(), "");
 								}
 							});
 						}
+						// end if tracked
 					} else {
 						t.getmNoteButton().setOnAction(new EventHandler<ActionEvent>() {
 							@Override
@@ -269,15 +303,14 @@ public class SplitViewController {
 								}
 							}
 						});
-						if (VLC.isVLCExt(t.getName())) {
-							t.getOpenVLC().setOnAction(new EventHandler<ActionEvent>() {
-
-								@Override
-								public void handle(ActionEvent event) {
+						if (VLC.isVLCMediaExt(t.getName())) {
+							t.getOpenVLC().setOnMouseClicked(m -> {
+								if (m.getButton().equals(MouseButton.PRIMARY)) {
 									if (mfileTracker.getAns()) {
 										mfileTracker.trackNewFolder();
 									}
-
+								} else {
+									VLC.watchWithRemote(t.getmFilePath(), "");
 								}
 							});
 						}
@@ -453,7 +486,6 @@ public class SplitViewController {
 		// try {
 		// throw new Exception();
 		// } catch (Exception e) {
-		// // TODO Auto-generated catch block
 		// e.printStackTrace();
 		// }
 		mfileTracker.loadMap();
@@ -743,6 +775,7 @@ public class SplitViewController {
 			// https://stackoverflow.com/questions/7357969/how-to-use-java-code-to-open-windows-file-explorer-and-highlight-the-specified-f
 			String cmd = "explorer.exe /select,"
 					+ mDirectory.toPath().resolve(Table.getSelectionModel().getSelectedItem().getName());
+
 			try {
 				Runtime.getRuntime().exec(cmd);
 			} catch (IOException e) {

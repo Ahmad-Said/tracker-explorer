@@ -33,8 +33,9 @@ public class Main extends Application {
 	static final KeyCombination SHORTCUT_FOCUS_VIEW = new KeyCodeCombination(KeyCode.TAB);
 	public static final KeyCombination SHORTCUT_RENAME = new KeyCodeCombination(KeyCode.F2);
 	static final KeyCombination SHORTCUT_FOCUS_SWITCH_VIEW = new KeyCodeCombination(KeyCode.TAB,
-			KeyCombination.CONTROL_DOWN);
-	static final KeyCombination SHORTCUT_SEARCH = new KeyCodeCombination(KeyCode.F, KeyCombination.CONTROL_ANY);
+			KeyCombination.CONTROL_ANY);
+	static final KeyCombination SHORTCUT_EASY_FOCUS_SWITCH_VIEW = new KeyCodeCombination(KeyCode.F3);
+	static final KeyCombination SHORTCUT_SEARCH = new KeyCodeCombination(KeyCode.F, KeyCombination.CONTROL_DOWN);
 	static final KeyCombination SHORTCUT_Clear_Search = new KeyCodeCombination(KeyCode.ESCAPE,
 			KeyCombination.CONTROL_ANY);
 	static final KeyCombination SHORTCUT_REVEAL_IN_EXPLORER = new KeyCodeCombination(KeyCode.R, KeyCombination.ALT_DOWN,
@@ -84,7 +85,7 @@ public class Main extends Application {
 				mWelcomeController.move();
 			} else if (SHORTCUT_FOCUS_VIEW.match(e)) {
 				mWelcomeController.focus_VIEW();
-			} else if (SHORTCUT_FOCUS_SWITCH_VIEW.match(e)) {
+			} else if (SHORTCUT_FOCUS_SWITCH_VIEW.match(e) || SHORTCUT_EASY_FOCUS_SWITCH_VIEW.match(e)) {
 				mWelcomeController.focus_Switch_VIEW();
 			} else if (SHORTCUT_SEARCH.match(e)) {
 				mWelcomeController.focusSearchField();
@@ -146,7 +147,6 @@ public class Main extends Application {
 			StringHelper.InitialLeftPath = temp.toPath();
 			StringHelper.InitialRightPath = temp.toPath();
 		}
-		VLC.initializeDefaultVLCPath();
 		FileTracker.updateUserFileName(Setting.getActiveUser());
 		launch(args);
 	}

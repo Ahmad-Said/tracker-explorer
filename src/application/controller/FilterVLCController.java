@@ -130,7 +130,8 @@ public class FilterVLCController {
 	/**
 	 * this is called from {@linkplain SplitViewController#initializeTable(Boolean)
 	 * at button openVLC Action} This function required the path is already tracked
-	 * so check for it with {@link FileTracker#isTracked()}
+	 * so check for it with {@link FileTracker#isTracked() (which already checked
+	 * before calling this constructor}
 	 * 
 	 * @param path
 	 *            Path of the file to configure

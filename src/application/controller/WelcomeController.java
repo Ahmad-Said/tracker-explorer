@@ -4,6 +4,8 @@ import java.awt.Desktop;
 import java.io.File;
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.net.DatagramSocket;
+import java.net.InetAddress;
 import java.net.URISyntaxException;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
@@ -16,6 +18,7 @@ import java.util.Map;
 import java.util.ResourceBundle;
 import java.util.Set;
 import java.util.TreeMap;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -30,6 +33,7 @@ import application.VLC;
 import application.WatchServiceHelper;
 import application.model.Setting;
 import application.model.TableViewModel;
+import javafx.application.Platform;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.event.ActionEvent;
@@ -51,9 +55,16 @@ import javafx.scene.control.ToggleGroup;
 import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.image.ImageView;
 import javafx.scene.layout.HBox;
+import javafx.stage.FileChooser;
 import javafx.util.Duration;
 
 public class WelcomeController implements Initializable {
+
+	@FXML
+	private TextField leftPredictNavigation;
+
+	@FXML
+	private TextField rightPredictNavigation;
 
 	@FXML
 	private ToggleButton autoExpand;
@@ -229,10 +240,10 @@ public class WelcomeController implements Initializable {
 			rightIcon.setCellValueFactory(new PropertyValueFactory<TableViewModel, ImageView>("imgIcon"));
 			leftView = new SplitViewController(StringHelper.InitialLeftPath, true, this, leftDataTable, leftPathInput,
 					leftUp, leftSearchField, leftSearchButton, leftTable, leftExplorer, lefthboxActions, leftBack,
-					leftNext);
+					leftNext, leftPredictNavigation);
 			rightView = new SplitViewController(StringHelper.InitialRightPath, false, this, rightDataTable,
 					rightPathInput, rightUp, rightSearchField, rightSearchButton, rightTable, rightExplorer,
-					righthboxActions, rightBack, rightNext);
+					righthboxActions, rightBack, rightNext, rightPredictNavigation);
 			leftView.getPathField().setOnAction(e -> onTextEntered(leftView.getPathField()));
 			rightView.getPathField().setOnAction(e -> onTextEntered(rightView.getPathField()));
 			refreshBothViews(null);
@@ -479,6 +490,7 @@ public class WelcomeController implements Initializable {
 		}
 	}
 
+	@FXML
 	public void copy() {
 		WatchServiceHelper.setRuning(false);
 		if (leftView.isFocused()) {
@@ -495,6 +507,7 @@ public class WelcomeController implements Initializable {
 		WatchServiceHelper.setRuning(true);
 	}
 
+	@FXML
 	public void move() {
 		WatchServiceHelper.setRuning(false);
 		if (leftView.isFocused()) {
@@ -516,7 +529,7 @@ public class WelcomeController implements Initializable {
 		SplitViewController focusedPane = getFocusedPane();
 		if (focusedPane != null) {
 			List<Path> source = focusedPane.getSelection();
-			if(!FileHelper.delete(source)) // if not confirmed do nothing
+			if (!FileHelper.delete(source)) // if not confirmed do nothing
 				return;
 			WatchServiceHelper.setRuning(false);
 			focusedPane.getMfileTracker().OperationUpdate(source, null, "delete");
@@ -791,7 +804,7 @@ public class WelcomeController implements Initializable {
 			rightView.getMfileTracker().trackNewFolder();
 
 		for (String name : rightView.getCurrentFilesList()) {
-			if (VLC.isVLCExt(name)) {
+			if (VLC.isVLCMediaExt(name)) {
 				Main.ProcessTitle(name);
 				String key = name;
 				List<String> options = rightView.getMfileTracker().getMapDetails().get(key);
@@ -902,6 +915,107 @@ public class WelcomeController implements Initializable {
 				+ "\n - Left / Right = Dominate Other Table View"
 				+ "\n - Trick        = Scroll up/down with mouse on clear button to toggle seen/unseen";
 		DialogHelper.showAlert(AlertType.INFORMATION, "KeyBoard Shortcuts", "KeyBoard Shortcuts", ky);
+	}
+
+	@FXML
+	public void ConfigureVLCPath() {
+		// https://docs.oracle.com/javafx/2/ui_controls/file-chooser.htm
+		FileChooser fileChooser = new FileChooser();
+		fileChooser.setTitle("Navigate to where VLC is installed");
+		File initfile = VLC.getPath_Setup().toFile().getParentFile();
+		if (initfile.exists())
+			fileChooser.setInitialDirectory(initfile);
+		else {
+			// try another time to auto detect path:
+			// that's in case vlc is installed while already opening the program
+			VLC.initializeDefaultVLCPath();
+			initfile = VLC.getPath_Setup().toFile().getParentFile();
+			if (initfile.exists())
+				fileChooser.setInitialDirectory(initfile);
+			else
+				fileChooser.setInitialDirectory(new File(System.getenv("ProgramFiles")));
+		}
+		fileChooser.getExtensionFilters().addAll(new FileChooser.ExtensionFilter("Path To ", "vlc.exe"));
+		File vlcfile = fileChooser.showOpenDialog(Main.getPrimaryStage());
+		if (vlcfile == null)
+			return;
+		if (vlcfile.getName().equals("vlc.exe")) {
+			Setting.setVLCPath(vlcfile.toURI().toString());
+			DialogHelper.showAlert(AlertType.INFORMATION, "Configure VLC Path", "VLC well configured",
+					"Path: " + VLC.getPath_Setup());
+		} else
+			DialogHelper.showAlert(AlertType.ERROR, "Configure VLC Path", "VLC misconfigured",
+					"Please chose the right file 'vlc.exe'\n\nCurrent Path:\n " + VLC.getPath_Setup());
+
+	}
+
+	@FXML
+	public void ControlVLC() {
+		String pass = DialogHelper.showTextInputDialog("VLC Over The Web", "Enter Password Access",
+				"Enter Password authorisation to use when accessing vlc.\n\n" + "Note: "
+						+ "\n\t- VLC will run into system tray."
+						+ "\n\t- If you are using chrome set save password to never"
+						+ "\n\tas it may cause problem when changing password.\n",
+				Setting.getVLCHttpPass());
+		if (pass == null)
+			return;
+		if (pass.trim().isEmpty())
+			pass = "1234";
+		Setting.setVLCHttpPass(pass);
+		// --extraintf=http to enable http interface
+		// --one-instance to make it possible when lunching any video
+		// do open in this instance of vlc
+		// pass is to set login access
+		// .. refer to https://wiki.videolan.org/VLC_command-line_help for more details
+		VLC.watchWithRemote(null, " --qt-start-minimized");
+		// do open in the web
+		boolean test = DialogHelper.showConfirmationDialog("VLC Over The Web", "Do you Want to test Connection ?",
+				"This will start url on current system browser");
+		if (!test)
+			return;
+
+		// ask user if he want to test it
+		// https://stackoverflow.com/questions/9481865/getting-the-ip-address-of-the-current-machine-using-java?rq=1
+		try (final DatagramSocket socket = new DatagramSocket()) {
+			socket.connect(InetAddress.getByName("8.8.8.8"), 10002);
+			String ip = socket.getLocalAddress().getHostAddress();
+			Desktop.getDesktop().browse(new URL("http://" + ip + ":8080").toURI());
+
+			// this run later to request focus after starting empty web
+			Platform.runLater(() -> {
+				try {
+					TimeUnit.SECONDS.sleep(2);
+				} catch (InterruptedException e) {
+					// e.printStackTrace();
+				}
+				Main.getPrimaryStage().requestFocus();
+			});
+
+		} catch (URISyntaxException | IOException e) {
+			// e.printStackTrace();
+		}
+	}
+
+	@FXML
+	public void ControlVLCAndroid() {
+		try {
+			Desktop.getDesktop().browse(
+					new URL("https://play.google.com/store/apps/details?id=adarshurs.android.vlcmobileremote").toURI());
+		} catch (IOException | URISyntaxException e) {
+			// e.printStackTrace();
+		}
+
+	}
+
+	@FXML
+	public void ControlVLCIOS() {
+		try {
+			Desktop.getDesktop().browse(
+					new URL("https://itunes.apple.com/us/app/vlc-mobile-remote/id1140931401?ls=1&mt=8").toURI());
+		} catch (IOException | URISyntaxException e) {
+			// e.printStackTrace();
+		}
+
 	}
 
 	public void saveSetting() {

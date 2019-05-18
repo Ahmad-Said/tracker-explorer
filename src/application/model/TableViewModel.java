@@ -87,7 +87,7 @@ public class TableViewModel {
 
 	private void initializeVLCFeatures() {
 
-		if (VLC.isVLCExt(this.getName())) {
+		if (VLC.isVLCMediaExt(this.getName()) || VLC.isPlaylist(getName())) {
 			openVLC = new Button();
 			Tooltip ms = new Tooltip();
 			ms.setStyle("-fx-font-size:12;-fx-font-weight:bold");

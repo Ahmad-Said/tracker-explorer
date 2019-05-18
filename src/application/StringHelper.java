@@ -2,6 +2,8 @@ package application;
 
 import java.nio.file.Path;
 
+import org.apache.commons.io.FilenameUtils;
+
 public class StringHelper {
 
 	public static Path InitialLeftPath;
@@ -18,16 +20,11 @@ public class StringHelper {
 	}
 	
 	public static String getExtention(String fileName) {
-		int index = fileName.lastIndexOf('.') + 1;
-		if (index >= 0 )
-			return fileName.substring(index).toUpperCase();
-		return "";
+		return FilenameUtils.getExtension(fileName).toUpperCase();
 	}
+	
 	public static String getBaseName(String fileName) {
-		int index = fileName.lastIndexOf('.');
-		if (index >= 0)
-			return fileName.substring(0,index).toUpperCase();
-		return fileName;
+		return FilenameUtils.getBaseName(fileName);
 	}
 
 	public static String[] getWords(String text) {
