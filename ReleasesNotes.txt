@@ -1,3 +1,14 @@
+v2.0:
+New filter format file XSPF for media. (https://wiki.videolan.org/XSPF/)
+New VLC remote cross platform (Web+android+iOS)
+New Favorites items Selection (improved detection of last view)
+New Prediction navigation on key-press within table-view
+New Files operations interface working in queue with multi-thread support
+New Recursive view (all sub-folders) in optimal times 
+New Search filtering capability refer to tutorial for documentation
+New Dynamic PathField with query support
+new Right-Click context menu support
+
 v1.1:
 Richer notes:
 	support for multi-selection notes

@@ -9,10 +9,13 @@ import java.net.InetAddress;
 import java.net.URISyntaxException;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.FileVisitOption;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.EnumSet;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.ResourceBundle;
@@ -28,6 +31,7 @@ import application.DialogHelper;
 import application.FileHelper;
 import application.FileTracker;
 import application.Main;
+import application.RecursiveFileWalker;
 import application.StringHelper;
 import application.VLC;
 import application.WatchServiceHelper;
@@ -43,6 +47,8 @@ import javafx.fxml.Initializable;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Alert.AlertType;
 import javafx.scene.control.Button;
+import javafx.scene.control.CheckBox;
+import javafx.scene.control.Label;
 import javafx.scene.control.Menu;
 import javafx.scene.control.MenuButton;
 import javafx.scene.control.MenuItem;
@@ -59,6 +65,31 @@ import javafx.stage.FileChooser;
 import javafx.util.Duration;
 
 public class WelcomeController implements Initializable {
+
+	@FXML
+	private Button rightNavigateRecursive;
+
+	@FXML
+	private Button leftNavigateRecursive;
+
+	// show favorites location navigation
+	@FXML
+	private Label leftLabelItemsNumber;
+
+	@FXML
+	private Label rightLabelItemsNumber;
+
+	@FXML
+	private MenuButton FavoritesLocations;
+
+	@FXML
+	private CheckBox FavoriteCheckBox;
+
+	@FXML
+	private CheckBox rightRecusiveSearch;
+
+	@FXML
+	private CheckBox leftRecusiveSearch;
 
 	@FXML
 	private TextField leftPredictNavigation;
@@ -136,7 +167,7 @@ public class WelcomeController implements Initializable {
 	private Button leftSearchButton;
 
 	@FXML
-	private TableColumn<TableViewModel, String> leftStatus;
+	private TableColumn<TableViewModel, String> leftNote;
 
 	@FXML
 	private TableColumn<TableViewModel, ImageView> leftIcon;
@@ -177,7 +208,7 @@ public class WelcomeController implements Initializable {
 	private Button rightSearchButton;
 
 	@FXML
-	private TableColumn<TableViewModel, String> rightStatus;
+	private TableColumn<TableViewModel, String> rightNote;
 
 	@FXML
 	private TableColumn<TableViewModel, ImageView> rightIcon;
@@ -199,11 +230,11 @@ public class WelcomeController implements Initializable {
 
 	ObservableList<TableViewModel> rightDataTable = FXCollections.observableArrayList();
 
-	private static final String ACTION_SELECT = "select";
-	private static final String ACTION_COPY = "copy";
-	private static final String ACTION_MOVE = "move";
-	private static final String ACTION_DELETE = "delete";
-	private static final String ACTION_OPEN = "open";
+	// private static final String ACTION_SELECT = "select";
+	// private static final String ACTION_COPY = "copy";
+	// private static final String ACTION_MOVE = "move";
+	// private static final String ACTION_DELETE = "delete";
+	// private static final String ACTION_OPEN = "open";
 	private SplitViewController leftView;
 	private SplitViewController rightView;
 
@@ -229,30 +260,33 @@ public class WelcomeController implements Initializable {
 
 			// later do thing if return false;
 
-			leftStatus.setCellValueFactory(new PropertyValueFactory<TableViewModel, String>("Status"));
+			leftNote.setCellValueFactory(new PropertyValueFactory<TableViewModel, String>("NoteText"));
 			leftName.setCellValueFactory(new PropertyValueFactory<TableViewModel, String>("Name"));
 			lefthboxActions.setCellValueFactory(new PropertyValueFactory<TableViewModel, HBox>("hboxActions"));
 			leftIcon.setCellValueFactory(new PropertyValueFactory<TableViewModel, ImageView>("imgIcon"));
 
-			rightStatus.setCellValueFactory(new PropertyValueFactory<TableViewModel, String>("Status"));
+			rightNote.setCellValueFactory(new PropertyValueFactory<TableViewModel, String>("NoteText"));
 			rightName.setCellValueFactory(new PropertyValueFactory<TableViewModel, String>("Name"));
 			righthboxActions.setCellValueFactory(new PropertyValueFactory<TableViewModel, HBox>("hboxActions"));
 			rightIcon.setCellValueFactory(new PropertyValueFactory<TableViewModel, ImageView>("imgIcon"));
 			leftView = new SplitViewController(StringHelper.InitialLeftPath, true, this, leftDataTable, leftPathInput,
 					leftUp, leftSearchField, leftSearchButton, leftTable, leftExplorer, lefthboxActions, leftBack,
-					leftNext, leftPredictNavigation);
+					leftNext, leftPredictNavigation, leftRecusiveSearch, leftLabelItemsNumber, leftNavigateRecursive);
 			rightView = new SplitViewController(StringHelper.InitialRightPath, false, this, rightDataTable,
 					rightPathInput, rightUp, rightSearchField, rightSearchButton, rightTable, rightExplorer,
-					righthboxActions, rightBack, rightNext, rightPredictNavigation);
-			leftView.getPathField().setOnAction(e -> onTextEntered(leftView.getPathField()));
-			rightView.getPathField().setOnAction(e -> onTextEntered(rightView.getPathField()));
+					righthboxActions, rightBack, rightNext, rightPredictNavigation, rightRecusiveSearch,
+					rightLabelItemsNumber, rightNavigateRecursive);
+			// leftView.getPathField().setOnAction(e ->
+			// onTextEntered(leftView.getPathField()));
+			// rightView.getPathField().setOnAction(e ->
+			// onTextEntered(rightView.getPathField()));
 			refreshBothViews(null);
 			initializeButtons();
 			// testing
 
 			// initialize coloumn preference
-			rightStatus.setVisible(Setting.getShowRightNotesColumn());
-			leftStatus.setVisible(Setting.getShowLeftNotesColumn());
+			rightNote.setVisible(Setting.getShowRightNotesColumn());
+			leftNote.setVisible(Setting.getShowLeftNotesColumn());
 		} catch (Exception e1) {
 			DialogHelper.showException(e1);
 		}
@@ -325,14 +359,34 @@ public class WelcomeController implements Initializable {
 		deleteItem.setAccelerator(Main.SHORTCUT_DELETE);
 
 		/**
-		 * set up FileTracker Menu
+		 * set up FileTracker Menu TODO
 		 */
 		// check http://tutorials.jenkov.com/javafx/menubar.html
 		// Menus :
+		MenuItem clearFavorite = new MenuItem("Clear Favorites	(!-!)");
 		MenuItem NewUser = new MenuItem("Add A new User");
 		subMenuActiveUser = new Menu("Set Active User");
 		toogleActiveUserGroup = new ToggleGroup();
 		subMenuRemoveUser = new Menu("Remove User");
+		MenuItem ChangeLimitFilesRecursive = new MenuItem("Change Limit Files Count In recursive");
+
+		// -!Clear Favorites!- Menu Item
+		clearFavorite.setOnAction(new EventHandler<ActionEvent>() {
+
+			@Override
+			public void handle(ActionEvent event) {
+				boolean ans = DialogHelper.showConfirmationDialog("Clear Favorite",
+						"Are You sure you want to clear favorites items??",
+						"This Cannot be undone!!\nIn case you get bothered of specific item,"
+								+ "\nOpen in the left view Then uncheck box \"Favorite Folder\"\nPress Ok to clear list. OtherWise cancel operation");
+				if (ans) {
+					Setting.getFavoritesLocations().clear();
+					FavoritesLocations.getItems().clear();
+					allMenuFavoriteLocation.clear();
+				}
+			}
+		});
+		TrackerMenu.getItems().add(0, clearFavorite);
 
 		// Add A new User Menu Item
 		NewUser.setOnAction(new EventHandler<ActionEvent>() {
@@ -364,6 +418,9 @@ public class WelcomeController implements Initializable {
 					NewUser.fire();
 					return;
 				}
+				// this file tracker also change setting
+				// so it automatically when adding the new user
+				// will be selected when comparing in add
 				FileTracker.updateUserFileName(user);
 				AddActiveUser(user);
 				AddRemoveUser(user);
@@ -371,16 +428,26 @@ public class WelcomeController implements Initializable {
 				refreshBothViews(null);
 			}
 		});
-		TrackerMenu.getItems().add(NewUser);
+		int where = 4;
+		TrackerMenu.getItems().add(where++, NewUser);
 		// Select Active User Menu
 		for (String user : Setting.getUserNames())
 			AddActiveUser(user);
-		TrackerMenu.getItems().add(subMenuActiveUser);
+		TrackerMenu.getItems().add(where++, subMenuActiveUser);
 
 		// Remove User
 		for (String user : Setting.getUserNames())
 			AddRemoveUser(user);
-		TrackerMenu.getItems().add(subMenuRemoveUser);
+		TrackerMenu.getItems().add(where++, subMenuRemoveUser);
+
+		TrackerMenu.getItems().add(where++, ChangeLimitFilesRecursive);
+		ChangeLimitFilesRecursive.setOnAction(new EventHandler<ActionEvent>() {
+
+			@Override
+			public void handle(ActionEvent event) {
+				ChangeLimitFilesRecursiveAction();
+			}
+		});
 
 		// Clean Recursively
 		MenuItem CleanRecursively = new MenuItem("Clean Recursively");
@@ -408,22 +475,30 @@ public class WelcomeController implements Initializable {
 
 				WatchServiceHelper.setRuning(false);
 				Path dir = leftView.getDirectoryPath();
-				try {
-					FileTracker.deleteOutFile(dir, user);
-					Files.walk(dir, depth).filter(p -> Files.isDirectory(p) && !p.equals(dir)).forEach(p -> {
-						Main.ProcessTitle(p.getFileName().toString());
-						FileTracker.deleteOutFile(p, user);
-					});
-					Main.ResetTitle();
-					refreshBothViews(null);
-					WatchServiceHelper.setRuning(true);
-				} catch (IOException e) {
-					// e.printStackTrace();
-				}
+				StringHelper.setTemp(depth);
+				Thread cleanerThread = new Thread() {
+					public void run() {
+						try {
+							RecursiveFileWalker r = new RecursiveFileWalker();
+							Files.walkFileTree(dir, EnumSet.noneOf(FileVisitOption.class), StringHelper.getTemp(), r);
 
+							r.getParent().forEach(p -> {
+								Platform.runLater(() -> Main.ProcessTitle(p.toString()));
+								FileTracker.deleteOutFile(p, user);
+							});
+
+							// Main.ResetTitle();
+							Platform.runLater(() -> refreshBothViews(null));
+							WatchServiceHelper.setRuning(true);
+						} catch (IOException e) {
+							// e.printStackTrace();
+						}
+					}
+				};
+				cleanerThread.start();
 			}
 		});
-		TrackerMenu.getItems().add(CleanRecursively);
+		TrackerMenu.getItems().add(2, CleanRecursively);
 		MenuItem showConflict = new MenuItem("Show Conflict Log");
 		showConflict.setOnAction(new EventHandler<ActionEvent>() {
 
@@ -440,19 +515,42 @@ public class WelcomeController implements Initializable {
 				"Tracker Explorer v2.0\n\n" + "Copyright © 2019 by Ahmad Said"));
 	}
 
+	protected void ChangeLimitFilesRecursiveAction() {
+		String answer = DialogHelper.showTextInputDialog("Change Limit Files Count In recursive",
+				"Max files count To consider",
+				"Enter max files count \r\n" + "Note: The more You high this number\n\t ---> The more You wait",
+				"" + Setting.getMaxLimitFilesRecursive());
+		if (answer == null)
+			return;
+		Integer Maxi;
+		try {
+			Maxi = Integer.parseInt(answer);
+		} catch (NumberFormatException e1) {
+			Maxi = Setting.getMaxLimitFilesRecursive();
+			// e1.printStackTrace();
+		}
+		Setting.setMaxLimitFilesRecursive(Maxi);
+	}
+
 	private void initializeButtons() {
-		autoExpand.setSelected(Setting.getAutoExpand());
+		autoExpand.setSelected(Setting.isAutoExpand());
 		GoDesktop.setOnAction(new EventHandler<ActionEvent>() {
 
 			@Override
 			public void handle(ActionEvent event) {
-				leftView.setmDirectoryThenRefresh(
-						new File(System.getProperty("user.home") + File.separator + "Desktop"));
+				changeDirInLastestView(new File(System.getProperty("user.home") + File.separator + "Desktop"));
 			}
 		});
+		initializeRootsMenu();
+		rootsMenu.setOnMouseReleased(m -> {
+			initializeRootsMenu();
+		});
+		initializeFavorites();
+	}
 
+	public void initializeRootsMenu() {
+		rootsMenu.getItems().clear();
 		File[] roots = File.listRoots();
-
 		// check https://www.geeksforgeeks.org/javafx-menubutton/
 		for (int i = 0; i < roots.length; i++) {
 			MenuItem mx = new MenuItem(roots[i].toString());
@@ -461,108 +559,230 @@ public class WelcomeController implements Initializable {
 
 				@Override
 				public void handle(ActionEvent event) {
-					SplitViewController view = getFocusedPane();
-					if (view != null) {
-						view.setmDirectoryThenRefresh(temp);
-					} else {
-						leftView.setmDirectoryThenRefresh(temp);
-					}
-
+					changeDirInLastestView(temp);
 				}
 			});
 			rootsMenu.getItems().add(mx);
 		}
 	}
 
-	public void SynctoRight(String path) {
-		rightView.setmDirectoryThenRefresh(leftView.NametoFile(path));
+	private SplitViewController changeDirInLastestView(File temp) {
+		// get the lastest view changed by detecting title folder name
+		// and giving priority the left view
+		SplitViewController view = null;
+		// old approach
+		// String dirTitle = Main.GetTitle().split("-")[0].trim();
+		// if (leftView.isOutofTheBoxHelper() &&
+		// leftView.getPathField().getText().startsWith("/"))
+		// view = leftView;
+		// else if (rightView.isOutofTheBoxHelper() &&
+		// rightView.getPathField().getText().startsWith("/"))
+		// view = rightView;
+		// else if (leftView.getmDirectory().getName().equals(dirTitle)) {
+		// view = leftView;
+		// } else if (rightView.getmDirectory().getName().equals(dirTitle))
+		// view = rightView;
+		// else if (leftView.getmDirectory().getAbsolutePath().equals(dirTitle)) {
+		// view = leftView;
+		// } else if (rightView.getmDirectory().getAbsolutePath().equals(dirTitle))
+		// view = rightView;
+		//
+		// if (view == null)
+		// view = leftView;
+
+		// newer
+		// if (SplitViewController.isLastChangedLeft)
+		// view = rightView;
+		// else
+		// view = leftView;
+		// or ?
+		if (SplitViewController.isLastChangedLeft)
+			view = leftView;
+		else
+			view = rightView;
+
+		// best approach it let the use to chooze on interface which one
+		view.setmDirectoryThenRefresh(temp);
+		view.requestFocus();
+		return view;
 	}
 
-	public void SynctoLeft(String path) {
-		leftView.setmDirectoryThenRefresh(rightView.NametoFile(path));
+	private void initializeFavorites() {
+		for (int i = Setting.getFavoritesLocations().size() - 1; i >= 0; i--) {
+			AddandPriorizethisMenu(Setting.getFavoritesLocations().get(i));
+		}
+		FavoriteCheckBox.setOnAction(new EventHandler<ActionEvent>() {
+			@Override
+			public void handle(ActionEvent event) {
+				if (FavoriteCheckBox.isSelected())
+					AddandPriorizethisMenu(leftView.getDirectoryPath());
+				else
+					removeFavorite(leftView.getDirectoryPath());
+			}
+		});
+	}
+
+	public void updateFavoriteCheckBox(boolean isOutofTheBoxHelper) {
+		if (isOutofTheBoxHelper)
+			FavoriteCheckBox.setVisible(false);
+		else {
+			FavoriteCheckBox.setVisible(true);
+			FavoriteCheckBox.setSelected(Setting.getFavoritesLocations().contains(leftView.getDirectoryPath()));
+		}
+	}
+
+	public void ToogleFavorite(Path path) {
+		if (Setting.getFavoritesLocations().contains(path))
+			removeFavorite(path);
+		else
+			AddandPriorizethisMenu(path);
+		updateFavoriteCheckBox(false);
+	}
+
+	private Map<Path, MenuItem> allMenuFavoriteLocation = new HashMap<Path, MenuItem>();
+
+	private void AddandPriorizethisMenu(Path path) {
+		if (allMenuFavoriteLocation.containsKey(path)) {
+			removeFavorite(path);
+		}
+		String text;
+		try {
+			// this try catch resolve if folder was a root
+			text = path.getFileName().toString();
+		} catch (Exception e) {
+			text = path.toString();
+		}
+		MenuItem mx = new MenuItem(text);
+		File temp = path.toFile();
+		mx.setOnAction(new EventHandler<ActionEvent>() {
+
+			@Override
+			public void handle(ActionEvent event) {
+				changeDirInLastestView(temp);
+			}
+		});
+		allMenuFavoriteLocation.put(path, mx);
+		if (!Setting.getFavoritesLocations().contains(path))
+			Setting.getFavoritesLocations().add(0, path);
+		FavoritesLocations.getItems().add(0, mx);
+		// auto clean menu if more than 10
+		// if (allMenuFavoriteLocation.size() > 10)
+		// removeLastFavorite();
+	}
+
+	private void removeFavorite(Path path) {
+		if (Setting.getFavoritesLocations().contains(path)) {
+			Setting.getFavoritesLocations().remove(path);
+			FavoritesLocations.getItems().remove(allMenuFavoriteLocation.get(path));
+			allMenuFavoriteLocation.remove(path);
+		}
+	}
+
+	// private void removeLastFavorite() {
+	// removeFavorite(Setting.getFavoritesLocations().get(Setting.getFavoritesLocations().size()
+	// - 1));
+	// }
+
+	public void SynctoRight(String pathField) {
+		rightView.setPathFieldThenRefresh(pathField);
+		// rightView.setmDirectoryThenRefresh(leftView.NametoFile(path));
+	}
+
+	public void SynctoLeft(String pathField) {
+		leftView.setPathFieldThenRefresh(pathField);
+		// leftView.setmDirectoryThenRefresh(rightView.NametoFile(path));
+	}
+
+	public boolean isAutoExpandToRight() {
+		return autoExpand.isSelected();
 	}
 
 	public void SynctoLeftParent() {
 		File parent = rightView.getmDirectory().getParentFile();
 		if (parent.exists()) {
 			leftView.setmDirectoryThenRefresh(parent);
-			leftView.refresh();
+			leftView.refresh(null);
 		}
 	}
 
 	@FXML
 	public void copy() {
-		WatchServiceHelper.setRuning(false);
+		// WatchServiceHelper.setRuning(false);
 		if (leftView.isFocused()) {
 			List<Path> source = leftView.getSelection();
 			Path target = rightView.getDirectoryPath();
 			FileHelper.copy(source, target);
-			rightView.getMfileTracker().OperationUpdate(source, leftView.getMfileTracker(), "copy");
+			// rightView.getMfileTracker().OperationUpdate(source,
+			// leftView.getMfileTracker(), "copy");
 		} else if (rightView.isFocused()) {
 			List<Path> source = rightView.getSelection();
 			Path target = leftView.getDirectoryPath();
 			FileHelper.copy(source, target);
-			leftView.getMfileTracker().OperationUpdate(source, rightView.getMfileTracker(), "copy");
+			// leftView.getMfileTracker().OperationUpdate(source,
+			// rightView.getMfileTracker(), "copy");
 		}
-		WatchServiceHelper.setRuning(true);
+		// WatchServiceHelper.setRuning(true);
 	}
 
 	@FXML
 	public void move() {
-		WatchServiceHelper.setRuning(false);
+		// WatchServiceHelper.setRuning(false);
 		if (leftView.isFocused()) {
 			List<Path> source = leftView.getSelection();
 			Path target = rightView.getDirectoryPath();
 			FileHelper.move(source, target);
-			rightView.getMfileTracker().OperationUpdate(source, leftView.getMfileTracker(), "move");
+			// rightView.getMfileTracker().OperationUpdate(source,
+			// leftView.getMfileTracker(), "move");
 		} else if (rightView.isFocused()) {
 			List<Path> source = rightView.getSelection();
 			Path target = leftView.getDirectoryPath();
 			FileHelper.move(source, target);
-			leftView.getMfileTracker().OperationUpdate(source, rightView.getMfileTracker(), "move");
+			// leftView.getMfileTracker().OperationUpdate(source,
+			// rightView.getMfileTracker(), "move");
 		}
 		// refresh is committed from within FileTracker#insert function
-		WatchServiceHelper.setRuning(true);
+		// WatchServiceHelper.setRuning(true);
 	}
 
 	public void delete() {
+		// WatchServiceHelper.setRuning(false);
 		SplitViewController focusedPane = getFocusedPane();
 		if (focusedPane != null) {
 			List<Path> source = focusedPane.getSelection();
 			if (!FileHelper.delete(source)) // if not confirmed do nothing
 				return;
-			WatchServiceHelper.setRuning(false);
-			focusedPane.getMfileTracker().OperationUpdate(source, null, "delete");
-			focusedPane.refresh();
+			// WatchServiceHelper.setRuning(false);
+			// focusedPane.getMfileTracker().OperationUpdate(source, null, "delete");
+			// focusedPane.refreshAsPathField();
+			// refreshWhenDetected(source.get(0).getParent());
 			// refresh and change to parent directory if deleted folder was the other view
-			SplitViewController unfocused = getunFocusedPane();
-			if (source.contains(unfocused.getDirectoryPath())) {
-				unfocused.setmDirectory(unfocused.getmDirectory().getParentFile());
-				unfocused.refresh();
-			}
+			// SplitViewController unfocused = getunFocusedPane();
+			// if (source.contains(unfocused.getDirectoryPath())) {
+			// unfocused.setmDirectory(unfocused.getmDirectory().getParentFile());
+			// unfocused.refreshAsPathField();
+			// }
 		}
-		WatchServiceHelper.setRuning(true);
+		// WatchServiceHelper.setRuning(true);
 	}
 
 	public void rename() {
-		WatchServiceHelper.setRuning(false);
 		SplitViewController focusedPane = getFocusedPane();
 		if (focusedPane != null) {
 			List<Path> selection = focusedPane.getSelection();
 			if (selection.size() == 1) {
-				Path target = FileHelper.rename(selection.get(0), focusedPane);
-				focusedPane.refresh();
-				// refresh and change directory if rename was committed on same directory as the
-				// other view
-				SplitViewController unfocused = getunFocusedPane();
-				if (selection.get(0).equals(unfocused.getDirectoryPath())) {
-					unfocused.setmDirectory(target.toFile());
-					unfocused.refresh();
-				}
+				Path src = selection.get(0);
+				if (src.getNameCount() == 0)
+					return;
+				// file tracker operation update in there
+				Path target = FileHelper.rename(src, false);
+				if (target == null)
+					return;
+				focusedPane.getMfileTracker().operationUpdate(target, src.toFile().getName(),
+						target.toFile().getName());
+				// refresh is separated into 2 case if in current directory watch service will
+				// detect other wise manually did in operatioUpdate
 			}
-			// tracker info is resolved in rename function
 		}
-		WatchServiceHelper.setRuning(true);
 	}
 
 	public void createDirectory() {
@@ -589,6 +809,14 @@ public class WelcomeController implements Initializable {
 			focusedPane.focusSearchFeild();
 		else
 			leftView.focusSearchFeild();
+	}
+
+	public void switchRecursive() {
+		SplitViewController focusedPane = getFocusedPane();
+		if (focusedPane != null)
+			focusedPane.switchRecursive();
+		else
+			leftView.switchRecursive();
 	}
 
 	public void RevealINExplorer() {
@@ -632,7 +860,8 @@ public class WelcomeController implements Initializable {
 						.collect(Collectors.groupingBy(Function.identity(), TreeMap::new, Collectors.counting()))
 						.entrySet().stream().sorted(Map.Entry.<String, Long>comparingByValue().reversed())
 						.forEach(printWriter::println);
-				Desktop.getDesktop().open(resultPath.toFile());
+				// Desktop.getDesktop().open(resultPath.toFile());
+				StringHelper.open(resultPath.toUri().toString());
 			} catch (IOException e) {
 				DialogHelper.showException(e);
 			}
@@ -659,13 +888,13 @@ public class WelcomeController implements Initializable {
 		}
 	}
 
-	private SplitViewController getFocusedPane(TextField textField) {
-		if (textField == leftView.getPathField()) {
-			return leftView;
-		} else {
-			return rightView;
-		}
-	}
+	// private SplitViewController getFocusedPane(TextField textField) {
+	// if (textField == leftView.getPathField()) {
+	// return leftView;
+	// } else {
+	// return rightView;
+	// }
+	// }
 
 	@Nullable
 	private Path getSelectedPath() {
@@ -678,55 +907,21 @@ public class WelcomeController implements Initializable {
 		return selection.get(0);
 	}
 
-	private void onTextEntered(TextField textField) {
-		SplitViewController focusedPane = getFocusedPane(textField);
-		String command = textField.getText().trim();
-		File file = new File(command);
-		if (file.exists()) {
-			focusedPane.openFile(file);
-			focusedPane.requestFocus();
-		} else if (command.startsWith(ACTION_SELECT)) {
-			String regex = command.substring(ACTION_SELECT.length()).trim();
-			focusedPane.select(regex);
-			focusedPane.requestFocus();
-		} else if (command.startsWith(ACTION_COPY)) {
-			String regex = command.substring(ACTION_COPY.length()).trim();
-			focusedPane.select(regex);
-			focusedPane.requestFocus();
-			copy();
-		} else if (command.startsWith(ACTION_MOVE)) {
-			String regex = command.substring(ACTION_MOVE.length()).trim();
-			focusedPane.select(regex);
-			focusedPane.requestFocus();
-			move();
-		} else if (command.startsWith(ACTION_DELETE)) {
-			String regex = command.substring(ACTION_DELETE.length()).trim();
-			focusedPane.select(regex);
-			focusedPane.requestFocus();
-			delete();
-		} else if (command.startsWith(ACTION_OPEN)) {
-			String regex = command.substring(ACTION_OPEN.length()).trim();
-			focusedPane.select(regex);
-			focusedPane.requestFocus();
-			for (Path path : focusedPane.getSelection()) {
-				try {
-					Desktop.getDesktop().open(path.toFile());
-				} catch (Exception e) {
-					DialogHelper.showException(e);
-				}
-			}
-		}
-		textField.setText(focusedPane.getDirectoryPath().toString());
-	}
-
 	@FXML
 	public void DominateRight() {
-		rightView.setmDirectoryThenRefresh(leftView.getmDirectory());
+		rightView.setPathFieldThenRefresh(leftView.getPathField().getText());
 	}
 
 	@FXML
 	public void DominateLeft() {
-		leftView.setmDirectoryThenRefresh(rightView.getmDirectory());
+		leftView.setPathFieldThenRefresh(rightView.getPathField().getText());
+	}
+
+	@FXML
+	public void SwapView() {
+		String temp = rightView.getPathField().getText();
+		DominateRight();
+		leftView.setPathFieldThenRefresh(temp);
 	}
 
 	@FXML
@@ -743,6 +938,7 @@ public class WelcomeController implements Initializable {
 
 		if (ans) {
 			rightView.getMfileTracker().deleteFile();
+			rightView.refreshAsPathField();
 		}
 	}
 
@@ -751,11 +947,46 @@ public class WelcomeController implements Initializable {
 	public void refreshBothViews(SplitViewController mSplitViewController) {
 		// could send null also to refresh both views
 		if (mSplitViewController == null || leftView.getmDirectory().equals(rightView.getmDirectory())) {
-			leftView.refresh();
-			rightView.refresh();
+			leftView.refresh(null);
+			rightView.refresh(null);
 			return;
 		}
-		mSplitViewController.refresh();
+		mSplitViewController.refresh(null);
+	}
+
+	public void refreshBothViewsAsPathField(SplitViewController mSplitViewController) {
+		if (mSplitViewController == null || leftView.getmDirectory().equals(rightView.getmDirectory())) {
+			leftView.refreshAsPathField();
+			rightView.refreshAsPathField();
+			return;
+		}
+		mSplitViewController.refreshAsPathField();
+	}
+
+	// this is used in case of change on a view without refreshing it
+	// so to force change on the other view do this
+	public void refreshTheOtherView(SplitViewController mSplitViewController) {
+		if (leftView.getmDirectory().equals(rightView.getmDirectory())) {
+			// do search and refresh the other view
+			// problem see mfile tracker where is used
+			if (mSplitViewController.equals(leftView)) {
+				rightView.refreshAsPathField();
+			} else
+				leftView.refreshAsPathField();
+		}
+	}
+
+	// the lastest version of refresh: send paths and refresh the corresponding
+	// views
+	public void refreshWhenDetected(Path... paths) {
+		if (paths.length == 0)
+			refreshBothViewsAsPathField(null);
+		for (Path path : paths) {
+			if (leftView.getDirectoryPath().equals(path))
+				leftView.refreshAsPathField();
+			if (rightView.getDirectoryPath().equals(path))
+				rightView.refreshAsPathField();
+		}
 	}
 
 	@FXML
@@ -773,23 +1004,36 @@ public class WelcomeController implements Initializable {
 			depth = 1;
 			// e1.printStackTrace();
 		}
-
+		StringHelper.setTemp(depth);
 		Path dir = leftView.getDirectoryPath();
-		try {
-			leftView.getMfileTracker().trackNewFolder();
-			Files.walk(dir, depth).filter(p -> Files.isDirectory(p) && !p.equals(dir)).forEach(p -> {
-				Main.ProcessTitle(p.getFileName().toString());
-				leftView.getMfileTracker().NewOutFolder(p);
-			});
-			Main.ResetTitle();
-		} catch (IOException e) {
-			// e.printStackTrace();
-		}
-		// refreshBothViews(null);
+		WatchServiceHelper.setRuning(false);
+		Thread trackerThread = new Thread() {
+			public void run() {
+				try {
+					RecursiveFileWalker r = new RecursiveFileWalker();
+					Files.walkFileTree(dir, EnumSet.noneOf(FileVisitOption.class), StringHelper.getTemp(), r);
+					r.getParent().forEach(p -> {
+						Platform.runLater(() -> Main.ProcessTitle(p.toString()));
+						leftView.getMfileTracker().NewOutFolder(p);
+					});
+					Platform.runLater(() -> refreshBothViews(null));
+					WatchServiceHelper.setRuning(true);
+				} catch (IOException e) {
+					// e.printStackTrace();
+				}
+			}
+		};
+		trackerThread.start();
 	}
 
 	@FXML
 	void rightBulkRemoveIntro(ActionEvent event) {
+		if (rightView.isOutofTheBoxHelper()) {
+			DialogHelper.showAlert(AlertType.INFORMATION, "Bulk Intro Remover", "Recursive Mode Restriction",
+					"this feature is unavailable in recursive mode,\r\n"
+							+ "Please turn it off then try again.\nIf you like it to be contact developpers!");
+			return;
+		}
 		String answer = DialogHelper.showTextInputDialog("Bulk Intro Remover", "Time To exclude from start?",
 				"Enter the time to exclude From the begining, this will apply on all Media file in Right View\n"
 						+ "Input must be in duration format: ss or mm:ss or hh:mm:ss (example: 234 or 3:54)",
@@ -803,7 +1047,7 @@ public class WelcomeController implements Initializable {
 		if (!rightView.getMfileTracker().isTracked())
 			rightView.getMfileTracker().trackNewFolder();
 
-		for (String name : rightView.getCurrentFilesList()) {
+		for (String name : rightView.getCurrentFilesListName()) {
 			if (VLC.isVLCMediaExt(name)) {
 				Main.ProcessTitle(name);
 				String key = name;
@@ -852,7 +1096,7 @@ public class WelcomeController implements Initializable {
 
 	@FXML
 	void toggleAutoExpand(ActionEvent event) {
-		Setting.setAutoExpand(!Setting.getAutoExpand());
+		Setting.setAutoExpand(!Setting.isAutoExpand());
 	}
 
 	// the current problem in conflict log is this case:
@@ -888,6 +1132,15 @@ public class WelcomeController implements Initializable {
 	}
 
 	@FXML
+	void GetMp3Tag(ActionEvent event) {
+		try {
+			Desktop.getDesktop().browse(new URL("https://www.mp3tag.de/en/").toURI());
+		} catch (IOException | URISyntaxException e) {
+			// e.printStackTrace();
+		}
+	}
+
+	@FXML
 	void Tutorial(ActionEvent event) {
 		try {
 			Desktop.getDesktop().browse(new URL("https://github.com/Ahmad-Said/tracker-explorer").toURI());
@@ -901,11 +1154,12 @@ public class WelcomeController implements Initializable {
 		String ky = "Navigation:" + "\n - Tab                   = Focus Table View"
 				+ "\n - Ctrl + F              = Focus on search Field"
 				+ "\n - Escape                = Clear Search Field"
-				+ "\n - Ctrl + Tab            = Switch Focus between Tables"
+				+ "\n - Ctrl + Tab || F3      = Switch Focus between Tables"
 				+ "\n - Alt + Up || BackSpace = Go To parent Directory"
 				+ "\n - Alt + Left Arrow      = Go Back To Previous Folder" + "\n - Alt + Right Arrow     = Go Next"
 				+ "\n - Ctrl + Shift + R      = Reveal in Windows Explorer"
 				+ "\n - Shift + D             = Focus On Path Field"
+				+ "\n - Shift + F             = Mark Folder As Favorite"
 				+ "\n\nFile Operations: (Applied on the focused Table)" + "\n - Space            = Toogle MarkSeen"
 				+ "\n - Ctrl + N         = New File" + "\n - Ctrl + Shift + N = New Directory"
 				+ "\n - Ctrl + C         = Copy to the other Table" + "\n - Ctrl + X         = Move to the other Table"
@@ -955,7 +1209,8 @@ public class WelcomeController implements Initializable {
 				"Enter Password authorisation to use when accessing vlc.\n\n" + "Note: "
 						+ "\n\t- VLC will run into system tray."
 						+ "\n\t- If you are using chrome set save password to never"
-						+ "\n\tas it may cause problem when changing password.\n",
+						+ "\n\tas it may cause problem when changing password."
+						+ "\n\t- Changing password require that VLC is not running" + "\n\t to Take effect",
 				Setting.getVLCHttpPass());
 		if (pass == null)
 			return;
@@ -1021,8 +1276,21 @@ public class WelcomeController implements Initializable {
 	public void saveSetting() {
 		Setting.setLeftLastKnowLocation(getLeftLastKnowLocation());
 		Setting.setRightLastKnowLocation(getRightLastKnowLocation());
-		Setting.setShowLeftNotesColumn(leftStatus.isVisible());
-		Setting.setShowRightNotesColumn(rightStatus.isVisible());
+		Setting.setShowLeftNotesColumn(leftNote.isVisible());
+		Setting.setShowRightNotesColumn(rightNote.isVisible());
+	}
+
+	public void RecursiveHelpersetBlocked(boolean state) {
+		if (state == true) {
+			autoExpand.setSelected(false);
+		} else
+			autoExpand.setSelected(Setting.isAutoExpand());
+		rightDominate.setDisable(state);
+		leftDominate.setDisable(state);
+		autoExpand.setDisable(state);
+		FavoritesLocations.setDisable(state);
+		TrackerMenu.setDisable(state);
+
 	}
 
 }

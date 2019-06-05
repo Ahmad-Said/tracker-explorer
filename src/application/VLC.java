@@ -27,7 +27,7 @@ public class VLC {
 
 	private static ArrayList<String> ArrayVideoExt = new ArrayList<String>(
 			Arrays.asList("3GP", "ASF", "AVI", "DVR-MS", "FLV", "MKV", "MIDI", "MP4", "Ogg", "OGM", "WAV", "MPEG-2",
-					"MXF", "VOB", "RM", "Blu-ray", "DVD-Video", "VCD", "SVCD", "DVB", "HEIF", "AVIF"));
+					"MXF", "VOB", "RM", "Blu-ray", "DVD-Video", "VCD", "SVCD", "DVB", "HEIF", "AVIF", "WMV"));
 
 	private static ArrayList<String> ArrayAudioExt = new ArrayList<String>(
 			Arrays.asList("AAC", "AC3", "ALAC", "AMR", "DTS", "DVAudio", "XM", "FLAC", "It", "MACE", "MOD", "MP3",
@@ -62,15 +62,12 @@ public class VLC {
 		times = times.substring(6);
 		if (!list.equals("@Invalid()")) // this how vlc show if recent was not set
 		{
-			// System.out.println(list);
-			// System.out.println(times);
 			String List_Parsed[] = list.split(",");
 			String Times_Parsed[] = times.split(",");
 			// iterate in reverse way so if key exist twice get the most recent one !
 			for (int i = Times_Parsed.length - 1; i >= 0; i--) {
 				String tim = Times_Parsed[i];
 				String lis = List_Parsed[i].trim();
-				// System.out.println("tim is " + tim + " and lis is " + lis);
 				lis = lis.replace("\"", "");
 				try {
 					RecentTracker.put(Paths.get(URI.create(lis)), Integer.parseInt(tim.trim()));
@@ -99,7 +96,6 @@ public class VLC {
 			Path_Setup = file.toPath();
 			return true;
 		}
-		// System.out.println(Path_Setup);
 		return false;
 	}
 
@@ -116,7 +112,6 @@ public class VLC {
 				p.waitFor();
 		} catch (InterruptedException e) {
 		}
-		// System.out.println("i;m closed");
 		ReloadRecentMRL();
 		if (RecentTracker.containsKey(path))
 			return RecentTracker.get(path);
@@ -241,12 +236,25 @@ public class VLC {
 
 	public static Process StartVlc(String arg) {
 		try {
-			Process p = Runtime.getRuntime().exec(Path_Setup.toAbsolutePath() + " " + arg);
+			Process p = null;
+			int startSplit = 0, endSplit = 0, inc = 0;
+			while (endSplit != arg.length()) {
+				endSplit = arg.lastIndexOf("file:", inc += 15000);
+				endSplit = arg.indexOf(" ", endSplit);
+				if (startSplit == endSplit || endSplit == -1)
+					endSplit = arg.length();
+				p = Runtime.getRuntime()
+						.exec(Path_Setup.toAbsolutePath()
+								+ " --one-instance --video-title-timeout 12000 --video-title-position=4"
+								+ arg.substring(startSplit, endSplit));
+
+				startSplit = (endSplit < arg.length()) ? endSplit : arg.length();
+			}
 			return p;
 		} catch (IOException e) {
 			DialogHelper.showAlert(AlertType.ERROR, "Run VLC", "Could Not Run VLC",
 					"VLC is not installed on the system or misconfigured.\n\n Please Get VLC from the menu.");
-			// e.printStackTrace();
+			e.printStackTrace();
 		}
 		return null;
 	}
@@ -255,11 +263,25 @@ public class VLC {
 		watchWithRemote(path, "");
 	}
 
+	/**
+	 * Start VLC and open http Lua remote with the saved password(1234) if default
+	 * 
+	 * @param path
+	 *            can be null
+	 * @param addArgument
+	 *            can be anything add at the last of command
+	 */
 	public static void watchWithRemote(Path path, String addArgument) {
 		if (path != null)
 			addArgument += " " + path.toUri();
-		StartVlc(" --one-instance" + " --extraintf=http --http-password=" + Setting.getVLCHttpPass()
-				+ " --qt-recentplay-filter=watch* --video-title-timeout 12000 --video-title-position=4" + addArgument);
+		// we do start watching in remote mode only in case
+		StartVlc(" --extraintf=http --http-password=" + Setting.getVLCHttpPass() + " --qt-recentplay-filter=watch*"
+				+ addArgument);
+	}
+
+	public static boolean isInstalled() {
+		File test = VLC.getPath_Setup().toFile();
+		return test.exists();
 	}
 
 	private static boolean isInExt(String name, ArrayList<String> ext) {

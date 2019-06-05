@@ -7,6 +7,7 @@
 * [General Description](#General-Description)
 * [Sketch Images](#sketch-images)
 * [Features](#Features)
+* [Search Usage](#Search-Usage)
 * [Keyboard Shortcuts](#Keyboard-Shortcuts)  
 * [Fight The New Drug](#fight-the-new-drug)
 * [Quick Workflow for VLC Filtering Video](#fight-the-new-drug)
@@ -26,11 +27,11 @@ So Happy Exploring! [Download here](https://github.com/Ahmad-Said/tracker-explor
 
 ## Sketch Images
 
-![Main](https://i.imgur.com/Bd63Udx.png)
+![Main](https://i.imgur.com/g4DADGi.png)
 
 Main View
 
-![Menu](https://i.imgur.com/Z7MCijy.png)
+![Menu](https://i.imgur.com/kPYkr29.png)
 
 Menu Tracker Options
 
@@ -57,6 +58,30 @@ Menu Tracker Options
 
 ***
 
+## Search Usage
+
+The search will filter the current view in no time since all files are indexed!
+Combine this usage with recursive search.  
+Note: you can right click on 'clear' button so it roll showing these options also, and double click it to clear form.
+
+| Operation Key| Action |
+| :----: | :-----:|
+| ; | combine multiple search statement (and) |
+| ;! | exclude from search (not) |
+| ;\| | make another search ignoring previous (or) |
+|||
+|Reserved keywords | |
+| vlc | show all media supported by vlc |
+| audio | show all audio |
+| video |  show all video |
+
+```bash
+Example showing all vlc media that contain name word and not excel:
+            'vlc;word;!excel'
+```
+
+***
+
 ## Keyboard Shortcuts
 
 | Shortcuts | Action |
@@ -71,6 +96,7 @@ Menu Tracker Options
 |Alt + Right Arrow | Go Next|
 |Ctrl + Shift + R | Reveal in Windows Explorer|
 |Shift + D | Focus On Path Field|
+|Shift + F | Mark Folder As Favorite|
 |||
 |File Operations on Focus | |
 |Space | Toggle MarkSeen|
@@ -95,7 +121,7 @@ Menu Tracker Options
 
 ### Quick Workflow for VLC Filtering Video
 
-![VLC Editor](https://i.imgur.com/OR2oaWx.png)
+![VLC Editor](https://i.imgur.com/xaGuDPc.png)
 
 TO DO List:
 
@@ -120,13 +146,16 @@ After Creating Exclusion of the media you could do any of the following:
 * Hit Save button to save exclusion information to data tracker.
   * Exit editor windows
   * right click on V button to start the media respecting rules created.
-* Generate Batch File:
-  * will create a .bat file next to media file with the same name
-  * starting this bat file from explorer will start media following the rule independently from the application
+* Generate XSPF File:
+  * will create a .xspf file next to media file with the same name
+  * starting this xspf file from explorer will start media following the rule independently from the application.
 * Copy raw Data will copy to clipboard the exclusion information in the table
   * Pasting these data in any media file using paste button will automatically Detect configurations and add them to the table.
 
-Note: To close running video the batch 'Black Screen' should be closed first
+### Running
+
+When running a filtered media using this tool, you can control the backward of media using playlist control in vlc (press ctrl+L), or using any remote tool check vlc menu. And here where notify-end features become useful denoting the start and the end of each scene  
+Other wise the forward of the media is supported using normal controls.
 
 ## Tips and Tricks
 

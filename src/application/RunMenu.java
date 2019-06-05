@@ -34,16 +34,15 @@ public class RunMenu {
 	}
 
 	public static void showMenu(List<Path> paths) {
-		String cmd = "\"" + runmenuFile.toString() + "\"" + " /show ";
+		String[] cmdArray = new String[paths.size() + 2];
+		int j = 0;
+		cmdArray[j++] = runmenuFile.toString();
+		cmdArray[j++] = "/show";
 		for (Path path : paths) {
-			cmd += "\"" + path.toString() + "\" ";
+			cmdArray[j++] = path.toAbsolutePath().toString();
 		}
-		try {
-			Runtime.getRuntime().exec(cmd);
-		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
+		// https://stackoverflow.com/questions/1105085/runtime-exec-with-absolute-directory
+		StringHelper.RunRuntimeProcess(cmdArray);
 	}
 
 }

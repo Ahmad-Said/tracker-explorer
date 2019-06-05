@@ -15,6 +15,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Scanner;
+import java.util.stream.Collectors;
 
 import application.DialogHelper;
 import application.RunMenu;
@@ -36,16 +37,20 @@ public class Setting {
 	private static Boolean ShowRightNotesColumn = false;
 	private static String ActiveUser = "default";
 	private static String VLCHttpPass = "1234";
+	private static int MaxLimitFilesRecursive = 10000;
+	private static int MaxDepthFilesRecursive = 5;
 	private static String VLCPath = null;
+	private static boolean isDebugMode = false;
+	private static boolean autoRenameUTFFile = true;
+
 	private static ArrayList<String> UserNames = new ArrayList<String>();
+	private static ArrayList<Path> FavoritesLocations = new ArrayList<>();
 	/**
 	 * backsync > BackSync loadallicon > LoadAllIcon LeftLastKnowLocation >
 	 * LeftLastKnowLocation > RightLastKnowLocation
 	 * 
 	 */
 	private static Map<String, String> mapOptions = new HashMap<String, String>();
-	private static List<String> extIconLoad;
-	private static List<String> Recentlocation;
 	private static File mSettingFile = new File(
 			System.getenv("APPDATA") + "\\Tracker Explorer\\TrackerExplorerSetting.txt");
 
@@ -54,21 +59,17 @@ public class Setting {
 		BackSync = false;
 		AutoExpand = true;
 		LoadAllIcon = true;
+
 		LeftLastKnowLocation = null;
 		RightLastKnowLocation = null;
 		ShowLeftNotesColumn = false;
 		ShowRightNotesColumn = false;
 		ActiveUser = "default";
-
+		MaxLimitFilesRecursive = 10000;
 		setVLCHttpPass("1234");
 
 		if (VLC.initializeDefaultVLCPath())
 			VLCPath = VLC.getPath_Setup().toUri().toString();
-		// UserNames = new ArrayList<String>() {
-		// {
-		// add("default");
-		// }
-		// };
 		UserNames.add("default");
 		try {
 			RunMenu.initialize();
@@ -86,8 +87,8 @@ public class Setting {
 				Files.createDirectory(dirsetting.toPath());
 			if (mSettingFile.exists())
 				mSettingFile.delete();
-			p = new PrintStream(getmSettingFile().toString());
-			Files.setAttribute(getmSettingFile().toPath(), "dos:hidden", true);
+			p = new PrintStream(mSettingFile.toString());
+			Files.setAttribute(mSettingFile.toPath(), "dos:hidden", true);
 			p.println("/this is a generated folder by application to Save Setting");
 			p.println("Version=" + Version);
 			p.println("VLCHttpPass=" + getVLCHttpPass());
@@ -98,6 +99,7 @@ public class Setting {
 			p.println("ActiveUser=" + ActiveUser);
 			p.println("ShowLeftNotesColumn=" + ShowLeftNotesColumn);
 			p.println("ShowRightNotesColumn=" + ShowRightNotesColumn);
+			p.println("MaxLimitFilesRecursive=" + MaxLimitFilesRecursive);
 
 			if (LeftLastKnowLocation != null)
 				p.println("LeftLastKnowLocation=" + LeftLastKnowLocation.toUri().toString());
@@ -108,6 +110,12 @@ public class Setting {
 			else
 				p.println("RightLastKnowLocation=null");
 			p.println("UserNames=" + String.join(";", UserNames));
+			// p.println("FavoritesLocations=" + String.join(";", (String[])
+			// FavoritesLocations.toArray(new
+			// String[FavoritesLocations.size()])));
+			// check https://winterbe.com/posts/2014/07/31/java8-stream-tutorial-examples/
+			p.println("FavoritesLocations="
+					+ FavoritesLocations.stream().map(s -> s.toUri().toString()).collect(Collectors.joining(";")));
 			p.close();
 		} catch (IOException e) {
 			e.printStackTrace();
@@ -129,7 +137,10 @@ public class Setting {
 			while (scan.hasNextLine()) {
 				line = scan.nextLine();
 				options = Arrays.asList(line.split("="));
-				mapOptions.put(options.get(0), options.get(1));
+				if (options.size() > 1)
+					mapOptions.put(options.get(0), options.get(1));
+				else
+					mapOptions.put(options.get(0), null);
 			}
 			scan.close();
 
@@ -140,7 +151,7 @@ public class Setting {
 		// very bad as same as quicly on the go just for now
 		for (String key : mapOptions.keySet()) {
 			String value = mapOptions.get(key);
-			if (!value.equals("null")) {
+			if (value != null && !value.equals("null")) {
 				if (key.equals("Version"))
 					Version = value;
 				if (key.equals("VLCHttpPass"))
@@ -157,6 +168,8 @@ public class Setting {
 					ShowLeftNotesColumn = Boolean.parseBoolean(value);
 				if (key.equalsIgnoreCase("ShowRightNotesColumn"))
 					ShowRightNotesColumn = Boolean.parseBoolean(value);
+				if (key.equals("MaxLimitFilesRecursive"))
+					MaxLimitFilesRecursive = Integer.parseInt(value);
 				if (key.equals("LeftLastKnowLocation"))
 					LeftLastKnowLocation = Paths.get(URI.create(value));
 				if (key.equals("RightLastKnowLocation"))
@@ -167,6 +180,10 @@ public class Setting {
 					UserNames.clear();
 					UserNames.addAll(Arrays.asList(value.split(";")));
 				}
+				if (key.equals("FavoritesLocations"))
+					FavoritesLocations.addAll(Arrays.asList(value.split(";")).stream().map(s -> {
+						return Paths.get(URI.create(s));
+					}).collect(Collectors.toList()));
 			}
 		}
 		scan.close();
@@ -204,51 +221,6 @@ public class Setting {
 
 	public static Boolean getBackSync() {
 		return BackSync;
-	}
-
-	/**
-	 * @return the mSettingFile
-	 */
-	public static File getmSettingFile() {
-		return mSettingFile;
-	}
-
-	/**
-	 * @param mSettingFile
-	 *            the mSettingFile to set
-	 */
-	public void setmSettingFile(File msettingFile) {
-		mSettingFile = msettingFile;
-	}
-
-	/**
-	 * @return the extIconLoad
-	 */
-	public static List<String> getExtIconLoad() {
-		return extIconLoad;
-	}
-
-	/**
-	 * @param extIconLoad
-	 *            the extIconLoad to set
-	 */
-	public static void setExtIconLoad(List<String> extIconLoad) {
-		Setting.extIconLoad = extIconLoad;
-	}
-
-	/**
-	 * @return the recentlocation
-	 */
-	public static List<String> getRecentlocation() {
-		return Recentlocation;
-	}
-
-	/**
-	 * @param recentlocation
-	 *            the recentlocation to set
-	 */
-	public static void setRecentlocation(List<String> recentlocation) {
-		Recentlocation = recentlocation;
 	}
 
 	// https://stackoverflow.com/questions/4350356/detect-if-java-application-was-run-as-a-windows-admin
@@ -434,7 +406,7 @@ public class Setting {
 		Setting.RightLastKnowLocation = RightLastKnowLocation;
 	}
 
-	public static Boolean getAutoExpand() {
+	public static Boolean isAutoExpand() {
 		return AutoExpand;
 	}
 
@@ -501,4 +473,59 @@ public class Setting {
 		return VLCPath;
 	}
 
+	public static ArrayList<Path> getFavoritesLocations() {
+		return FavoritesLocations;
+	}
+
+	public static void setFavoritesLocations(ArrayList<Path> favoritesLocations) {
+		FavoritesLocations = favoritesLocations;
+	}
+
+	/**
+	 * @return the autoRenameUTFFile
+	 */
+	public static boolean isAutoRenameUTFFile() {
+		return autoRenameUTFFile;
+	}
+
+	/**
+	 * @param autoRenameUTFFile
+	 *            the autoRenameUTFFile to set
+	 */
+	public static void setAutoRenameUTFFile(boolean autorenameUTFFile) {
+		autoRenameUTFFile = autorenameUTFFile;
+	}
+
+	public static File getmSettingFile() {
+		return mSettingFile;
+	}
+
+	public static void printStackTrace(Exception e) {
+		// if (isDebugMode)
+		e.printStackTrace();
+	}
+
+	public static boolean isDebugMode() {
+		return isDebugMode;
+	}
+
+	public static void setDebugMode(boolean isDebugMode) {
+		Setting.isDebugMode = isDebugMode;
+	}
+
+	public static int getMaxLimitFilesRecursive() {
+		return MaxLimitFilesRecursive;
+	}
+
+	public static void setMaxLimitFilesRecursive(int maxLimitFilesRecursive) {
+		MaxLimitFilesRecursive = maxLimitFilesRecursive;
+	}
+
+	public static int getMaxDepthFilesRecursive() {
+		return MaxDepthFilesRecursive;
+	}
+
+	public static void setMaxDepthFilesRecursive(int maxDepthFilesRecursive) {
+		MaxDepthFilesRecursive = maxDepthFilesRecursive;
+	}
 }

@@ -22,31 +22,56 @@ public class TableViewModel {
 	/// most important note that took me hours to catch
 	// all elements used in view property table must have
 	// getters and setters generate them with source !
-	private SimpleStringProperty Status;
+	private SimpleStringProperty NoteText;
 	private ImageView imgIcon;
-	private final SimpleStringProperty Name;
+	private SimpleStringProperty Name;
 	private HBox hboxActions;
 	private ToggleButton MarkSeen;
 	private Button mNoteButton;
 	private Button openVLC;
 	private Path mFilePath;
+	private boolean wasinitialized = false;
 
 	public TableViewModel(String status, String name, Path path) {
 		super();
-		Status = new SimpleStringProperty(status);
+		NoteText = new SimpleStringProperty(status);
 		Name = new SimpleStringProperty(name);
-
 		// hboxActions = new HBox(10,MarkSeen); give error !!
 		hboxActions = new HBox();
 		mFilePath = path;
 
+		// testing
+		mNoteButton = new Button();
+		MarkSeen = new ToggleButton();
+		// hboxActions.getChildren().addAll(getMarkSeen(), getmNoteButton());
+		// if (VLC.isVLCMediaExt(this.getName()) || VLC.isPlaylist(getName()))
+		openVLC = new Button();
+
+		// initializeButton();
+		// initializeVLCFeatures();
+
+		// Image fxImage = SystemIconsHelper.getFileIcon(path.toString());
+		// Bounds bound = imgIcon.getBoundsInLocal(); // getting co-ordinates
+		// imgIcon.setEffect(
+		// new ColorInput(bound.getMinX(), bound.getMinY(), bound.getWidth(),
+		// bound.getHeight(), Color.YELLOW));
+		// imgIcon = new ImageView(fxImage);
+		// worked after getting coloumn here but useless
+		// imgIcon.fitWidthProperty().bind(colIconTestResize.widthProperty());
+	}
+
+	// using this approach only initializing visual stuff when user do realy need
+	// it save much time faster on loading data to table view
+	// with factor of ~*0.2318461538461538
+	public void initializerRowFactory() {
+		if (wasinitialized)
+			return;
+		wasinitialized = true;
 		initializeButton();
 		initializeVLCFeatures();
 
-		Image fxImage = SystemIconsHelper.getFileIcon(path.toString());
+		Image fxImage = SystemIconsHelper.getFileIcon(mFilePath.toString());
 		imgIcon = new ImageView(fxImage);
-		// worked after getting coloumn here but useless
-		// imgIcon.fitWidthProperty().bind(colIconTestResize.widthProperty());
 	}
 
 	/**
@@ -58,37 +83,65 @@ public class TableViewModel {
 	private void initializeButton() {
 
 		// initialize Note button with ToolTip
-		mNoteButton = new Button();
-		mNoteButton.getStyleClass().addAll("success");
+		mNoteButton.getStyleClass().addAll("btn");
 		mNoteButton.setText("N");
 		Tooltip tt = new Tooltip();
 		tt.setText("Add Hover Note");
 		tt.getStyleClass().addAll("tooltip");
-		tt.setStyle("-fx-background-color: #7F00FF;-fx-text-fill: white;-fx-font-size:12;-fx-font-weight:bold");
+		tt.setStyle("-fx-background-color: #7F00FF;-fx-text-fill:white;-fx-font-size:12;-fx-font-weight:bold");
 		mNoteButton.setTooltip(tt);
 		// mNoteButton.setStyle("-fx-text-fill:
 		// white;-fx-font-size:12;-fx-font-weight:bold");
-		mNoteButton.setStyle("-fx-background-color: #7F00FF");
-
-		MarkSeen = new ToggleButton();
+		mNoteButton.setStyle("-fx-background-color: #7F00FF;-fx-text-fill:white;-fx-font-size:13;-fx-font-weight:bold");
+		mNoteButton.getStyleClass().add("last");
+		mNoteButton.setPrefHeight(MarkSeen.getPrefHeight());
 		MarkSeen.setMaxWidth(Double.MAX_VALUE);
+		MarkSeen.getStyleClass().add("first");
 		hboxActions.setMinWidth(100);
 		HBox.setHgrow(MarkSeen, Priority.ALWAYS);
 		Tooltip ms = new Tooltip();
 		ms.setText("Toogle Seen");
 		ms.setStyle("-fx-font-size:12;-fx-font-weight:bold");
-		ms.getStyleClass().addAll("tooltip", "info");
+		ms.getStyleClass().addAll("tooltip");
+		MarkSeen.setStyle("-fx-text-fill: white;-fx-font-size:13;-fx-font-weight:bold");
 		MarkSeen.setTooltip(ms);
-		MarkSeen.setStyle("-fx-text-fill: white;-fx-font-size:12;-fx-font-weight:bold");
-		MarkSeen.setText("U");
+		updateMarkSeen(false);
 
 		hboxActions.getChildren().addAll(getMarkSeen(), getmNoteButton());
+	}
+
+	public void updateMarkSeen(boolean seen) {
+		MarkSeen.getStyleClass().removeAll("info", "success");
+		updateMarkSeenText(seen);
+		if (seen) {
+			MarkSeen.getStyleClass().add("success");
+			MarkSeen.setSelected(true);
+		} else {
+			getMarkSeen().getStyleClass().add("info");
+			getMarkSeen().setSelected(false);
+		}
+	}
+
+	public void updateMarkSeenText(boolean seen) {
+		if (seen)
+			MarkSeen.setText("S");
+		else
+			getMarkSeen().setText("U");
+	}
+
+	public void emptyCell() {
+		MarkSeen.setText("-");
+	}
+
+	public void resetMarkSeen() {
+		MarkSeen.getStyleClass().removeAll("info", "success");
+		MarkSeen.setText("-");
+		MarkSeen.setSelected(false);
 	}
 
 	private void initializeVLCFeatures() {
 
 		if (VLC.isVLCMediaExt(this.getName()) || VLC.isPlaylist(getName())) {
-			openVLC = new Button();
 			Tooltip ms = new Tooltip();
 			ms.setStyle("-fx-font-size:12;-fx-font-weight:bold");
 			ms.getStyleClass().addAll("tooltip", "warning");
@@ -102,7 +155,7 @@ public class TableViewModel {
 				openVLC.setMaxWidth(200);
 			} else {
 				ms.setText("Click to Configure or right click for a quick start");
-				MarkSeen.getStyleClass().add("first");
+				mNoteButton.getStyleClass().removeAll("last");
 				mNoteButton.getStyleClass().add("middle");
 				openVLC.getStyleClass().add("last");
 			}
@@ -113,17 +166,8 @@ public class TableViewModel {
 
 	}
 
-	@Override
-	public String toString() {
-		return "TableViewModel [Status=" + Status + ", Name=" + Name + "]";
-	}
-
 	public String getName() {
 		return Name.get();
-	}
-
-	public String getStatus() {
-		return Status.get();
 	}
 
 	public ImageView getImgIcon() {
@@ -166,6 +210,10 @@ public class TableViewModel {
 		this.mFilePath = mFilePath;
 	}
 
+	public String generateKeyURI() {
+		return mFilePath.toUri().toString();
+	}
+
 	public Button getOpenVLC() {
 		return openVLC;
 	}
@@ -174,8 +222,23 @@ public class TableViewModel {
 		this.openVLC = openVLC;
 	}
 
-	public void setStatus(String status) {
-		Status = new SimpleStringProperty(status);
+	public String getNoteText() {
+		return NoteText.get();
+	}
+
+	public void setNoteText(String noteText) {
+		NoteText.set(noteText);
+		// NoteText.setValue(noteText);
+		// NoteText.set(noteText);
+	}
+
+	@Override
+	public String toString() {
+		return "TableViewModel " + Name.get() + "]";
+	}
+
+	public void setName(String name) {
+		Name = new SimpleStringProperty(name);
 	}
 
 }

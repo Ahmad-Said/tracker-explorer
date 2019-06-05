@@ -1,11 +1,6 @@
 package application.controller;
 
 import java.awt.HeadlessException;
-import java.awt.Toolkit;
-import java.awt.datatransfer.Clipboard;
-import java.awt.datatransfer.DataFlavor;
-import java.awt.datatransfer.StringSelection;
-import java.awt.datatransfer.UnsupportedFlavorException;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -39,6 +34,8 @@ import javafx.scene.control.TextField;
 import javafx.scene.control.Tooltip;
 import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.image.Image;
+import javafx.scene.input.Clipboard;
+import javafx.scene.input.ClipboardContent;
 import javafx.scene.input.KeyCode;
 import javafx.scene.input.KeyEvent;
 import javafx.scene.layout.HBox;
@@ -177,7 +174,7 @@ public class FilterVLCController {
 			filterStage.setTitle(mPath.getFileName() + "  Editor");
 			filterStage.setScene(scene);
 
-			filterStage.getIcons().add(new Image(Main.class.getResourceAsStream("/img/welcome.png")));
+			filterStage.getIcons().add(new Image(Main.class.getResourceAsStream("/img/filter_vlc.png")));
 
 			StartTimeColumn.setCellValueFactory(new PropertyValueFactory<FilterVLCTableView, String>("ShowStart"));
 			EndTimeColumn.setCellValueFactory(new PropertyValueFactory<FilterVLCTableView, String>("ShowEnd"));
@@ -229,7 +226,6 @@ public class FilterVLCController {
 
 		// initialize data Table
 		List<String> options = mfileTracker.getMapDetails().get(mPath.getFileName().toString());
-		// System.out.println(options);
 		// later try to remove this if
 		if (options.size() > 3) {
 			for (int i = 3; i < options.size(); i = i + 3) {
@@ -267,7 +263,6 @@ public class FilterVLCController {
 											other.getDescription()));
 								}
 							}
-							// System.out.println(list);
 							boolean isFirst = false;
 							if (mDataTable.get(0) == t)
 								isFirst = true;
@@ -407,9 +402,7 @@ public class FilterVLCController {
 			// if yes remove to index 9
 			// reorder with same format see
 			// https://stackoverflow.com/questions/12421444/how-to-format-a-number-0-9-to-display-with-2-digits-its-not-a-date
-			// System.out.println(t.getDescription().length() + t.getDescription());
 			if (t.getDescription().length() >= 9 && t.getDescription().trim().substring(0, 5).equals("Scene")) {
-				// System.out.println(t.getDescription().substring(10));
 				t.setDescription("Scene " + String.format("%02d", i) + ": " + t.getDescription().substring(10));
 			}
 			i++;
@@ -514,18 +507,29 @@ public class FilterVLCController {
 		for (FilterVLCTableView t : mDataTable) {
 			myString += ">" + t.getStart().toSeconds() + ">" + t.getEnd().toSeconds() + ">" + t.getDescription();
 		}
-		StringSelection stringSelection = new StringSelection(myString);
-		Clipboard clipboard = Toolkit.getDefaultToolkit().getSystemClipboard();
-		clipboard.setContents(stringSelection, null);
+		// StringSelection stringSelection = new StringSelection(myString);
+		// https://docs.oracle.com/javafx/2/api/javafx/scene/input/Clipboard.html
+		Clipboard clipboard = Clipboard.getSystemClipboard();
+		ClipboardContent content = new ClipboardContent();
+		// Clipboard clipboard = Toolkit.getDefaultToolkit().getSystemClipboard();
+		// clipboard.setContents("test", null);
+		content.putString(myString);
+		clipboard.setContent(content);
 		DialogHelper.showAlert(AlertType.INFORMATION, "Copy Raw Data", "Content Copied Successfully to Clipboard",
 				"Content:\n" + myString + "\nShare it as you like!");
 	}
 
 	@FXML
 	public void pasteRaw() {
+		boolean error = false;
 		try {
-			String myString = (String) Toolkit.getDefaultToolkit().getSystemClipboard()
-					.getData(DataFlavor.stringFlavor);
+			// String myString = (String) Toolkit.getDefaultToolkit().getSystemClipboard()
+			// .getData(DataFlavor.stringFlavor);
+			String myString = Clipboard.getSystemClipboard().getString();
+			if (myString == null) {
+				error = true;
+				return;
+			}
 
 			List<String> options = Arrays.asList(myString.split(">"));
 			String Warn = "";
@@ -537,22 +541,25 @@ public class FilterVLCController {
 			for (int i = 3; i < options.size(); i = i + 3) {
 				Duration start = Duration.seconds(Double.parseDouble(options.get(i)));
 				Duration end = Duration.seconds(Double.parseDouble(options.get(i + 1)));
-				// System.out.println(start.toSeconds());
-				// System.out.println(end.toSeconds());
 				if (studyConflict(start, end)) {
 					mDataTable.add(new FilterVLCTableView(start, end, options.get(i + 2)));
 					Collections.sort(mDataTable); // is important here for conflict algorithm
 					row++;
 				}
 			}
-			if (row == 0)
-				throw new IOException();
+			if (row == 0) {
+				error = true;
+				return;
+			}
+
 			reGenerateSceneNumbering(); // can be here it just visual
-			// System.out.println(myString);
 			DialogHelper.showAlert(AlertType.INFORMATION, "Paste Raw Data", "Congrats Content Parsed Successfully",
 					"Notes: - " + row + " Rows Parsed without error" + Warn);
-		} catch (HeadlessException | UnsupportedFlavorException | IOException e) {
-			// e.printStackTrace();
+		} catch (HeadlessException e) {
+			e.printStackTrace();
+
+		}
+		if (error) {
 			DialogHelper.showTextInputDialog("Paste Raw Data", "Content Parse failed!",
 					"SomeThing went wrong,\nAre you Sure You have the Data,\n Try pasting it here to recheck\nReseting DataTable to initial value",
 					"Raw Data Here");

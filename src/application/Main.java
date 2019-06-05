@@ -5,6 +5,8 @@ package application;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Path;
+import java.util.List;
 
 import application.controller.WelcomeController;
 import application.model.Setting;
@@ -31,6 +33,8 @@ public class Main extends Application {
 	public static final KeyCombination SHORTCUT_NEW_DIRECTORY = new KeyCodeCombination(KeyCode.N,
 			KeyCombination.SHORTCUT_DOWN, KeyCombination.SHIFT_DOWN);
 	static final KeyCombination SHORTCUT_FOCUS_VIEW = new KeyCodeCombination(KeyCode.TAB);
+	static final KeyCombination SHORTCUT_SWITCH_RECURSIVE = new KeyCodeCombination(KeyCode.R,
+			KeyCombination.CONTROL_DOWN);
 	public static final KeyCombination SHORTCUT_RENAME = new KeyCodeCombination(KeyCode.F2);
 	static final KeyCombination SHORTCUT_FOCUS_SWITCH_VIEW = new KeyCodeCombination(KeyCode.TAB,
 			KeyCombination.CONTROL_ANY);
@@ -41,7 +45,7 @@ public class Main extends Application {
 	static final KeyCombination SHORTCUT_REVEAL_IN_EXPLORER = new KeyCodeCombination(KeyCode.R, KeyCombination.ALT_DOWN,
 			KeyCombination.SHIFT_DOWN);
 
-	private WelcomeController mWelcomeController;
+	private static WelcomeController mWelcomeController;
 	private static Stage PrimaryStage;
 
 	@Override
@@ -89,6 +93,8 @@ public class Main extends Application {
 				mWelcomeController.focus_Switch_VIEW();
 			} else if (SHORTCUT_SEARCH.match(e)) {
 				mWelcomeController.focusSearchField();
+			} else if (SHORTCUT_SWITCH_RECURSIVE.match(e)) {
+				mWelcomeController.switchRecursive();
 			} else if (SHORTCUT_Clear_Search.match(e)) {
 				mWelcomeController.ClearSearchField();
 			} else if (SHORTCUT_REVEAL_IN_EXPLORER.match(e)) {
@@ -110,45 +116,63 @@ public class Main extends Application {
 				System.exit(0);
 			}
 		});
+		FileHelper.initializeView();
 	}
 
 	public static void main(String[] args) {
 		Setting.loadSetting();
-		boolean done = false;
+		boolean doneleft = false, doneright = false;
 		// priority to argument then last know location then root 0 (C)
 		if (args.length == 0) {
+			File temp;
 			if (Setting.getLeftLastKnowLocation() != null) {
 				// check if file still exist then distrubute task and switch the missing one to
 				// the other
-				File temp = new File(Setting.getLeftLastKnowLocation().toString());
+				temp = new File(Setting.getLeftLastKnowLocation().toString());
 				if (temp.exists()) {
 					StringHelper.InitialLeftPath = Setting.getLeftLastKnowLocation();
-					done = true;
-				}
-				if (Setting.getRightLastKnowLocation() != null) {
-					temp = new File(Setting.getRightLastKnowLocation().toString());
-					if (temp.exists()) {
-						StringHelper.InitialRightPath = Setting.getRightLastKnowLocation();
-						if (!done) {
-							StringHelper.InitialLeftPath = StringHelper.InitialRightPath;
-							done = true;
-						}
-					} else if (done)
-						StringHelper.InitialRightPath = StringHelper.InitialLeftPath;
+					doneleft = true;
 				}
 			}
-			if (!done) {
+			if (Setting.getRightLastKnowLocation() != null) {
+				temp = new File(Setting.getRightLastKnowLocation().toString());
+				if (temp.exists()) {
+					StringHelper.InitialRightPath = Setting.getRightLastKnowLocation();
+					doneright = true;
+					if (!doneleft) {
+						StringHelper.InitialLeftPath = StringHelper.InitialRightPath;
+						doneleft = true;
+					}
+				}
+			}
+			if (doneleft && !doneright) {
+				StringHelper.InitialRightPath = StringHelper.InitialLeftPath;
+				doneright = true;
+			}
+
+			if (!doneleft) {
 				File[] roots = File.listRoots();
 				StringHelper.InitialLeftPath = roots[0].toPath();
 				StringHelper.InitialRightPath = roots[0].toPath();
 			}
 		} else {
+			// i get windows argument here
+			// to resolve opening root dir
+			args[0] = args[0].replace("\"", "");
 			File temp = new File(args[0]);
 			StringHelper.InitialLeftPath = temp.toPath();
 			StringHelper.InitialRightPath = temp.toPath();
 		}
 		FileTracker.updateUserFileName(Setting.getActiveUser());
 		launch(args);
+	}
+
+	public static void refreshWelcomeController(List<Path> paths) {
+		mWelcomeController.refreshWhenDetected(paths.toArray(new Path[paths.size()]));
+	}
+
+	public static void refreshWelcomeController(Path... paths) {
+		mWelcomeController.refreshWhenDetected(paths);
 	}
 
 	public static void showStage() {
@@ -177,7 +201,7 @@ public class Main extends Application {
 	private static char pr = '\\';
 
 	public static void ProcessTitle(String toAppend) {
-		pr = (pr == '\\') ? '\\' : '/';
+		pr = (pr == '\\') ? '/' : '\\';
 		PrimaryStage.setTitle(" " + pr + toAppend);
 	}
 

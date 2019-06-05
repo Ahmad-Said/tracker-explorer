@@ -38,6 +38,7 @@
                   <MenuItem mnemonicParsing="false" onAction="#ControlVLC" text="Remote VLC" />
                   <MenuItem mnemonicParsing="false" onAction="#ControlVLCAndroid" text="Android Remote App" />
                   <MenuItem mnemonicParsing="false" onAction="#ControlVLCIOS" text="IOS Remote App" />
+                  <MenuItem mnemonicParsing="false" onAction="#GetMp3Tag" text="Get Mp3Tag" />
             </items>
           </Menu>
             <Menu fx:id="helpMenu" mnemonicParsing="false" text="Help">
@@ -67,7 +68,7 @@
               <columns>
                 <TableColumn fx:id="leftIcon" maxWidth="500.0" minWidth="26.0" prefWidth="23.0" resizable="false" />
                 <TableColumn fx:id="leftName" maxWidth="1.7976931348623157E308" minWidth="-Infinity" prefWidth="267.0" text="Name" />
-                  <TableColumn fx:id="leftStatus" maxWidth="1.7976931348623157E308" minWidth="75.0" prefWidth="-1.0" text="Notes" visible="false" />
+                  <TableColumn fx:id="leftNote" maxWidth="1.7976931348623157E308" minWidth="75.0" prefWidth="-1.0" text="Notes" visible="false" />
                   <TableColumn fx:id="lefthboxActions" maxWidth="200.0" minWidth="100.0" prefWidth="105.0" text="Action" />
               </columns>
                <GridPane.margin>
@@ -77,21 +78,25 @@
                   <TableView fx:constant="CONSTRAINED_RESIZE_POLICY" />
                </columnResizePolicy>
             </TableView>
-            <TextField fx:id="leftPathInput" styleClass="last" GridPane.halignment="RIGHT" GridPane.rowIndex="1">
+            <TextField fx:id="leftPathInput" GridPane.halignment="RIGHT" GridPane.rowIndex="1">
                <GridPane.margin>
                   <Insets left="130.0" right="10.0" />
                </GridPane.margin></TextField>
-            <Button fx:id="leftBack" alignment="CENTER" mnemonicParsing="false" styleClass="first" text="&lt;&lt;" GridPane.halignment="LEFT" GridPane.rowIndex="1">
+            <Button fx:id="leftBack" alignment="CENTER" mnemonicParsing="false" text="&lt;&lt;" GridPane.halignment="LEFT" GridPane.rowIndex="1">
                <GridPane.margin>
                   <Insets left="10.0" />
                </GridPane.margin>
+               <styleClass>
+                  <String fx:value="first" />
+                  <String fx:value="btn" />
+               </styleClass>
             </Button>
             <TextField fx:id="leftSearchField" layoutX="85.0" layoutY="104.0" maxWidth="-Infinity" minWidth="-Infinity" prefHeight="31.0" prefWidth="160.0" promptText="Search..un..yes" styleClass="first" GridPane.halignment="CENTER">
                <GridPane.margin>
                   <Insets left="20.0" right="75.0" top="50.0" />
                </GridPane.margin>
             </TextField>
-            <Button fx:id="leftSearchButton" alignment="CENTER" layoutX="20.0" layoutY="104.0" mnemonicParsing="false" prefHeight="31.0" prefWidth="70.0" text="Clear" GridPane.halignment="CENTER">
+            <Button fx:id="leftSearchButton" alignment="CENTER" layoutX="20.0" layoutY="104.0" mnemonicParsing="false" prefHeight="38.0" prefWidth="70.0" text="Clear" GridPane.halignment="CENTER">
                <GridPane.margin>
                   <Insets left="175.0" top="50.0" />
                </GridPane.margin>
@@ -110,7 +115,7 @@
                <columns>
                   <TableColumn fx:id="rightIcon" editable="false" maxWidth="500.0" minWidth="26.0" prefWidth="20.0" resizable="false" sortable="false" />
                   <TableColumn fx:id="rightName" maxWidth="1.7976931348623157E308" minWidth="-Infinity" prefWidth="292.0" text="Name" />
-                  <TableColumn fx:id="rightStatus" maxWidth="1.7976931348623157E308" minWidth="75.0" prefWidth="-1.0" text="Notes" visible="false" />
+                  <TableColumn fx:id="rightNote" maxWidth="1.7976931348623157E308" minWidth="75.0" prefWidth="-1.0" text="Notes" visible="false" />
                   <TableColumn fx:id="righthboxActions" maxWidth="200.0" minWidth="100.0" prefWidth="100.0" text="Action" />
                </columns>
                <GridPane.margin>
@@ -126,13 +131,17 @@
                <GridPane.margin>
                   <Insets left="90.0" />
                </GridPane.margin>
+               <styleClass>
+                  <String fx:value="last" />
+                  <String fx:value="btn" />
+               </styleClass>
             </Button>
             <TextField fx:id="rightSearchField" layoutX="108.0" layoutY="64.0" maxWidth="-Infinity" minWidth="-Infinity" prefHeight="31.0" prefWidth="160.0" promptText="Seach..un..yes" styleClass="first" GridPane.columnIndex="1" GridPane.halignment="CENTER">
                <GridPane.margin>
                   <Insets left="10.0" right="75.0" top="50.0" />
                </GridPane.margin>
             </TextField>
-            <Button fx:id="rightSearchButton" alignment="CENTER" layoutX="285.0" layoutY="64.0" mnemonicParsing="false" prefHeight="31.0" prefWidth="70.0" text="Clear" GridPane.columnIndex="1" GridPane.halignment="CENTER">
+            <Button fx:id="rightSearchButton" alignment="CENTER" layoutX="285.0" layoutY="64.0" mnemonicParsing="false" prefHeight="38.0" prefWidth="70.0" text="Clear" GridPane.columnIndex="1" GridPane.halignment="CENTER">
                <GridPane.margin>
                   <Insets left="165.0" top="50.0" />
                </GridPane.margin>
@@ -144,83 +153,135 @@
                   <Tooltip text="Try Scroll Up And Down On This Button !" />
                </tooltip>
             </Button>
-            <Button fx:id="rightDominate" mnemonicParsing="false" onAction="#DominateLeft" text="&lt;&lt;Dominate Left" GridPane.columnIndex="1" GridPane.halignment="LEFT">
+            <Button fx:id="rightDominate" mnemonicParsing="false" onAction="#DominateLeft" styleClass="last" text="&lt;&lt;Dominate Left" GridPane.columnIndex="1" GridPane.halignment="LEFT">
+               <GridPane.margin>
+                  <Insets bottom="50.0" />
+               </GridPane.margin>
+            </Button>
+            <Button fx:id="leftDominate" layoutX="583.0" layoutY="29.0" mnemonicParsing="false" onAction="#DominateRight" styleClass="first" text="Dominate Right&gt;&gt;" GridPane.halignment="RIGHT">
                <GridPane.margin>
                   <Insets bottom="50.0" left="20.0" />
                </GridPane.margin>
             </Button>
-            <Button fx:id="leftDominate" layoutX="583.0" layoutY="29.0" mnemonicParsing="false" onAction="#DominateRight" text="Dominate Right&gt;&gt;" GridPane.halignment="RIGHT">
-               <GridPane.margin>
-                  <Insets bottom="50.0" right="20.0" />
-               </GridPane.margin>
-            </Button>
             <Button fx:id="GoDesktop" mnemonicParsing="false" text="Desktop">
                <GridPane.margin>
-                  <Insets bottom="50.0" left="20.0" right="20.0" />
+                  <Insets bottom="50.0" left="10.0" right="20.0" />
                </GridPane.margin>
             </Button>
             <Button fx:id="rightExplorer" mnemonicParsing="false" text="Explorer" GridPane.columnIndex="1" GridPane.halignment="CENTER">
                <GridPane.margin>
-                  <Insets bottom="50.0" />
+                  <Insets bottom="50.0" left="70.0" />
                </GridPane.margin>
             </Button>
             <Button fx:id="leftExplorer" layoutX="630.0" layoutY="14.0" mnemonicParsing="false" text="Explorer" GridPane.halignment="CENTER">
                <GridPane.margin>
-                  <Insets bottom="50.0" />
+                  <Insets bottom="50.0" left="30.0" />
                </GridPane.margin>
             </Button>
             <Button fx:id="DeleteTracker" mnemonicParsing="false" onAction="#Deleteright" text="Wipe Track" GridPane.columnIndex="1" GridPane.halignment="CENTER">
                <GridPane.margin>
-                  <Insets bottom="50.0" left="200.0" />
+                  <Insets bottom="50.0" left="250.0" />
                </GridPane.margin></Button>
-            <Button fx:id="leftUp" mnemonicParsing="false" styleClass="middle" text="Up" GridPane.rowIndex="1">
+            <Button fx:id="leftUp" mnemonicParsing="false" text="Up" GridPane.rowIndex="1">
                <GridPane.margin>
                   <Insets left="90.0" />
                </GridPane.margin>
+               <styleClass>
+                  <String fx:value="last" />
+                  <String fx:value="btn" />
+               </styleClass>
             </Button>
-            <Button fx:id="leftNext" mnemonicParsing="false" styleClass="middle" text="&gt;&gt;" GridPane.rowIndex="1">
+            <Button fx:id="leftNext" mnemonicParsing="false" text="&gt;&gt;" GridPane.rowIndex="1">
                <GridPane.margin>
                   <Insets left="50.0" />
                </GridPane.margin>
+               <styleClass>
+                  <String fx:value="middle" />
+                  <String fx:value="btn" />
+               </styleClass>
             </Button>
             <MenuButton fx:id="rootsMenu" mnemonicParsing="false" prefHeight="27.0" prefWidth="79.0" text="Roots">
                <GridPane.margin>
-                  <Insets left="20.0" top="20.0" />
+                  <Insets left="10.0" top="20.0" />
                </GridPane.margin>
             </MenuButton>
-            <Button fx:id="rightNext" layoutX="60.0" layoutY="104.0" mnemonicParsing="false" styleClass="middle" text="&gt;&gt;" GridPane.columnIndex="1" GridPane.rowIndex="1">
+            <Button fx:id="rightNext" layoutX="60.0" layoutY="104.0" mnemonicParsing="false" text="&gt;&gt;" GridPane.columnIndex="1" GridPane.rowIndex="1">
                <GridPane.margin>
                   <Insets left="50.0" />
                </GridPane.margin>
+               <styleClass>
+                  <String fx:value="middle" />
+                  <String fx:value="btn" />
+               </styleClass>
             </Button>
-            <Button fx:id="rightBack" alignment="CENTER" layoutX="20.0" layoutY="104.0" mnemonicParsing="false" styleClass="first" text="&lt;&lt;" GridPane.columnIndex="1" GridPane.rowIndex="1">
+            <Button fx:id="rightBack" alignment="CENTER" layoutX="20.0" layoutY="104.0" mnemonicParsing="false" text="&lt;&lt;" GridPane.columnIndex="1" GridPane.rowIndex="1">
                <GridPane.margin>
                   <Insets left="10.0" />
                </GridPane.margin>
+               <styleClass>
+                  <String fx:value="first" />
+                  <String fx:value="btn" />
+               </styleClass>
             </Button>
             <ToggleButton fx:id="autoExpand" mnemonicParsing="false" onAction="#toggleAutoExpand" text="&lt;&gt;" GridPane.halignment="RIGHT" GridPane.valignment="CENTER">
                <GridPane.margin>
                   <Insets top="20.0" />
                </GridPane.margin>
             </ToggleButton>
+            <MenuButton fx:id="FavoritesLocations" mnemonicParsing="false" text="Favorites">
+               <GridPane.margin>
+                  <Insets bottom="50.0" left="85.0" right="20.0" />
+               </GridPane.margin>
+            </MenuButton>
+            <CheckBox fx:id="rightRecusiveSearch" mnemonicParsing="false" text="Recusive" GridPane.columnIndex="1" GridPane.halignment="CENTER">
+               <GridPane.margin>
+                  <Insets left="330.0" top="50.0" />
+               </GridPane.margin>
+            </CheckBox>
+            <Button mnemonicParsing="false" onAction="#SwapView" text="Swap" GridPane.columnIndex="1">
+               <GridPane.margin>
+                  <Insets bottom="50.0" left="140.0" />
+               </GridPane.margin>
+            </Button>
+            <Button fx:id="rightNavigateRecursive" mnemonicParsing="false" text="Navigate" GridPane.columnIndex="1" GridPane.halignment="CENTER">
+               <GridPane.margin>
+                  <Insets right="320.0" top="50.0" />
+               </GridPane.margin>
+            </Button>
+            <Button fx:id="leftNavigateRecursive" mnemonicParsing="false" prefHeight="31.0" prefWidth="34.0" text="N" GridPane.halignment="CENTER">
+               <GridPane.margin>
+                  <Insets right="250.0" top="50.0" />
+               </GridPane.margin>
+            </Button>
+            <CheckBox fx:id="leftRecusiveSearch" layoutX="759.0" layoutY="69.0" mnemonicParsing="false" text="R" GridPane.halignment="CENTER" GridPane.valignment="CENTER">
+               <GridPane.margin>
+                  <Insets left="290.0" top="50.0" />
+               </GridPane.margin>
+            </CheckBox>
          </children>
       </GridPane>
    </center>
    <bottom>
       <HBox prefHeight="24.0" prefWidth="840.0" BorderPane.alignment="CENTER">
          <children>
-            <Button mnemonicParsing="false" onAction="#copy" text="Copy">
+            <Label minWidth="40.0" onMouseClicked="#copy" prefWidth="60.0" text="Copy">
                <HBox.margin>
-                  <Insets bottom="5.0" left="10.0" right="10.0" />
+                  <Insets left="10.0" top="5.0" />
                </HBox.margin>
-            </Button>
-            <Button mnemonicParsing="false" onAction="#move" text="Move">
+            </Label>
+            <Label minWidth="40.0" onMouseClicked="#move" prefWidth="60.0" text="Move">
                <HBox.margin>
-                  <Insets right="10.0" />
+                  <Insets left="10.0" top="5.0" />
                </HBox.margin>
-            </Button>
+            </Label>
+            <CheckBox fx:id="FavoriteCheckBox" mnemonicParsing="false" prefWidth="155.0" text="Favorite Folder">
+               <HBox.margin>
+                  <Insets left="20.0" />
+               </HBox.margin></CheckBox>
+            <Label fx:id="leftLabelItemsNumber" maxWidth="200.0" prefHeight="21.0" prefWidth="127.0" text="leftLabelItemsNumber" HBox.hgrow="ALWAYS" />
             <TextField fx:id="leftPredictNavigation" layoutX="653.0" layoutY="10.0" visible="false" />
-            <Pane maxWidth="1.7976931348623157E308" prefHeight="36.0" prefWidth="150.0" HBox.hgrow="ALWAYS" />
+            <Pane maxWidth="1.7976931348623157E308" prefHeight="31.0" prefWidth="70.0" HBox.hgrow="ALWAYS" />
+            <Label fx:id="rightLabelItemsNumber" maxWidth="200.0" prefHeight="21.0" prefWidth="137.0" text="rightLabelItemsNumber" HBox.hgrow="ALWAYS" />
             <TextField fx:id="rightPredictNavigation" visible="false">
                <HBox.margin>
                   <Insets right="10.0" />

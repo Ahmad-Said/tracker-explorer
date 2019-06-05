@@ -14,6 +14,7 @@ import javafx.scene.image.Image;
 public class SystemIconsHelper {
 
 	static HashMap<String, Image> mapOfFileExtToSmallIcon = new HashMap<String, Image>();
+	static int id = 1;
 
 	// filePath here is a full path to file i.e path.toString()
 	public static Image getFileIcon(String filePath) {
@@ -70,6 +71,12 @@ public class SystemIconsHelper {
 				File iniCheck = new File(filePath + ("\\desktop.ini"));
 				if (iniCheck.exists())
 					ext = file.getName();
+				else {
+					// check if it was a root
+					File filep = new File(filePath);
+					if (filep.toPath().getNameCount() == 0)
+						ext = "root" + id++;
+				}
 			}
 		}
 		return ext.toLowerCase();
@@ -79,7 +86,6 @@ public class SystemIconsHelper {
 
 		FileSystemView view = FileSystemView.getFileSystemView();
 		javax.swing.Icon icon = view.getSystemIcon(file);
-
 		return icon;
 	}
 

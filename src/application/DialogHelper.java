@@ -114,7 +114,15 @@ public class DialogHelper {
 		// e.printStackTrace(printWriter);
 		String exceptionText = printWriter.toString();
 		// System.out.println("this in dialog helper remove it later");
-		// e.printStackTrace();
+		e.printStackTrace();
 		showExpandableAlert(AlertType.ERROR, "Tracker Explorer", "Something went wrong", e.toString(), exceptionText);
+	}
+
+	public static void showPingDialog(String msg) {
+		showAlert(AlertType.INFORMATION, "Ping", msg, msg);
+	}
+
+	public static void showFileOperationBar() {
+
 	}
 }
