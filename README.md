@@ -4,11 +4,11 @@
 
 ### Table of Contents
 
-* [General Description](#General-Description)
+* [General Description](#general-description)
 * [Sketch Images](#sketch-images)
-* [Features](#Features)
-* [Search Usage](#Search-Usage)
-* [Keyboard Shortcuts](#Keyboard-Shortcuts)  
+* [Features](#features)
+* [Search Usage](#search-usage)
+* [Keyboard Shortcuts](#keyboard-shortcuts)  
 * [Fight The New Drug](#fight-the-new-drug)
 * [Quick Workflow for VLC Filtering Video](#fight-the-new-drug)
   * [Making Exclusion](#fight-the-new-drug)
