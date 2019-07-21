@@ -224,7 +224,7 @@ public class FileTracker {
 			// this is not the returned value it just to separate it this
 			// function is called using writeMap() easy access
 			boolean isEasy = DirtoTrack.equals(mWorkingDirPath);
-			WatchServiceHelper.setRuning(false);
+			// WatchServiceHelper.setRuning(false);
 
 			// to prevent forbidden access if split was send from recursive view writemap
 			boolean virtualSplitView = isVirtual();
@@ -271,7 +271,7 @@ public class FileTracker {
 			// from conflict parameter is to prevent call function that called this function
 			// and get loop
 			// refresh -> resolve conflict -> write map ..<<??
-			WatchServiceHelper.setRuning(true);
+			// WatchServiceHelper.setRuning(true);
 			return true;
 		} catch (IOException e) {
 			// DialogHelper.showException(e);
@@ -501,6 +501,7 @@ public class FileTracker {
 		} else {
 			// add untracked data folder here require listing dir again
 			File allFiles[] = Dirto.toFile().listFiles(file -> !file.isHidden());
+			// System.out.println("tracking for " + Dirto);
 			if (allFiles == null || allFiles.length == 0)
 				return;
 			List<File> dirList = Arrays.asList(allFiles);

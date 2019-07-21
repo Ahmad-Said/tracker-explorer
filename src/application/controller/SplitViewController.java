@@ -1,5 +1,6 @@
 package application.controller;
 
+import java.awt.HeadlessException;
 import java.io.File;
 import java.io.IOException;
 import java.net.URI;
@@ -21,8 +22,12 @@ import java.util.Set;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+
+import org.apache.commons.io.FilenameUtils;
 
 import application.DialogHelper;
 import application.FileHelper;
@@ -49,6 +54,7 @@ import javafx.scene.control.Button;
 import javafx.scene.control.CheckBox;
 import javafx.scene.control.ContextMenu;
 import javafx.scene.control.Label;
+import javafx.scene.control.MenuButton;
 import javafx.scene.control.MenuItem;
 import javafx.scene.control.SelectionMode;
 import javafx.scene.control.TableColumn;
@@ -57,12 +63,19 @@ import javafx.scene.control.TableView;
 import javafx.scene.control.TextField;
 import javafx.scene.control.ToggleButton;
 import javafx.scene.control.Tooltip;
+import javafx.scene.input.Clipboard;
+import javafx.scene.input.ClipboardContent;
+import javafx.scene.input.DataFormat;
+import javafx.scene.input.DragEvent;
+import javafx.scene.input.Dragboard;
 import javafx.scene.input.KeyCode;
 import javafx.scene.input.KeyCodeCombination;
 import javafx.scene.input.KeyCombination;
 import javafx.scene.input.KeyEvent;
 import javafx.scene.input.MouseButton;
+import javafx.scene.input.MouseEvent;
 import javafx.scene.input.ScrollEvent;
+import javafx.scene.input.TransferMode;
 import javafx.scene.layout.HBox;
 import javafx.util.Pair;
 
@@ -97,6 +110,7 @@ public class SplitViewController {
 	private CheckBox recursiveSearch;
 	private Label LabelItemsNumber;
 	private Button NavigateRecursive;
+	private MenuButton ToolsMenu;
 	private boolean isLeft;
 	// this always respect the path field pattern
 	// if anything goes wrong return to it
@@ -111,7 +125,8 @@ public class SplitViewController {
 			ObservableList<TableViewModel> dataTable, javafx.scene.control.TextField pathField, Button upButton,
 			javafx.scene.control.TextField searchFeild, Button clearButton, TableView<TableViewModel> table,
 			Button explorer, TableColumn<TableViewModel, HBox> hboxActions, Button backButton, Button nextButton,
-			TextField predictNavigation, CheckBox recursivesearch, Label labelItemsNumber, Button navigateRecursive) {
+			TextField predictNavigation, CheckBox recursivesearch, Label labelItemsNumber, Button navigateRecursive,
+			MenuButton toolsMenu) {
 		super();
 		// colIconTestResize=colIcon;
 		isLeft = isleft;
@@ -128,6 +143,7 @@ public class SplitViewController {
 		PredictNavigation = predictNavigation;
 		recursiveSearch = recursivesearch;
 		LabelItemsNumber = labelItemsNumber;
+		ToolsMenu = toolsMenu;
 		mDirectory = new File(path.toString());
 		truePathField = mDirectory.getAbsolutePath();
 		NavigateRecursive = navigateRecursive;
@@ -170,6 +186,11 @@ public class SplitViewController {
 
 	private void initializePathField() {
 		PathField.setStyle("-fx-font-size: 14px;");
+		PathField.focusedProperty().addListener((obs, wasFocused, isNowFocused) -> {
+			if (isNowFocused) {
+				Platform.runLater(() -> PathField.selectAll());
+			}
+		});
 		PathField.setOnAction(new EventHandler<ActionEvent>() {
 
 			@Override
@@ -222,12 +243,12 @@ public class SplitViewController {
 
 		Table.setOnKeyPressed(key -> {
 			String test = PredictNavigation.getText().trim();
+			TableViewModel lastSelectedTemp = Table.getSelectionModel().getSelectedItem();
 			switch (key.getCode()) {
 			case ENTER:
 				if (Table.isFocused()) {
-					TableViewModel temp = Table.getSelectionModel().getSelectedItem();
-					if (temp != null) // it may be table focused but not item selected
-						navigate(temp.getmFilePath());
+					if (lastSelectedTemp != null) // it may be table focused but not item selected
+						navigate(lastSelectedTemp.getmFilePath());
 				}
 				break;
 			case BACK_SPACE:
@@ -245,11 +266,10 @@ public class SplitViewController {
 			case SPACE:
 				// to do here if i make a selection using prediction do not make so
 				// always space do mark seen and auto enter space is enabled
-				TableViewModel temp = Table.getSelectionModel().getSelectedItem();
 				// if (!test.isEmpty())
 				// PredictNavigation.insertText(PredictNavigation.getText().length(), " ");
 				// else if (temp != null)
-				temp.getMarkSeen().fire();
+				lastSelectedTemp.getMarkSeen().fire();
 				break;
 			// leaved for navigation
 			case UP:
@@ -261,6 +281,8 @@ public class SplitViewController {
 					if (temppath == null)
 						break;
 					parentWelcome.SynctoLeft(temppath.toString());
+					if (!getSelectedItem().getmFilePath().toFile().isDirectory())
+						parentWelcome.getLeftView().NavigateForNameAndScrollto(lastSelectedTemp);
 				}
 				break;
 			case RIGHT:
@@ -269,6 +291,8 @@ public class SplitViewController {
 					if (temppath2 == null)
 						break;
 					parentWelcome.SynctoRight(temppath2.toString());
+					if (!getSelectedItem().getmFilePath().toFile().isDirectory())
+						parentWelcome.getRightView().NavigateForNameAndScrollto(lastSelectedTemp);
 				}
 				break;
 			case ESCAPE:
@@ -297,6 +321,70 @@ public class SplitViewController {
 				break;
 			}
 		});
+
+		// TODO handle drag and drop event
+		Table.setOnDragOver(new EventHandler<DragEvent>() {
+
+			@Override
+			public void handle(DragEvent event) {
+				if (event.getDragboard().hasFiles() || event.getDragboard().hasContent(DataFormat.URL)
+						|| event.getDragboard().hasString()) {
+					event.acceptTransferModes(TransferMode.ANY);
+				}
+			}
+		});
+		// https://stackoverflow.com/questions/32534113/javafx-drag-and-drop-a-file-into-a-program
+		Table.setOnDragDropped(new EventHandler<DragEvent>() {
+
+			@Override
+			public void handle(DragEvent event) {
+				Dragboard db = event.getDragboard();
+				if (db.hasFiles()) {
+					// TODO later resolve if drag and drop occure in same node
+					// temp solution:
+					List<Path> ToOperatePath = new ArrayList<>();
+					db.getFiles().forEach(file3 -> {
+						if (!file3.getParentFile().equals(mDirectory)) {
+							ToOperatePath.add(file3.toPath());
+						}
+					});
+					if (ToOperatePath.size() == 0) {
+						event.consume();
+						return;
+					}
+					FileHelper.move(ToOperatePath, getDirectoryPath());
+				} else if (db.hasContent(DataFormat.URL)) {
+					// handle url create shortcuts
+					System.out.println(db.getContent(DataFormat.URL));
+				} else if (db.hasContent(DataFormat.PLAIN_TEXT)) {
+					// trying to parse string as path
+					// also do on ctrl+ v action on table if has string url optional
+					try {
+						File test = new File(db.getContent(DataFormat.PLAIN_TEXT).toString());
+						setmDirectoryThenRefresh(test);
+					} catch (Exception e) {
+						// TODO: handle exception
+						DialogHelper.showException(e);
+					}
+				}
+			}
+		});
+
+		// on drag put selected files to drag Most PowerFull external application
+		// interaction
+		Table.setOnDragDetected(new EventHandler<MouseEvent>() {
+
+			@Override
+			public void handle(MouseEvent event) {
+				Dragboard db = Table.startDragAndDrop(TransferMode.ANY);
+				ClipboardContent cb = new ClipboardContent();
+				List<File> selectedFiles = new ArrayList<>();
+				getSelection().forEach(x -> selectedFiles.add(x.toFile()));
+				cb.putFiles(selectedFiles);
+				db.setContent(cb);
+			}
+		});
+
 		Table.addEventFilter(KeyEvent.KEY_RELEASED, e -> {
 			if (SHORTCUT_FOCUS_TEXT_FIELD.match(e)) {
 				PathField.requestFocus();
@@ -604,11 +692,13 @@ public class SplitViewController {
 		if (t == null)
 			return null;
 		if (!t.getmFilePath().toFile().isDirectory())
-			return t.getmFilePath();
+			return t.getmFilePath().getParent();
 		return t.getmFilePath();
 	}
 
 	private void initializeSplitButton() {
+
+		initializeToolsMenu();
 		NavigateRecursive.setVisible(false);
 
 		NavigateRecursive.setOnAction(new EventHandler<ActionEvent>() {
@@ -633,6 +723,16 @@ public class SplitViewController {
 			}
 		});
 
+		PathField.setOnDragDetected(new EventHandler<MouseEvent>() {
+
+			@Override
+			public void handle(MouseEvent event) {
+				Dragboard db = Table.startDragAndDrop(TransferMode.ANY);
+				ClipboardContent cb = new ClipboardContent();
+				cb.putString(mDirectory.toString());
+				db.setContent(cb);
+			}
+		});
 		BackButton.setDisable(true);
 		BackButton.setOnAction(new EventHandler<ActionEvent>() {
 
@@ -848,6 +948,7 @@ public class SplitViewController {
 			}
 		});
 		ClearButton.setOnMouseClicked(m -> {
+			PredictNavigation.setText("");
 			if (m.getButton().equals(MouseButton.PRIMARY) && m.getClickCount() == 2) {
 				resetForm();
 				m.consume();
@@ -860,6 +961,135 @@ public class SplitViewController {
 
 		ClearButton.setOnAction(e -> {
 			clearSearchFeild();
+		});
+	}
+
+	private void initializeToolsMenu() {
+		MenuItem copyBaseNames = new MenuItem("Copy Base Names");
+		MenuItem pasteBaseNames = new MenuItem("Paste Base Names");
+
+		ToolsMenu.getItems().add(copyBaseNames);
+		ToolsMenu.getItems().add(pasteBaseNames);
+
+		copyBaseNames.setOnAction(new EventHandler<ActionEvent>() {
+
+			/**
+			 * Check similar {@link FilterVLCController#getcopyRaw}
+			 */
+			@Override
+			public void handle(ActionEvent arg0) {
+				ObservableList<TableViewModel> toWorkWith = null;
+				String warningAlert = "";
+				if (Table.getSelectionModel().getSelectedItems().size() > 0) {
+					toWorkWith = Table.getSelectionModel().getSelectedItems();
+				} else {
+					toWorkWith = sortedData;
+					warningAlert = "- It's better To make a selection Source First from the Table!\n";
+				}
+
+				String myString = "";
+				for (TableViewModel t : toWorkWith) {
+					String item = FilenameUtils.getBaseName(t.getName()) + "\n";
+					myString += item;
+				}
+				Clipboard clipboard = Clipboard.getSystemClipboard();
+				ClipboardContent content = new ClipboardContent();
+				content.putString(myString);
+				clipboard.setContent(content);
+				DialogHelper.showExpandableAlert(AlertType.INFORMATION, "Copy Base Names",
+						"Content Copied Successfully to Clipboard\n-----   " + toWorkWith.size() + " ----- Items Added",
+						warningAlert + "Use it as you like with Paste Names Options!\nContent:", myString);
+			}
+		});
+
+		pasteBaseNames.setOnAction(new EventHandler<ActionEvent>() {
+
+			@Override
+			public void handle(ActionEvent arg0) {
+
+				boolean error = false;
+				tryBlock: try {
+					String myString = Clipboard.getSystemClipboard().getString();
+					if (myString == null) {
+						error = true;
+						break tryBlock;
+					}
+					String[] swapNames = myString.split("\n");
+
+					String fullAlertReport = "";
+					String warningAlert = "";
+					ObservableList<TableViewModel> toWorkWith = null;
+					if (Table.getSelectionModel().getSelectedItems().size() > 0) {
+						toWorkWith = Table.getSelectionModel().getSelectedItems();
+					} else {
+						toWorkWith = sortedData;
+						warningAlert = "\nIt's better To make a selection Target First from the Table!";
+					}
+					int i = 0;
+					List<String> toRenameWithFinal = new ArrayList<>();
+					for (TableViewModel t : toWorkWith) {
+						if (i < swapNames.length) {
+							String ext = FilenameUtils.getExtension(t.getName());
+							String report = "";
+							if (ext.length() > 0)
+								ext = "." + ext;
+							String finalName = swapNames[i] + ext;
+							// removing invalid character
+							finalName = finalName.replaceAll("[\\\\/:*?\"<>|\r]", "");
+							toRenameWithFinal.add(finalName);
+
+							report = "*R" + (i + 1) + "- " + t.getName() + " --> " + toRenameWithFinal.get(i) + "\n";
+							fullAlertReport += report;
+							i++;
+						} else {
+							warningAlert += "\nCount of Pasted Names does not match number of selected items!";
+							break;
+						}
+					}
+
+					boolean ans = DialogHelper.showExpandableConfirmationDialog("Paste Base Names",
+							"Preview Change" + warningAlert,
+							"Each Seperated line Name assigned to selection item in table order. \n", fullAlertReport);
+					if (ans) {
+						i = 0;
+						String sourceError = "";
+						String renameError = "";
+						for (TableViewModel t : toWorkWith) {
+							if (i < toRenameWithFinal.size()) {
+								try {
+									Files.move(t.getmFilePath(),
+											t.getmFilePath().resolveSibling(toRenameWithFinal.get(i)));
+								} catch (IOException e) {
+									sourceError += t.getmFilePath().getFileName() + "\n";
+									renameError += toRenameWithFinal.get(i) + "\n";
+									warningAlert += e.getClass() + ": " + e.getMessage() + "\n";
+									e.printStackTrace();
+								}
+								i++;
+							} else {
+								break;
+							}
+						}
+						if (!sourceError.isEmpty()) {
+							DialogHelper.showExpandableAlert(AlertType.ERROR, "Paste Base Names",
+									"Some Content were not renamed Successfully!",
+									"This may be caused by illegal character or redandant names in input clipboard. \n",
+									warningAlert + "\nSource File:\n" + sourceError + "\nRename expected:\n"
+											+ renameError);
+						}
+
+					}
+				} catch (HeadlessException e) {
+					e.printStackTrace();
+
+				}
+				if (error) {
+					DialogHelper.showTextInputDialog("Paste Raw Data", "Content Parse failed!",
+							"SomeThing went wrong,\nAre you Sure You have the Data,\n Try pasting it here to recheck\nReseting DataTable to initial value",
+							"Raw Data Here");
+				}
+
+			}
 		});
 	}
 
@@ -942,6 +1172,7 @@ public class SplitViewController {
 		// "This to make it faster a second time");
 		// Measure execution time for this method
 		Main.ProcessTitle("Please Wait .. It might Take long for the first time...Indexing...");
+		mWatchServiceHelper.setRuning(false);
 		/**
 		 * History data: 120130 Files Indexed in 122858 milliseconds! 120130 Files
 		 * Indexed in 116692 milliseconds!
@@ -1032,6 +1263,7 @@ public class SplitViewController {
 				});
 
 				finish = Instant.now();
+				mWatchServiceHelper.setRuning(true);
 
 				timeElapsed = Duration.between(start, finish).toMillis(); // in millis
 				msg = "Showing " + allthem.size() + " Files Indexed " + ((dosort) ? "of " + r.getFilesCount() : "")
@@ -1189,7 +1421,7 @@ public class SplitViewController {
 
 	/**
 	 * 
-	 * @param Pattern
+	 * @param searchPattern
 	 *            ';' to combine multiple search statement '!' to exclude from
 	 *            search
 	 * 
@@ -1198,9 +1430,9 @@ public class SplitViewController {
 	 * @param model
 	 * @return
 	 */
-	private boolean filterModel(String Pattern, TableViewModel model) {
+	private boolean filterModel(String searchPattern, TableViewModel model) {
 		// If filter text is empty, display all.
-		List<String> advancedFilter = Arrays.asList(Pattern.split(";"));
+		List<String> advancedFilter = Arrays.asList(searchPattern.split(";"));
 		boolean isRespect = true;
 		boolean state = true;
 		String modelName = model.getName().toLowerCase();
@@ -1240,6 +1472,43 @@ public class SplitViewController {
 				isRespect &= state; // filerItem unseen.
 			} else if (model.getMarkSeen().getText().equals("S") && "yes".toLowerCase().contains(lowerCasefilter)) {
 				isRespect &= state;// filerItem seen.
+			} else if (lowerCasefilter.startsWith("<") || lowerCasefilter.startsWith(">")) {
+				// https://stackoverflow.com/questions/2367381/how-to-extract-numbers-from-a-string-and-get-an-array-of-ints/2367418
+				int toComparewith = 10;
+				int firstIndexOfSearchNumber = 1;
+				boolean isEqualToo = false;
+				if (lowerCasefilter.length() > 1 && lowerCasefilter.startsWith("=", 1)) {
+					isEqualToo = true;
+					firstIndexOfSearchNumber = 2;
+
+				}
+				try {
+					toComparewith = Integer.parseInt(lowerCasefilter.substring(firstIndexOfSearchNumber));
+				} catch (Exception e) {
+				}
+				Pattern p = Pattern.compile("-?\\d+");
+				Matcher m = p.matcher(FilenameUtils.getBaseName(modelName));
+				boolean valid = false;
+				if (lowerCasefilter.startsWith("<")) {
+					while (m.find()) {
+						int nbTemp = Math.abs(Integer.parseInt(m.group()));
+						if (nbTemp < toComparewith || (isEqualToo && nbTemp == toComparewith)) {
+							valid = true;
+						}
+					}
+				} else {
+					while (m.find()) {
+						int nbTemp = Math.abs(Integer.parseInt(m.group()));
+						if (nbTemp > toComparewith || (isEqualToo && nbTemp == toComparewith)) {
+							valid = true;
+						}
+					}
+				}
+				if (valid) {
+					isRespect &= state;
+				} else {
+					isRespect &= !state;
+				}
 			} else
 				isRespect &= !state; // Does not match.
 
@@ -1749,6 +2018,10 @@ public class SplitViewController {
 	public void setPathFieldThenRefresh(String pathField) {
 		pathField = pathField.trim();
 		String test = pathField;
+		if (test.equals("cmd")) {
+			// system dependency
+			StringHelper.RunRuntimeProcess(new String[] { "cmd.exe", " /c start cd /d", mDirectory.toString() });
+		}
 		File file = new File(getQueryPathFromEmbed(pathField));
 
 		// Important see there is navigate is not just a boolean ::

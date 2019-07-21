@@ -6,19 +6,27 @@ import java.util.Optional;
 
 import org.jetbrains.annotations.Nullable;
 
+import javafx.application.Platform;
+import javafx.geometry.Insets;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Alert.AlertType;
+import javafx.scene.control.ButtonBar.ButtonData;
 import javafx.scene.control.ButtonType;
+import javafx.scene.control.Dialog;
+import javafx.scene.control.Label;
 import javafx.scene.control.TextArea;
+import javafx.scene.control.TextField;
 import javafx.scene.control.TextInputDialog;
 import javafx.scene.image.Image;
+import javafx.scene.layout.GridPane;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
+import javafx.util.Pair;
 
 public class DialogHelper {
 
-	public static void showAlert(AlertType alertType, String title, String header, String content) {
+	public static boolean showAlert(AlertType alertType, String title, String header, String content) {
 		Alert alert = new Alert(alertType);
 		alert.setTitle(title);
 		alert.setHeaderText(header);
@@ -31,7 +39,8 @@ public class DialogHelper {
 		Stage stage = (Stage) alert.getDialogPane().getScene().getWindow();
 		stage.getIcons().add(new Image(Main.class.getResourceAsStream("/img/icon.png")));
 
-		alert.showAndWait();
+		Optional<ButtonType> result = alert.showAndWait();
+		return result.isPresent() ? result.get() == ButtonType.OK : false;
 	}
 
 	public static void showExpandableAlert(AlertType alertType, String title, String header, String content,
@@ -105,6 +114,55 @@ public class DialogHelper {
 		stage.getIcons().add(new Image(Main.class.getResourceAsStream("/img/icon.png")));
 
 		Optional<String> result = dialog.showAndWait();
+		return result.isPresent() ? result.get() : null;
+	}
+
+	@Nullable
+	public static Pair<String, String> showTextInputDoubledDialog(String title, String header, String content,
+			String hint1, String hint2) {
+		// https://stackoverflow.com/questions/31556373/javafx-dialog-with-2-input-fields
+		// Create the custom dialog.
+		Dialog<Pair<String, String>> dialog = new Dialog<>();
+		dialog.setTitle(title);
+
+		Stage stage = (Stage) dialog.getDialogPane().getScene().getWindow();
+		stage.getIcons().add(new Image(Main.class.getResourceAsStream("/img/icon.png")));
+
+		// Set the button types.
+		ButtonType loginButtonType = new ButtonType("OK", ButtonData.OK_DONE);
+		dialog.getDialogPane().getButtonTypes().addAll(loginButtonType, ButtonType.CANCEL);
+
+		GridPane gridPane = new GridPane();
+		gridPane.setHgap(10);
+		gridPane.setVgap(10);
+		gridPane.setPadding(new Insets(20, 150, 10, 10));
+
+		TextField text1 = new TextField();
+		text1.setPromptText(hint1);
+		text1.setText(hint1);
+		TextField text2 = new TextField();
+		text2.setPromptText(hint2);
+		text2.setText(hint2);
+
+		gridPane.add(new Label("New Name:"), 0, 0);
+		gridPane.add(text1, 1, 0);
+		gridPane.add(new Label("."), 2, 0);
+		gridPane.add(text2, 3, 0);
+
+		dialog.getDialogPane().setContent(gridPane);
+
+		// Request focus on the username field by default.
+		Platform.runLater(() -> text1.requestFocus());
+
+		// Convert the result to a username-password-pair when the login button is
+		// clicked.
+		dialog.setResultConverter(dialogButton -> {
+			if (dialogButton == loginButtonType) {
+				return new Pair<>(text1.getText(), text2.getText());
+			}
+			return null;
+		});
+		Optional<Pair<String, String>> result = dialog.showAndWait();
 		return result.isPresent() ? result.get() : null;
 	}
 

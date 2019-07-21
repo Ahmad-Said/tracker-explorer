@@ -15,6 +15,7 @@ import java.util.List;
 import java.util.Stack;
 
 import org.apache.commons.io.FileUtils;
+import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 
 import application.controller.SplitViewController;
@@ -29,6 +30,7 @@ import javafx.geometry.Insets;
 import javafx.scene.Group;
 import javafx.scene.Scene;
 import javafx.scene.control.Alert;
+import javafx.scene.control.Alert.AlertType;
 import javafx.scene.control.Button;
 import javafx.scene.control.ProgressBar;
 import javafx.scene.control.ProgressIndicator;
@@ -41,6 +43,7 @@ import javafx.scene.text.Font;
 import javafx.scene.text.Text;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
+import javafx.util.Pair;
 
 public class FileHelper {
 
@@ -222,8 +225,12 @@ public class FileHelper {
 
 						} else if (Action.equals("Move")) {
 
-							Platform.runLater(() -> Main.ProcessTitle(
-									"Moving.." + srcPath.getFileName().toString() + " To " + targetDisplayText));
+							Platform.runLater(() -> {
+								btnControl.setText("Pause");
+								Main.ProcessTitle(
+										"Moving.." + srcPath.getFileName().toString() + " To " + targetDisplayText);
+
+							});
 							try {
 								if (sourceFile.isDirectory()) {
 									Files.createDirectories(targetPathResolved);
@@ -366,9 +373,10 @@ public class FileHelper {
 			if (asStarted && remaining != FilesCounts)
 				remaining += 0.5;
 			final double remaindisplayHelper = remaining;
-			Platform.runLater(
-					() -> Msg.setText(" (" + (remaindisplayHelper) + "/" + FilesCounts + ") " + ActionInContinuous + " "
-							+ SourceList.get(0).toFile().getName() + "\nTo " + TargetDirectory.toFile().getName()));
+			// defining this tempName here as when run later source may be empty!
+			String tempName = SourceList.get(0).toFile().getName();
+			Platform.runLater(() -> Msg.setText(" (" + (remaindisplayHelper) + "/" + FilesCounts + ") "
+					+ ActionInContinuous + " " + tempName + "\nTo " + TargetDirectory.toFile().getName()));
 			return remaining;
 		}
 
@@ -757,13 +765,30 @@ public class FileHelper {
 	}
 
 	public static Path rename(Path source, boolean silentFix) {
-		String name;
-		if (!silentFix)
-			name = DialogHelper.showTextInputDialog("Rename", null, "Enter New Name", source.getFileName().toString());
-		else
-			name = StringHelper.FixNameEncoding(source.toFile().getName());
-		if (name != null) {
-			Path target = source.getParent().resolve(name);
+		String newName;
+		if (!silentFix) {
+			String OriginalName = source.getFileName().toString();
+			if (source.toFile().isDirectory()) {
+				newName = DialogHelper.showTextInputDialog("Rename", null, "Enter New Name",
+						source.getFileName().toString());
+			} else {
+				Pair<String, String> NameExt = DialogHelper.showTextInputDoubledDialog("Rename", null, "Enter New Name",
+						FilenameUtils.getBaseName(OriginalName), FilenameUtils.getExtension(OriginalName));
+				if (NameExt == null) {
+					return null;
+				} else {
+					if (NameExt.getKey().isEmpty()) {
+						DialogHelper.showAlert(AlertType.ERROR, "Rename", "Name Cannot be empty!",
+								"Please Enter a valid name");
+						return rename(source, silentFix);
+					}
+				}
+				newName = NameExt.getKey() + ((!NameExt.getValue().isEmpty()) ? "." + NameExt.getValue() : "");
+			}
+		} else
+			newName = StringHelper.FixNameEncoding(source.toFile().getName());
+		if (newName != null && !newName.isEmpty()) {
+			Path target = source.getParent().resolve(newName);
 			try {
 				// System.out.println("name is " + source.toString());
 				// System.out.println("target is "+ target);

@@ -27,7 +27,7 @@ public class Setting {
 	// this things are temporary solution later will use :
 	// lightbend refrence.conf see testimagewthatable project
 	// these initial definition are even if not initialized
-	private static String Version = "2.0";
+	private static String Version = "2.1";
 	private static Boolean BackSync = false;
 	private static Boolean AutoExpand = true;
 	private static Boolean LoadAllIcon = true;
@@ -55,7 +55,7 @@ public class Setting {
 			System.getenv("APPDATA") + "\\Tracker Explorer\\TrackerExplorerSetting.txt");
 
 	public static void initializeSetting() {
-		Version = "2.0";
+		Version = "2.1";
 		BackSync = false;
 		AutoExpand = true;
 		LoadAllIcon = true;
@@ -148,39 +148,39 @@ public class Setting {
 			e.printStackTrace();
 		}
 		// those assuming they are in order
-		// very bad as same as quicly on the go just for now
+		// very bad as same as quickly on the go just for now
 		for (String key : mapOptions.keySet()) {
 			String value = mapOptions.get(key);
 			if (value != null && !value.equals("null")) {
-				if (key.equals("Version"))
-					Version = value;
+				// always overwrite version
+				// if (key.equals("Version"))
+				// Version = value;
 				if (key.equals("VLCHttpPass"))
 					setVLCHttpPass(value);
-				if (key.equals("VLCPath"))
+				else if (key.equals("VLCPath"))
 					setVLCPath(value);
-				if (key.equals("BackSync"))
+				else if (key.equals("BackSync"))
 					BackSync = Boolean.parseBoolean(value);
-				if (key.equals("AutoExpand"))
+				else if (key.equals("AutoExpand"))
 					AutoExpand = Boolean.parseBoolean(value);
-				if (key.equalsIgnoreCase("LoadAllIcon"))
+				else if (key.equalsIgnoreCase("LoadAllIcon"))
 					LoadAllIcon = Boolean.parseBoolean(value);
-				if (key.equalsIgnoreCase("ShowLeftNotesColumn"))
+				else if (key.equalsIgnoreCase("ShowLeftNotesColumn"))
 					ShowLeftNotesColumn = Boolean.parseBoolean(value);
-				if (key.equalsIgnoreCase("ShowRightNotesColumn"))
+				else if (key.equalsIgnoreCase("ShowRightNotesColumn"))
 					ShowRightNotesColumn = Boolean.parseBoolean(value);
-				if (key.equals("MaxLimitFilesRecursive"))
+				else if (key.equals("MaxLimitFilesRecursive"))
 					MaxLimitFilesRecursive = Integer.parseInt(value);
-				if (key.equals("LeftLastKnowLocation"))
+				else if (key.equals("LeftLastKnowLocation"))
 					LeftLastKnowLocation = Paths.get(URI.create(value));
-				if (key.equals("RightLastKnowLocation"))
+				else if (key.equals("RightLastKnowLocation"))
 					RightLastKnowLocation = Paths.get(URI.create(value));
-				if (key.equals("ActiveUser"))
+				else if (key.equals("ActiveUser"))
 					ActiveUser = value;
-				if (key.equals("UserNames")) {
+				else if (key.equals("UserNames")) {
 					UserNames.clear();
 					UserNames.addAll(Arrays.asList(value.split(";")));
-				}
-				if (key.equals("FavoritesLocations"))
+				} else if (key.equals("FavoritesLocations"))
 					FavoritesLocations.addAll(Arrays.asList(value.split(";")).stream().map(s -> {
 						return Paths.get(URI.create(s));
 					}).collect(Collectors.toList()));

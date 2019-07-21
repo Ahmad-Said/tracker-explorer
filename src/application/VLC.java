@@ -1,9 +1,11 @@
 package application;
 
 import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.PrintStream;
+import java.io.OutputStreamWriter;
 import java.net.URI;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
@@ -27,7 +29,7 @@ public class VLC {
 
 	private static ArrayList<String> ArrayVideoExt = new ArrayList<String>(
 			Arrays.asList("3GP", "ASF", "AVI", "DVR-MS", "FLV", "MKV", "MIDI", "MP4", "Ogg", "OGM", "WAV", "MPEG-2",
-					"MXF", "VOB", "RM", "Blu-ray", "DVD-Video", "VCD", "SVCD", "DVB", "HEIF", "AVIF", "WMV"));
+					"MXF", "VOB", "RM", "Blu-ray", "DVD-Video", "VCD", "SVCD", "DVB", "HEIF", "AVIF", "WMV", "TS"));
 
 	private static ArrayList<String> ArrayAudioExt = new ArrayList<String>(
 			Arrays.asList("AAC", "AC3", "ALAC", "AMR", "DTS", "DVAudio", "XM", "FLAC", "It", "MACE", "MOD", "MP3",
@@ -147,21 +149,21 @@ public class VLC {
 				mediaLocation = path.toUri().toString();
 			} else // this to generate the file next to media
 			{
-				WatchServiceHelper.setRuning(false); // prevent overload
+				// WatchServiceHelper.setRuning(false); // prevent overload
 				String name = mediaName.replace(SystemIconsHelper.getFileExt(path.toString()), "[Filtered].xspf");
 				tempFile = path.getParent().resolve(name).toFile();
 				mediaLocation = path.toUri().toString().substring((path.toUri().toString().lastIndexOf('/') + 1));
 			}
 			if (tempFile.exists())
 				tempFile.delete();
-			PrintStream p = new PrintStream(tempFile);
+			OutputStreamWriter p = new OutputStreamWriter(new FileOutputStream(tempFile), StandardCharsets.UTF_8);
 			// initialize things: template
 			String initi = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\r\n" + "<playlist version=\"1\" \r\n"
 					+ "    xmlns=\"http://xspf.org/ns/0/\" \r\n"
 					+ "    xmlns:vlc=\"http://www.videolan.org/vlc/playlist/ns/0/\">\r\n" + "    <title>" + mediaName
 					+ " Filtred" + " </title>\r\n" + "    <trackList>";
 			int id = 1;
-			p.println(initi);
+			p.write(initi + "\n\r");
 			if (list.get(0).getStart() != 0 && isfirst) {
 				// the first condition to prevent opening windows twice and
 				// closing it if user want to skip some intro
@@ -170,11 +172,11 @@ public class VLC {
 				int gasp = 0;
 				if (notifyEnd && list.get(0).getStart() > 20)
 					gasp = 10;
-				p.println(getVLCxspf("Scene 00: " + mediaName + " [Filtered]", mediaLocation, id++, 0,
-						list.get(0).getStart() - gasp));
+				p.write(getVLCxspf("Scene 00: " + mediaName + " [Filtered]", mediaLocation, id++, 0,
+						list.get(0).getStart() - gasp) + "\n\r");
 				if (gasp != 0)
-					p.println(getVLCxspf("End Scene 00", mediaLocation, id++, list.get(0).getStart() - gasp,
-							list.get(0).getStart()));
+					p.write(getVLCxspf("End Scene 00", mediaLocation, id++, list.get(0).getStart() - gasp,
+							list.get(0).getStart()) + "\n\r");
 			}
 
 			for (int i = 0; i < list.size(); i++) {
@@ -186,26 +188,27 @@ public class VLC {
 					int gasp = 0;
 					if (notifyEnd && list.get(i + 1).getStart() - list.get(i).getEnd() > 20)
 						gasp = 10;
-					p.println(getVLCxspf(list.get(i).getTitle(), mediaLocation, id++, list.get(i).getEnd(),
-							list.get(i + 1).getStart() - gasp));
+					p.write(getVLCxspf(list.get(i).getTitle(), mediaLocation, id++, list.get(i).getEnd(),
+							list.get(i + 1).getStart() - gasp) + "\n\r");
 					if (gasp != 0)
-						p.println(getVLCxspf("End " + list.get(i).getTitle().substring(0, 8), mediaLocation, id++,
-								list.get(i + 1).getStart() - gasp, list.get(i + 1).getStart()));
+						p.write(getVLCxspf("End " + list.get(i).getTitle().substring(0, 8), mediaLocation, id++,
+								list.get(i + 1).getStart() - gasp, list.get(i + 1).getStart()) + "\n\r");
 				} else // this is that last cut
 				{
 
-					p.println(getVLCxspf(list.get(i).getTitle().replace("Scene", "Last Scene"), mediaLocation, id++,
-							list.get(i).getEnd(), 0));
+					p.write(getVLCxspf(list.get(i).getTitle().replace("Scene", "Last Scene"), mediaLocation, id++,
+							list.get(i).getEnd(), 0) + "\n\r");
 				}
 
 			}
-			p.println("    </trackList>\r\n" + "</playlist>");
+			p.write("    </trackList>\r\n" + "</playlist>" + "\n\r");
 			p.close();
 			if (isFullPath) {
 				startXSPF(tempFile.toPath());
 				tempFile.deleteOnExit();
-			} else
-				WatchServiceHelper.setRuning(true); // </prevent overload
+			}
+			// else
+			// WatchServiceHelper.setRuning(true); // </prevent overload
 		} catch (IOException e) {
 			// e.printStackTrace();
 		}

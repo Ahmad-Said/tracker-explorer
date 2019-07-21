@@ -16,7 +16,7 @@ public class WatchServiceHelper {
 	private WatchService mWatchService;
 	private WatchKey mWatchKey;
 	private volatile Thread mWatchThread;
-	private static boolean isRuning = true;
+	private boolean isRuning = true;
 	private SplitViewController SplitView;
 	private Path mCurrentDirectory;
 
@@ -83,7 +83,7 @@ public class WatchServiceHelper {
 		Platform.runLater(() -> SplitView.refreshAsPathField());
 	}
 
-	public static boolean isRuning() {
+	public boolean isRuning() {
 		return isRuning;
 	}
 
@@ -98,8 +98,8 @@ public class WatchServiceHelper {
 	 * 
 	 * @param isRuning
 	 */
-	public static void setRuning(boolean isRuning) {
-		WatchServiceHelper.isRuning = isRuning;
+	public void setRuning(boolean isRuning) {
+		this.isRuning = isRuning;
 	}
 
 }

@@ -27,6 +27,7 @@ import javafx.stage.WindowEvent;
 public class Main extends Application {
 	static final KeyCombination SHORTCUT_COPY = new KeyCodeCombination(KeyCode.C, KeyCombination.CONTROL_DOWN);
 	static final KeyCombination SHORTCUT_MOVE = new KeyCodeCombination(KeyCode.X, KeyCombination.CONTROL_DOWN);
+	static final KeyCombination SHORTCUT_OPEN_FAVORITE = new KeyCodeCombination(KeyCode.O, KeyCombination.CONTROL_DOWN);
 	public static final KeyCombination SHORTCUT_DELETE = new KeyCodeCombination(KeyCode.DELETE);
 	public static final KeyCombination SHORTCUT_NEW_FILE = new KeyCodeCombination(KeyCode.N,
 			KeyCombination.SHORTCUT_DOWN);
@@ -87,6 +88,9 @@ public class Main extends Application {
 				mWelcomeController.copy();
 			} else if (SHORTCUT_MOVE.match(e)) {
 				mWelcomeController.move();
+			} else if (SHORTCUT_OPEN_FAVORITE.match(e)) {
+				mWelcomeController.getToggleFavorite().fire();
+				mWelcomeController.getToggleFavorite().requestFocus();
 			} else if (SHORTCUT_FOCUS_VIEW.match(e)) {
 				mWelcomeController.focus_VIEW();
 			} else if (SHORTCUT_FOCUS_SWITCH_VIEW.match(e) || SHORTCUT_EASY_FOCUS_SWITCH_VIEW.match(e)) {
@@ -209,8 +213,12 @@ public class Main extends Application {
 		return PrimaryStage.getTitle();
 	}
 
-	// about deploying as package independant check this :
+	// about deploying as package independent check this :
+	// create an environment variable like this
+	// JAVA_HOME = C:\Program Files\Java\jdk1.8.0_211
+	// https://stackoverflow.com/questions/24840414/javafx-build-failed
 	// https://code.makery.ch/library/javafx-tutorial/part7/
+	// if error encountered get older version of InnoSetup
 	// about icon
 	// https://github.com/BilledTrain380/javafx-gradle-plugin/blob/648acafa7198e9bd7cf1a2ef933456ce5e0b65f9/README.md#customize-icons
 }

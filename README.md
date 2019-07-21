@@ -52,8 +52,9 @@ Menu Tracker Options
 * Auto expand on click directory to right view on click
 * Full keyboard Navigation support
 * MultiUser Mode with without restriction
-* Windows Context menu support (open Tracker here)
+* Windows Context menu upon right click
 * Recursive Tacker/Cleaner so you don't do things over and over
+* Recursive view so you see all files and folder all together in no time!
 * Conflict Log State to show New and Deleted/Moved items from the last state
 
 ***
@@ -164,7 +165,7 @@ Other wise the forward of the media is supported using normal controls.
 * Hold Shift or Ctrl to make various Selection
 * Do you know Search also search your notes
 * Click on the plus mark on the table header to display note column
-
+* Quick copy note: make a selection -> then click on source note button -> ok! you're done
   ***
 
 * Advanced

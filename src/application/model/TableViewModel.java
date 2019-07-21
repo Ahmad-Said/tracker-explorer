@@ -5,6 +5,7 @@ import java.nio.file.Path;
 import application.SystemIconsHelper;
 import application.VLC;
 import application.controller.SplitViewController;
+import javafx.beans.property.SimpleDoubleProperty;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.scene.control.Button;
 import javafx.scene.control.ToggleButton;
@@ -23,6 +24,7 @@ public class TableViewModel {
 	// all elements used in view property table must have
 	// getters and setters generate them with source !
 	private SimpleStringProperty NoteText;
+	private SimpleDoubleProperty FileSize;
 	private ImageView imgIcon;
 	private SimpleStringProperty Name;
 	private HBox hboxActions;
@@ -39,7 +41,7 @@ public class TableViewModel {
 		// hboxActions = new HBox(10,MarkSeen); give error !!
 		hboxActions = new HBox();
 		mFilePath = path;
-
+		setFileSize(new SimpleDoubleProperty(path.toFile().length() / 1024.0 / 1024.0));
 		// testing
 		mNoteButton = new Button();
 		MarkSeen = new ToggleButton();
@@ -239,6 +241,21 @@ public class TableViewModel {
 
 	public void setName(String name) {
 		Name = new SimpleStringProperty(name);
+	}
+
+	/**
+	 * @return the fileSize
+	 */
+	public double getFileSize() {
+		return FileSize.get();
+	}
+
+	/**
+	 * @param fileSize
+	 *            the fileSize to set
+	 */
+	public void setFileSize(SimpleDoubleProperty fileSize) {
+		FileSize = fileSize;
 	}
 
 }

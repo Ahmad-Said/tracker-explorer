@@ -34,7 +34,6 @@ import application.Main;
 import application.RecursiveFileWalker;
 import application.StringHelper;
 import application.VLC;
-import application.WatchServiceHelper;
 import application.model.Setting;
 import application.model.TableViewModel;
 import javafx.application.Platform;
@@ -65,6 +64,18 @@ import javafx.stage.FileChooser;
 import javafx.util.Duration;
 
 public class WelcomeController implements Initializable {
+
+	@FXML
+	private TableColumn<TableViewModel, Double> rightSize;
+
+	@FXML
+	private TableColumn<TableViewModel, Double> leftSize;
+
+	@FXML
+	private MenuButton leftToolsMenu;
+
+	@FXML
+	private MenuButton rightToolsMenu;
 
 	@FXML
 	private Button rightNavigateRecursive;
@@ -264,18 +275,22 @@ public class WelcomeController implements Initializable {
 			leftName.setCellValueFactory(new PropertyValueFactory<TableViewModel, String>("Name"));
 			lefthboxActions.setCellValueFactory(new PropertyValueFactory<TableViewModel, HBox>("hboxActions"));
 			leftIcon.setCellValueFactory(new PropertyValueFactory<TableViewModel, ImageView>("imgIcon"));
+			leftSize.setCellValueFactory(new PropertyValueFactory<TableViewModel, Double>("FileSize"));
 
 			rightNote.setCellValueFactory(new PropertyValueFactory<TableViewModel, String>("NoteText"));
 			rightName.setCellValueFactory(new PropertyValueFactory<TableViewModel, String>("Name"));
 			righthboxActions.setCellValueFactory(new PropertyValueFactory<TableViewModel, HBox>("hboxActions"));
 			rightIcon.setCellValueFactory(new PropertyValueFactory<TableViewModel, ImageView>("imgIcon"));
+			rightSize.setCellValueFactory(new PropertyValueFactory<TableViewModel, Double>("FileSize"));
+
 			leftView = new SplitViewController(StringHelper.InitialLeftPath, true, this, leftDataTable, leftPathInput,
 					leftUp, leftSearchField, leftSearchButton, leftTable, leftExplorer, lefthboxActions, leftBack,
-					leftNext, leftPredictNavigation, leftRecusiveSearch, leftLabelItemsNumber, leftNavigateRecursive);
+					leftNext, leftPredictNavigation, leftRecusiveSearch, leftLabelItemsNumber, leftNavigateRecursive,
+					leftToolsMenu);
 			rightView = new SplitViewController(StringHelper.InitialRightPath, false, this, rightDataTable,
 					rightPathInput, rightUp, rightSearchField, rightSearchButton, rightTable, rightExplorer,
 					righthboxActions, rightBack, rightNext, rightPredictNavigation, rightRecusiveSearch,
-					rightLabelItemsNumber, rightNavigateRecursive);
+					rightLabelItemsNumber, rightNavigateRecursive, rightToolsMenu);
 			// leftView.getPathField().setOnAction(e ->
 			// onTextEntered(leftView.getPathField()));
 			// rightView.getPathField().setOnAction(e ->
@@ -473,7 +488,6 @@ public class WelcomeController implements Initializable {
 				if (user == null)
 					return;
 
-				WatchServiceHelper.setRuning(false);
 				Path dir = leftView.getDirectoryPath();
 				StringHelper.setTemp(depth);
 				Thread cleanerThread = new Thread() {
@@ -489,7 +503,6 @@ public class WelcomeController implements Initializable {
 
 							// Main.ResetTitle();
 							Platform.runLater(() -> refreshBothViews(null));
-							WatchServiceHelper.setRuning(true);
 						} catch (IOException e) {
 							// e.printStackTrace();
 						}
@@ -512,7 +525,7 @@ public class WelcomeController implements Initializable {
 		 * Set up helpMenu
 		 */
 		aboutMenuItem.setOnAction(e -> DialogHelper.showAlert(Alert.AlertType.INFORMATION, "About", null,
-				"Tracker Explorer v2.0\n\n" + "Copyright © 2019 by Ahmad Said"));
+				"Tracker Explorer v2.1\n\n" + "Copyright © 2019 by Ahmad Said"));
 	}
 
 	protected void ChangeLimitFilesRecursiveAction() {
@@ -639,6 +652,10 @@ public class WelcomeController implements Initializable {
 		updateFavoriteCheckBox(false);
 	}
 
+	public MenuButton getToggleFavorite() {
+		return FavoritesLocations;
+	}
+
 	private Map<Path, MenuItem> allMenuFavoriteLocation = new HashMap<Path, MenuItem>();
 
 	private void AddandPriorizethisMenu(Path path) {
@@ -708,13 +725,13 @@ public class WelcomeController implements Initializable {
 	@FXML
 	public void copy() {
 		// WatchServiceHelper.setRuning(false);
-		if (leftView.isFocused()) {
+		if (leftView.isFocusedTable()) {
 			List<Path> source = leftView.getSelection();
 			Path target = rightView.getDirectoryPath();
 			FileHelper.copy(source, target);
 			// rightView.getMfileTracker().OperationUpdate(source,
 			// leftView.getMfileTracker(), "copy");
-		} else if (rightView.isFocused()) {
+		} else if (rightView.isFocusedTable()) {
 			List<Path> source = rightView.getSelection();
 			Path target = leftView.getDirectoryPath();
 			FileHelper.copy(source, target);
@@ -727,13 +744,13 @@ public class WelcomeController implements Initializable {
 	@FXML
 	public void move() {
 		// WatchServiceHelper.setRuning(false);
-		if (leftView.isFocused()) {
+		if (leftView.isFocusedTable()) {
 			List<Path> source = leftView.getSelection();
 			Path target = rightView.getDirectoryPath();
 			FileHelper.move(source, target);
 			// rightView.getMfileTracker().OperationUpdate(source,
 			// leftView.getMfileTracker(), "move");
-		} else if (rightView.isFocused()) {
+		} else if (rightView.isFocusedTable()) {
 			List<Path> source = rightView.getSelection();
 			Path target = leftView.getDirectoryPath();
 			FileHelper.move(source, target);
@@ -1006,7 +1023,6 @@ public class WelcomeController implements Initializable {
 		}
 		StringHelper.setTemp(depth);
 		Path dir = leftView.getDirectoryPath();
-		WatchServiceHelper.setRuning(false);
 		Thread trackerThread = new Thread() {
 			public void run() {
 				try {
@@ -1017,7 +1033,6 @@ public class WelcomeController implements Initializable {
 						leftView.getMfileTracker().NewOutFolder(p);
 					});
 					Platform.runLater(() -> refreshBothViews(null));
-					WatchServiceHelper.setRuning(true);
 				} catch (IOException e) {
 					// e.printStackTrace();
 				}
@@ -1124,19 +1139,53 @@ public class WelcomeController implements Initializable {
 
 	@FXML
 	void GetVLC(ActionEvent event) {
-		try {
-			Desktop.getDesktop().browse(new URL("https://www.videolan.org/vlc").toURI());
-		} catch (IOException | URISyntaxException e) {
-			// e.printStackTrace();
+		boolean openIt = DialogHelper.showAlert(AlertType.INFORMATION, "Get VLC", "VLC Media Player: Watch Like A Pro",
+				"Simple, fast and powerful!\n" + "That's what make VLC most famous media player:"
+						+ "\n - Plays everything," + "\n - Completely Free with no ads!" + "\n ... and much more!"
+						+ "\nFor a proper use just select Media Files" + " and hit Enter!."
+						+ "\nA link to the tool will open now in browser.");
+		if (openIt) {
+			try {
+				Desktop.getDesktop().browse(new URL("https://www.videolan.org/vlc").toURI());
+			} catch (IOException | URISyntaxException e) {
+				// e.printStackTrace();
+			}
 		}
 	}
 
 	@FXML
 	void GetMp3Tag(ActionEvent event) {
-		try {
-			Desktop.getDesktop().browse(new URL("https://www.mp3tag.de/en/").toURI());
-		} catch (IOException | URISyntaxException e) {
-			// e.printStackTrace();
+		boolean openIt = DialogHelper.showAlert(AlertType.INFORMATION, "Get Mp3 Tag", "Mp3 Tag: Tag Like A Pro",
+				"Mp3tag is a powerful and easy-to-use tool to edit metadata of audio files:"
+						+ " batch tag-editing, Export to HTML, RTF, CSV.. and much more!"
+						+ "\nFor a proper use you can select Files"
+						+ " from view, Drag and drop them in Mp3 Tag, or just right click media files!."
+						+ "\nA link to the tool will open now in browser.");
+		if (openIt) {
+
+			try {
+				Desktop.getDesktop().browse(new URL("https://www.mp3tag.de/en/").toURI());
+			} catch (IOException | URISyntaxException e) {
+				// e.printStackTrace();
+			}
+		}
+	}
+
+	@FXML
+	void GetBulkRenameUtility(ActionEvent event) {
+		boolean openIt = DialogHelper.showAlert(AlertType.INFORMATION, "Get Bulk Rename Utility",
+				"Bulk Rename Utility: Rename Like A Pro",
+				"Bulk Rename Utility is a tool to rename multiple files"
+						+ " together like inserting a prefix to 50 files in one"
+						+ " click and much more!\nFor a proper use select Files"
+						+ " from view, Drag and drop them in Bulk Rename Utility view." + " See more at their website.."
+						+ "\nA link to the tool will open now in browser.");
+		if (openIt) {
+			try {
+				Desktop.getDesktop().browse(new URL("https://www.bulkrenameutility.co.uk").toURI());
+			} catch (IOException | URISyntaxException e) {
+				// e.printStackTrace();
+			}
 		}
 	}
 
@@ -1291,6 +1340,14 @@ public class WelcomeController implements Initializable {
 		FavoritesLocations.setDisable(state);
 		TrackerMenu.setDisable(state);
 
+	}
+
+	public SplitViewController getLeftView() {
+		return leftView;
+	}
+
+	public SplitViewController getRightView() {
+		return rightView;
 	}
 
 }

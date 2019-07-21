@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
+<?import javafx.scene.effect.*?>
 <?import javafx.scene.image.*?>
 <?import javafx.scene.*?>
 <?import javafx.scene.media.*?>
@@ -39,6 +40,7 @@
                   <MenuItem mnemonicParsing="false" onAction="#ControlVLCAndroid" text="Android Remote App" />
                   <MenuItem mnemonicParsing="false" onAction="#ControlVLCIOS" text="IOS Remote App" />
                   <MenuItem mnemonicParsing="false" onAction="#GetMp3Tag" text="Get Mp3Tag" />
+                  <MenuItem mnemonicParsing="false" onAction="#GetBulkRenameUtility" text="Get Bulk Rename Utility" />
             </items>
           </Menu>
             <Menu fx:id="helpMenu" mnemonicParsing="false" text="Help">
@@ -69,6 +71,7 @@
                 <TableColumn fx:id="leftIcon" maxWidth="500.0" minWidth="26.0" prefWidth="23.0" resizable="false" />
                 <TableColumn fx:id="leftName" maxWidth="1.7976931348623157E308" minWidth="-Infinity" prefWidth="267.0" text="Name" />
                   <TableColumn fx:id="leftNote" maxWidth="1.7976931348623157E308" minWidth="75.0" prefWidth="-1.0" text="Notes" visible="false" />
+                  <TableColumn fx:id="leftSize" maxWidth="1.7976931348623157E308" minWidth="75.0" prefWidth="-1.0" text="Size(MB)" visible="false" />
                   <TableColumn fx:id="lefthboxActions" maxWidth="200.0" minWidth="100.0" prefWidth="105.0" text="Action" />
               </columns>
                <GridPane.margin>
@@ -78,9 +81,9 @@
                   <TableView fx:constant="CONSTRAINED_RESIZE_POLICY" />
                </columnResizePolicy>
             </TableView>
-            <TextField fx:id="leftPathInput" GridPane.halignment="RIGHT" GridPane.rowIndex="1">
+            <TextField fx:id="leftPathInput" alignment="TOP_LEFT" GridPane.halignment="RIGHT" GridPane.rowIndex="1">
                <GridPane.margin>
-                  <Insets left="130.0" right="10.0" />
+                  <Insets left="130.0" right="43.0" />
                </GridPane.margin></TextField>
             <Button fx:id="leftBack" alignment="CENTER" mnemonicParsing="false" text="&lt;&lt;" GridPane.halignment="LEFT" GridPane.rowIndex="1">
                <GridPane.margin>
@@ -116,15 +119,16 @@
                   <TableColumn fx:id="rightIcon" editable="false" maxWidth="500.0" minWidth="26.0" prefWidth="20.0" resizable="false" sortable="false" />
                   <TableColumn fx:id="rightName" maxWidth="1.7976931348623157E308" minWidth="-Infinity" prefWidth="292.0" text="Name" />
                   <TableColumn fx:id="rightNote" maxWidth="1.7976931348623157E308" minWidth="75.0" prefWidth="-1.0" text="Notes" visible="false" />
+                  <TableColumn fx:id="rightSize" maxWidth="1.7976931348623157E308" minWidth="75.0" prefWidth="-1.0" text="Size(MB)" visible="false" />
                   <TableColumn fx:id="righthboxActions" maxWidth="200.0" minWidth="100.0" prefWidth="100.0" text="Action" />
                </columns>
                <GridPane.margin>
                   <Insets bottom="5.0" right="10.0" />
                </GridPane.margin>
             </TableView>
-            <TextField fx:id="rightPathInput" layoutX="85.0" layoutY="104.0" GridPane.columnIndex="1" GridPane.rowIndex="1">
+            <TextField fx:id="rightPathInput" alignment="TOP_LEFT" layoutX="85.0" layoutY="104.0" GridPane.columnIndex="1" GridPane.rowIndex="1">
                <GridPane.margin>
-                  <Insets left="130.0" right="10.0" />
+                  <Insets left="130.0" right="43.0" />
                </GridPane.margin>
             </TextField>
             <Button fx:id="rightUp" alignment="CENTER" mnemonicParsing="false" text="Up" GridPane.columnIndex="1" GridPane.rowIndex="1">
@@ -258,6 +262,26 @@
                   <Insets left="290.0" top="50.0" />
                </GridPane.margin>
             </CheckBox>
+            <MenuButton fx:id="leftToolsMenu" alignment="CENTER_RIGHT" mnemonicParsing="false" prefHeight="31.0" prefWidth="28.0" GridPane.halignment="RIGHT" GridPane.rowIndex="1">
+               <GridPane.margin>
+                  <Insets right="10.0" />
+               </GridPane.margin>
+               <styleClass>
+                  <String fx:value="first" />
+                  <String fx:value="btn" />
+                  <String fx:value="last" />
+               </styleClass>
+            </MenuButton>
+            <MenuButton fx:id="rightToolsMenu" alignment="CENTER_RIGHT" mnemonicParsing="false" prefHeight="31.0" prefWidth="28.0" GridPane.columnIndex="1" GridPane.halignment="RIGHT" GridPane.rowIndex="1">
+               <GridPane.margin>
+                  <Insets right="10.0" />
+               </GridPane.margin>
+               <styleClass>
+                  <String fx:value="first" />
+                  <String fx:value="last" />
+                  <String fx:value="btn" />
+               </styleClass>
+            </MenuButton>
          </children>
       </GridPane>
    </center>

@@ -522,13 +522,14 @@ public class FilterVLCController {
 	@FXML
 	public void pasteRaw() {
 		boolean error = false;
-		try {
+		// https://stackoverflow.com/questions/6534072/how-can-i-break-from-a-try-catch-block-without-throwing-an-exception-in-java
+		tryBlock: try {
 			// String myString = (String) Toolkit.getDefaultToolkit().getSystemClipboard()
 			// .getData(DataFlavor.stringFlavor);
 			String myString = Clipboard.getSystemClipboard().getString();
 			if (myString == null) {
 				error = true;
-				return;
+				break tryBlock;
 			}
 
 			List<String> options = Arrays.asList(myString.split(">"));
