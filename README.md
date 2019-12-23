@@ -35,6 +35,10 @@ Menu Tracker Options
 
 ![Menu](https://i.imgur.com/kPYkr29.png)
 
+Rename Utility
+
+![Rename](https://i.imgur.com/u14ncbx.png)
+
 Photo Explorer
 
 ![Photo](https://i.imgur.com/mECgVA8.png)
@@ -74,7 +78,7 @@ Note: you can right click on 'clear' button so it roll showing these options als
 | ; | combine multiple search statement (and) |
 | ;! | exclude from search (not) |
 | ;\| | make another search ignoring previous (or) |
-| < | # operator to make comparison with numbers |
+| < | operator (<,>,=) to make comparison with numbers within text |
 |||
 |Reserved keywords | |
 | vlc | show all media supported by vlc |
@@ -130,20 +134,27 @@ Example showing all vlc media that contain name word and not excel:
 
 ![VLC Editor](https://i.imgur.com/xaGuDPc.png)
 
+Let's say you have a great movie that conation few bad scene, and you want
+to watch the movie with your friends or family, you have to be aware every
+minutes while watching it - to pause the movie and skip these scene.
+Now with filtering video with this application you can set the begin and 
+the end of the scene to skip, to create a playlist file and when watching
+the movie using this file, it will auto skip scene and you can watch 
+and enjoy the movie at ease.
+
 TO DO List:
 
-1. Track The current folder if it is unTracked
-2. Click on 'V' button next to media file to open control windows
-3. hit the button pick start
+1. Click on 'V' button next to media file to open control windows
+2. hit the button pick start
      * A VLC instance will start the media
      * Go to start scene to exclude
      * close VLC.
-4. hit pick end Button and do the same
-5. Add Description (optionally):
+3. hit pick end Button and do the same
+4. Add Description (optionally):
     * Why you exclude the scene
     * Summary of events happened
-6. hit the button Exclude this
-7. Repeat The process from 3. until you've done.
+5. hit the button Exclude this
+6. Repeat The process from 2. until you've done.
 
 ### Exporting Result (Generation)
 
@@ -163,6 +174,8 @@ After Creating Exclusion of the media you could do any of the following:
 
 When running a filtered media using this tool, you can control the backward of media using playlist control in vlc (press ctrl+L), or using any remote tool check vlc menu. And here where notify-end features become useful denoting the start and the end of each scene  
 Other wise the forward of the media is supported using normal controls.
+Be sure not turning on Random Switch in VLC toolbar to guarantee playing
+scene in order.
 
 ## Tips and Tricks
 

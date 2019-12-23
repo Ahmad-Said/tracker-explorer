@@ -489,7 +489,7 @@ public class WelcomeController implements Initializable {
 		 * Set up helpMenu
 		 */
 		aboutMenuItem.setOnAction(e -> DialogHelper.showAlert(Alert.AlertType.INFORMATION, "About", null,
-				"Tracker Explorer v2.1\n\n" + "Copyright © 2019 by Ahmad Said"));
+				"Tracker Explorer v3.0\n\n" + "Copyright © 2019 by Ahmad Said"));
 	}
 
 	ArrayList<RadioMenuItem> allActiveUser = new ArrayList<>();

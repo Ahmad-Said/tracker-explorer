@@ -27,7 +27,7 @@ public class Setting {
 	// this things are temporary solution later will use :
 	// lightbend refrence.conf see testimagewthatable project
 	// these initial definition are even if not initialized
-	private static String Version = "2.1"; 
+	private static String Version = "3.0";
 	private static Boolean BackSync = false;
 	private static Boolean AutoExpand = true;
 	private static Boolean LoadAllIcon = true;
@@ -48,14 +48,14 @@ public class Setting {
 	/**
 	 * backsync > BackSync loadallicon > LoadAllIcon LeftLastKnowLocation >
 	 * LeftLastKnowLocation > RightLastKnowLocation
-	 * 
+	 *
 	 */
 	private static Map<String, String> mapOptions = new HashMap<String, String>();
 	private static File mSettingFile = new File(
 			System.getenv("APPDATA") + "\\Tracker Explorer\\TrackerExplorerSetting.txt");
 
 	public static void initializeSetting() {
-		Version = "2.1";
+		Version = "3.0";
 		BackSync = false;
 		AutoExpand = true;
 		LoadAllIcon = true;
@@ -67,8 +67,9 @@ public class Setting {
 		ActiveUser = "default";
 		MaxLimitFilesRecursive = 10000;
 		setVLCHttpPass("1234");
-		if (VLC.initializeDefaultVLCPath())
+		if (VLC.initializeDefaultVLCPath()) {
 			VLCPath = VLC.getPath_Setup().toUri().toString();
+		}
 		UserNames.add("default");
 		try {
 			RunMenu.initialize();
@@ -82,10 +83,12 @@ public class Setting {
 		PrintStream p = null;
 		try {
 			File dirsetting = new File(System.getenv("APPDATA") + "\\Tracker Explorer");
-			if (!dirsetting.exists())
+			if (!dirsetting.exists()) {
 				Files.createDirectory(dirsetting.toPath());
-			if (mSettingFile.exists())
+			}
+			if (mSettingFile.exists()) {
 				mSettingFile.delete();
+			}
 			p = new PrintStream(mSettingFile.toString());
 			Files.setAttribute(mSettingFile.toPath(), "dos:hidden", true);
 			p.println("/this is a generated folder by application to Save Setting");
@@ -100,14 +103,16 @@ public class Setting {
 			p.println("ShowRightNotesColumn=" + ShowRightNotesColumn);
 			p.println("MaxLimitFilesRecursive=" + MaxLimitFilesRecursive);
 
-			if (LeftLastKnowLocation != null)
+			if (LeftLastKnowLocation != null) {
 				p.println("LeftLastKnowLocation=" + LeftLastKnowLocation.toUri().toString());
-			else
+			} else {
 				p.println("LeftLastKnowLocation=null");
-			if (RightLastKnowLocation != null)
+			}
+			if (RightLastKnowLocation != null) {
 				p.println("RightLastKnowLocation=" + RightLastKnowLocation.toUri().toString());
-			else
+			} else {
 				p.println("RightLastKnowLocation=null");
+			}
 			p.println("UserNames=" + String.join(";", UserNames));
 			// p.println("FavoritesLocations=" + String.join(";", (String[])
 			// FavoritesLocations.toArray(new
@@ -136,10 +141,11 @@ public class Setting {
 			while (scan.hasNextLine()) {
 				line = scan.nextLine();
 				options = Arrays.asList(line.split("="));
-				if (options.size() > 1)
+				if (options.size() > 1) {
 					mapOptions.put(options.get(0), options.get(1));
-				else
+				} else {
 					mapOptions.put(options.get(0), null);
+				}
 			}
 			scan.close();
 
@@ -155,35 +161,36 @@ public class Setting {
 				// if (key.equals("Version"))
 				// Version = value;
 				try {
-					if (key.equals("VLCHttpPass"))
+					if (key.equals("VLCHttpPass")) {
 						setVLCHttpPass(value);
-					else if (key.equals("VLCPath"))
+					} else if (key.equals("VLCPath")) {
 						setVLCPath(value);
-					else if (key.equals("BackSync"))
+					} else if (key.equals("BackSync")) {
 						BackSync = Boolean.parseBoolean(value);
-					else if (key.equals("AutoExpand"))
+					} else if (key.equals("AutoExpand")) {
 						AutoExpand = Boolean.parseBoolean(value);
-					else if (key.equalsIgnoreCase("LoadAllIcon"))
+					} else if (key.equalsIgnoreCase("LoadAllIcon")) {
 						LoadAllIcon = Boolean.parseBoolean(value);
-					else if (key.equalsIgnoreCase("ShowLeftNotesColumn"))
+					} else if (key.equalsIgnoreCase("ShowLeftNotesColumn")) {
 						ShowLeftNotesColumn = Boolean.parseBoolean(value);
-					else if (key.equalsIgnoreCase("ShowRightNotesColumn"))
+					} else if (key.equalsIgnoreCase("ShowRightNotesColumn")) {
 						ShowRightNotesColumn = Boolean.parseBoolean(value);
-					else if (key.equals("MaxLimitFilesRecursive"))
+					} else if (key.equals("MaxLimitFilesRecursive")) {
 						MaxLimitFilesRecursive = Integer.parseInt(value);
-					else if (key.equals("LeftLastKnowLocation"))
+					} else if (key.equals("LeftLastKnowLocation")) {
 						LeftLastKnowLocation = Paths.get(URI.create(value));
-					else if (key.equals("RightLastKnowLocation"))
+					} else if (key.equals("RightLastKnowLocation")) {
 						RightLastKnowLocation = Paths.get(URI.create(value));
-					else if (key.equals("ActiveUser"))
+					} else if (key.equals("ActiveUser")) {
 						ActiveUser = value;
-					else if (key.equals("UserNames")) {
+					} else if (key.equals("UserNames")) {
 						UserNames.clear();
 						UserNames.addAll(Arrays.asList(value.split(";")));
-					} else if (key.equals("FavoritesLocations"))
+					} else if (key.equals("FavoritesLocations")) {
 						FavoritesLocations.addAll(Arrays.asList(value.split(";")).stream().map(s -> {
 							return Paths.get(URI.create(s));
 						}).collect(Collectors.toList()));
+					}
 				} catch (Exception e) {
 					System.out.println("Something went wrong loading setting");
 					e.printStackTrace();
@@ -466,8 +473,7 @@ public class Setting {
 	}
 
 	/**
-	 * @param vLCHttpPass
-	 *            the vLCHttpPass to set
+	 * @param vLCHttpPass the vLCHttpPass to set
 	 */
 	public static void setVLCHttpPass(String vLCHttpPass) {
 		VLCHttpPass = vLCHttpPass;
@@ -493,8 +499,7 @@ public class Setting {
 	}
 
 	/**
-	 * @param autoRenameUTFFile
-	 *            the autoRenameUTFFile to set
+	 * @param autoRenameUTFFile the autoRenameUTFFile to set
 	 */
 	public static void setAutoRenameUTFFile(boolean autorenameUTFFile) {
 		autoRenameUTFFile = autorenameUTFFile;
