@@ -19,6 +19,7 @@ import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 
 import application.controller.SplitViewController;
+import application.controller.WelcomeController;
 import application.model.Setting;
 import javafx.application.Platform;
 import javafx.beans.value.ChangeListener;
@@ -43,7 +44,6 @@ import javafx.scene.text.Font;
 import javafx.scene.text.Text;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
-import javafx.util.Pair;
 
 public class FileHelper {
 
@@ -303,7 +303,7 @@ public class FileHelper {
 										Action + " Exception", message, cont));
 							}
 							updateProgress(1, 1);
-							Platform.runLater(() -> Msg.setText((FilesCounts - unModifiable.size()) + "/" + FilesCounts
+							Platform.runLater(() -> Msg.setText(FilesCounts - unModifiable.size() + "/" + FilesCounts
 									+ " Files were " + ActionInPast + " Successfully"));
 							finalizeThis(false);
 						}
@@ -317,15 +317,16 @@ public class FileHelper {
 
 			Platform.runLater(() -> {
 				if (doDeleteLastElement) {
-					if (LastCreatedFile != null && LastCreatedFile.exists())
+					if (LastCreatedFile != null && LastCreatedFile.exists()) {
 						// try {
 						LastCreatedFile.deleteOnExit();
-					// Files.delete(LastCreatedFile.toPath());
-					// FileUtils.forceDelete(LastCreatedFile);
-					// } catch (IOException e1) {
-					// TODO Auto-generated catch block
-					// e1.printStackTrace();
-					// }
+						// Files.delete(LastCreatedFile.toPath());
+						// FileUtils.forceDelete(LastCreatedFile);
+						// } catch (IOException e1) {
+						// TODO Auto-generated catch block
+						// e1.printStackTrace();
+						// }
+					}
 				} else {
 					if (!btnCancel.getStyleClass().contains("danger")) {
 						btnCancel.setText("Done");
@@ -362,20 +363,22 @@ public class FileHelper {
 				// List<Path> paths = SourceParentList.stream().collect(Collectors.toList());
 				// Platform.runLater(() -> Main.refreshWelcomeController(paths));
 				Platform.runLater(() -> Main.refreshWelcomeController());
-			} else
+			} else {
 				Platform.runLater(() -> Main.refreshWelcomeController(TargetDirectory));
+			}
 			SourceParentList.clear();
 		}
 
 		private double updateMsgText(boolean asStarted) {
 			double remaining = FilesCounts - SourceList.size();
 
-			if (asStarted && remaining != FilesCounts)
+			if (asStarted && remaining != FilesCounts) {
 				remaining += 0.5;
+			}
 			final double remaindisplayHelper = remaining;
 			// defining this tempName here as when run later source may be empty!
 			String tempName = SourceList.get(0).toFile().getName();
-			Platform.runLater(() -> Msg.setText(" (" + (remaindisplayHelper) + "/" + FilesCounts + ") "
+			Platform.runLater(() -> Msg.setText(" (" + remaindisplayHelper + "/" + FilesCounts + ") "
 					+ ActionInContinuous + " " + tempName + "\nTo " + TargetDirectory.toFile().getName()));
 			return remaining;
 		}
@@ -387,10 +390,11 @@ public class FileHelper {
 			txtState.setFill(Color.BLUE);
 			txtState.setText(Action + " Pending");
 			Msg = new Text();
-			if (Action.equals("Copy"))
+			if (Action.equals("Copy")) {
 				Msg.setFill(Color.BLUE);
-			else
+			} else {
 				Msg.setFill(Color.GREEN);
+			}
 			updateMsgText(false);
 			// ProgressBar
 			pbar = new ProgressBar(0);
@@ -444,12 +448,14 @@ public class FileHelper {
 
 				@Override
 				public void handle(ActionEvent arg0) {
-					if (OperationsList.contains(thisOperation))
+					if (OperationsList.contains(thisOperation)) {
 						OperationsList.remove(thisOperation);
+					}
 					if (btnControl.getText().equals("Clear")) {
 						root.getChildren().remove(gr);
-						if (root.getChildren().size() == 0)
+						if (root.getChildren().size() == 0) {
 							OperationStage.hide();
+						}
 					} else if (btnControl.getText().equals("Pause")) {
 						btnControl.setText("Start");
 						setDisableControl(true);
@@ -488,6 +494,7 @@ public class FileHelper {
 						setDisableControl(true);
 						// building another thread on top of current then on finish do call finalize
 						new Thread() {
+							@Override
 							public void run() {
 								try {
 									currentThread.join();
@@ -560,10 +567,12 @@ public class FileHelper {
 	public static int count = 0;
 
 	private static void DoThreadOperationsAllList() {
-		if (operationsThread != null && operationsThread.isAlive())
+		if (operationsThread != null && operationsThread.isAlive()) {
 			return;
+		}
 		// System.out.println("i enter as new runing machine queeue ");
 		operationsThread = new Thread() {
+			@Override
 			public void run() {
 				while (OperationsList.size() != 0) {
 					Operation opItem = OperationsList.peek();
@@ -577,8 +586,9 @@ public class FileHelper {
 					}
 					// element may be removed by pause button
 					// OperationsList.pop();
-					if (OperationsList.contains(opItem))
+					if (OperationsList.contains(opItem)) {
 						OperationsList.remove(opItem);
+					}
 				}
 			}
 		};
@@ -687,18 +697,21 @@ public class FileHelper {
 	// }
 
 	public static boolean delete(List<Path> source) {
-		if (source.size() == 0)
+		if (source.size() == 0) {
 			return false;
+		}
 		String sourceDirectory = source.get(0).getParent().toString();
 
 		String filesToDelete = "";
-		for (Path path : source)
+		for (Path path : source) {
 			filesToDelete += path.toString() + System.lineSeparator();
+		}
 		boolean isConfirmed = DialogHelper.showExpandableConfirmationDialog(sourceDirectory, "Delete",
 				"Do you really want to delete selected files?", filesToDelete);
 
 		if (isConfirmed) {
 			new Thread() {
+				@Override
 				public void run() {
 					List<Path> undeleted = new ArrayList<>();
 					for (Path path : source) {
@@ -716,8 +729,9 @@ public class FileHelper {
 					}
 					if (undeleted.size() > 0) {
 						String content = "";
-						for (Path path : undeleted)
+						for (Path path : undeleted) {
 							content += path.toString() + System.lineSeparator();
+						}
 						String message = "Some files were not deleted";
 						String contectHelper = content;
 						Platform.runLater(() -> DialogHelper.showAlert(Alert.AlertType.INFORMATION, sourceDirectory,
@@ -733,7 +747,15 @@ public class FileHelper {
 
 	public static void createDirectory(Path parent, SplitViewController focusedPane) {
 		String title = parent.toString();
-		String name = DialogHelper.showTextInputDialog(title, null, "New Directory", "My Directory");
+		String hint = "New Folder";
+		File temp = parent.resolve(hint).toFile();
+		System.out.println(temp);
+		int i = 2;
+		while (temp.exists()) {
+			temp = parent.resolve("New Folder (" + i++ + ")").toFile();
+		}
+		hint = temp.getName();
+		String name = DialogHelper.showTextInputDialog(title, null, "New Directory", hint);
 		if (name != null) {
 			Path path = parent.resolve(name);
 			try {
@@ -751,7 +773,15 @@ public class FileHelper {
 
 	public static void createFile(Path parent) {
 		String title = parent.toString();
-		String name = DialogHelper.showTextInputDialog(title, null, "New File", "Text File.txt");
+		String hint = "New File.txt";
+		File temp = parent.resolve(hint).toFile();
+		System.out.println(temp);
+		int i = 2;
+		while (temp.exists()) {
+			temp = parent.resolve("New File (" + i++ + ").txt").toFile();
+		}
+		hint = temp.getName();
+		String name = DialogHelper.showTextInputDialog(title, null, "New File", hint);
 		if (name != null) {
 			Path path = parent.resolve(name);
 			try {
@@ -764,6 +794,52 @@ public class FileHelper {
 		}
 	}
 
+	public static Path RenameHelper(Path source, String newName) throws IOException {
+		Path newPath = source.resolveSibling(newName);
+		return RenameHelper(source, newPath);
+	}
+
+	/**
+	 *
+	 * Version 2 Rename
+	 *
+	 * Rename while conserving status in File Tracker
+	 *
+	 * @param source  Original file source
+	 * @param newPath Final new Path
+	 * @return
+	 * @throws IOException
+	 */
+	public static Path RenameHelper(Path oldSource, Path NewRenamed) throws IOException {
+
+		// do later at each rename conserve status in file tracker
+		// even at beginning if it cost a file write in each operation
+		// other wise must get a list of rename
+		// then group them by parent directory and make a file write at once..
+		// a trigger of watch service is lunched here
+
+		// danger of concurrent modification
+		Files.move(oldSource, NewRenamed);
+		return NewRenamed;
+	}
+
+	/**
+	 *
+	 * Version 1 of Rename
+	 *
+	 * Rename used on every shown file in view it used to fix name encoding
+	 * Especially for Arabic letter. {@link SplitViewController#showList}
+	 *
+	 * Also used for single rename. Its tracker data are performed in
+	 * {@link WelcomeController#rename()}
+	 *
+	 * @param source
+	 * @param silentFix <br>
+	 *                  true: to disable prompt user. <br>
+	 *                  false: display simple input form
+	 *
+	 * @return null for unsuccessful rename or the new path of renamed item
+	 */
 	public static Path rename(Path source, boolean silentFix) {
 		String newName;
 		if (!silentFix) {
@@ -772,21 +848,25 @@ public class FileHelper {
 				newName = DialogHelper.showTextInputDialog("Rename", null, "Enter New Name",
 						source.getFileName().toString());
 			} else {
-				Pair<String, String> NameExt = DialogHelper.showTextInputDoubledDialog("Rename", null, "Enter New Name",
-						FilenameUtils.getBaseName(OriginalName), FilenameUtils.getExtension(OriginalName));
-				if (NameExt == null) {
+				HashMap<String, String> PreNameExt = DialogHelper.showMultiTextInputDialog(
+						"Rename", null, "Enter New Name", new String[] { "Prefix", "Name", "Extention" }, new String[] {
+								"", FilenameUtils.getBaseName(OriginalName), FilenameUtils.getExtension(OriginalName) },
+						1);
+				if (PreNameExt == null) {
 					return null;
 				} else {
-					if (NameExt.getKey().isEmpty()) {
+					if (PreNameExt.get("Name").isEmpty() && PreNameExt.get("Prefix").isEmpty()) {
 						DialogHelper.showAlert(AlertType.ERROR, "Rename", "Name Cannot be empty!",
 								"Please Enter a valid name");
 						return rename(source, silentFix);
 					}
 				}
-				newName = NameExt.getKey() + ((!NameExt.getValue().isEmpty()) ? "." + NameExt.getValue() : "");
+				newName = PreNameExt.get("Prefix") + PreNameExt.get("Name")
+						+ (!PreNameExt.get("Extention").isEmpty() ? "." + PreNameExt.get("Extention") : "");
 			}
-		} else
+		} else {
 			newName = StringHelper.FixNameEncoding(source.toFile().getName());
+		}
 		if (newName != null && !newName.isEmpty()) {
 			Path target = source.getParent().resolve(newName);
 			try {
@@ -800,11 +880,12 @@ public class FileHelper {
 				if (target.equals(source)) {
 					return null;
 				}
+				RenameHelper(source, target);
 				// Files.move(source, target);
-				if (source.toFile().isDirectory())
-					FileUtils.moveDirectory(source.toFile(), target.toFile());
-				else
-					FileUtils.moveFile(source.toFile(), target.toFile());
+//				if (source.toFile().isDirectory())
+//					FileUtils.moveDirectory(source.toFile(), target.toFile());
+//				else
+//					FileUtils.moveFile(source.toFile(), target.toFile());
 				return target;
 			} catch (Exception e) {
 				e.printStackTrace();

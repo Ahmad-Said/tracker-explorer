@@ -2,23 +2,28 @@ package application;
 
 import java.io.PrintWriter;
 import java.io.StringWriter;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.Optional;
 
 import org.jetbrains.annotations.Nullable;
 
 import javafx.application.Platform;
 import javafx.geometry.Insets;
+import javafx.scene.Scene;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Alert.AlertType;
 import javafx.scene.control.ButtonBar.ButtonData;
 import javafx.scene.control.ButtonType;
 import javafx.scene.control.Dialog;
 import javafx.scene.control.Label;
+import javafx.scene.control.ScrollPane;
 import javafx.scene.control.TextArea;
 import javafx.scene.control.TextField;
 import javafx.scene.control.TextInputDialog;
 import javafx.scene.image.Image;
 import javafx.scene.layout.GridPane;
+import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
@@ -151,11 +156,8 @@ public class DialogHelper {
 
 		dialog.getDialogPane().setContent(gridPane);
 
-		// Request focus on the username field by default.
 		Platform.runLater(() -> text1.requestFocus());
 
-		// Convert the result to a username-password-pair when the login button is
-		// clicked.
 		dialog.setResultConverter(dialogButton -> {
 			if (dialogButton == loginButtonType) {
 				return new Pair<>(text1.getText(), text2.getText());
@@ -163,6 +165,71 @@ public class DialogHelper {
 			return null;
 		});
 		Optional<Pair<String, String>> result = dialog.showAndWait();
+		return result.isPresent() ? result.get() : null;
+	}
+
+	/**
+	 * 
+	 * @param title
+	 * @param header
+	 * @param content
+	 * @param labels
+	 * @param hints
+	 * @return a hash map from with key as label to response from the user hint is
+	 *         used in prompt text
+	 */
+	@Nullable
+	public static HashMap<String, String> showMultiTextInputDialog(String title, String header, String content,
+			String[] labels, String[] hints, int focusIndex) {
+		// https://stackoverflow.com/questions/31556373/javafx-dialog-with-2-input-fields
+		// Create the custom dialog.
+		Dialog<HashMap<String, String>> dialog = new Dialog<>();
+		dialog.setTitle(title);
+
+		Stage stage = (Stage) dialog.getDialogPane().getScene().getWindow();
+		stage.getIcons().add(new Image(Main.class.getResourceAsStream("/img/icon.png")));
+
+		// Set the button types.
+		ButtonType submitButtonOk = new ButtonType("OK", ButtonData.OK_DONE);
+		dialog.getDialogPane().getButtonTypes().addAll(submitButtonOk, ButtonType.CANCEL);
+
+		// initializing view
+		VBox root = new VBox(5);
+		ScrollPane scrollPane = new ScrollPane(root);
+		Scene scene = new Scene(scrollPane);
+		scene.getStylesheets().add("/css/bootstrap3.css");
+
+		ArrayList<TextField> allInputs = new ArrayList<>();
+		for (int i = 0; i < labels.length; i++) {
+			String string = labels[i];
+			Label tempLabel = new Label(string + ": ");
+			TextField temp = new TextField();
+			if (i < hints.length && !hints[i].isEmpty()) {
+				temp.setPromptText(hints[i]);
+				temp.setText(hints[i]);
+			}
+			allInputs.add(temp);
+			HBox tempHbox = new HBox(tempLabel, allInputs.get(i));
+			HBox.setHgrow(temp, Priority.ALWAYS);
+			root.getChildren().add(tempHbox);
+		}
+		dialog.getDialogPane().setContent(scrollPane);
+
+		// Request focus on asked parameter
+		Platform.runLater(() -> allInputs.get(focusIndex).requestFocus());
+
+		dialog.setResultConverter(dialogButton -> {
+			if (dialogButton == submitButtonOk) {
+				HashMap<String, String> responseMap = new HashMap<String, String>();
+				for (int i = 0; i < labels.length; i++) {
+					String string = labels[i];
+					responseMap.put(string, allInputs.get(i).getText());
+				}
+				return responseMap;
+			}
+			return null;
+		});
+		Optional<HashMap<String, String>> result = dialog.showAndWait();
 		return result.isPresent() ? result.get() : null;
 	}
 

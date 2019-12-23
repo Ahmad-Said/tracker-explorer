@@ -1,5 +1,6 @@
 package application.controller;
 
+import java.awt.Desktop;
 import java.awt.HeadlessException;
 import java.io.File;
 import java.io.IOException;
@@ -38,6 +39,7 @@ import application.RunMenu;
 import application.StringHelper;
 import application.VLC;
 import application.WatchServiceHelper;
+import application.WindowsExplorerComparator;
 import application.WindowsShortcut;
 import application.model.MediaCutData;
 import application.model.Setting;
@@ -79,98 +81,129 @@ import javafx.scene.input.TransferMode;
 import javafx.scene.layout.HBox;
 import javafx.util.Pair;
 
+/**
+ * For a structure view read
+ * {@link #SplitViewController(Path, Boolean, WelcomeController, ObservableList, TextField, Button, TextField, Button, TableView, Button, TableColumn, Button, Button, TextField, CheckBox, Label, Button, MenuButton, TableColumn, TableColumn)}
+ *
+ * For a functional flow read {@link #refresh(String)}
+ *
+ * at last they will combine..
+ *
+ * @author Ahmad Said
+ *
+ */
 public class SplitViewController {
+
+	static final KeyCombination SHORTCUT_Clear_Search = new KeyCodeCombination(KeyCode.S, KeyCombination.CONTROL_DOWN);
 	static final KeyCombination SHORTCUT_FOCUS_TEXT_FIELD = new KeyCodeCombination(KeyCode.D,
 			KeyCombination.SHIFT_DOWN);
-	static final KeyCombination SHORTCUT_SEARCH = new KeyCodeCombination(KeyCode.F, KeyCombination.CONTROL_DOWN);
-	static final KeyCombination SHORTCUT_RECURSIVE = new KeyCodeCombination(KeyCode.R, KeyCombination.CONTROL_DOWN);
-	static final KeyCombination SHORTCUT_Clear_Search = new KeyCodeCombination(KeyCode.S, KeyCombination.CONTROL_DOWN);
-	static final KeyCombination TOGGLE_FAVORITE = new KeyCodeCombination(KeyCode.F, KeyCombination.SHIFT_DOWN);
-	static final KeyCombination SHORTCUT_GO_UP = new KeyCodeCombination(KeyCode.UP, KeyCombination.ALT_DOWN);
 	static final KeyCombination SHORTCUT_GO_BACK = new KeyCodeCombination(KeyCode.LEFT, KeyCombination.ALT_DOWN);
+
 	static final KeyCombination SHORTCUT_GO_NEXT = new KeyCodeCombination(KeyCode.RIGHT, KeyCombination.ALT_DOWN);
+	static final KeyCombination SHORTCUT_GO_UP = new KeyCodeCombination(KeyCode.UP, KeyCombination.ALT_DOWN);
+	static final KeyCombination SHORTCUT_RECURSIVE = new KeyCodeCombination(KeyCode.R, KeyCombination.CONTROL_DOWN);
+	static final KeyCombination SHORTCUT_SEARCH = new KeyCodeCombination(KeyCode.F, KeyCombination.CONTROL_DOWN);
+	static final KeyCombination TOGGLE_FAVORITE = new KeyCodeCombination(KeyCode.F, KeyCombination.SHIFT_DOWN);
+
+	private Button BackButton;
+	private Button NextButton;
+	private Button UpButton;
+	private Button Explorer;
+
+	private Label LabelItemsNumber;
+
+	private TextField PathField;
+	private TextField PredictNavigation;
+	private TextField SearchField;
+	private Button RefreshButton;
+
+	private CheckBox recursiveSearch;
+	private Button NavigateRecursive;
+
+	private MenuButton ToolsMenu;
+
+	private WelcomeController parentWelcome;
+	private FileTracker mFileTracker;
+	private WatchServiceHelper mWatchServiceHelper = null;
+
+	private boolean OutOfTheBoxRecursive = false;
+	private boolean isOutOfTheBoxHelper = false;
 
 	private File mDirectory;
-	private WatchServiceHelper mWatchServiceHelper = null;
-	private ObservableList<TableViewModel> DataTable;
-	SortedList<TableViewModel> sortedData;
-	private TableView<TableViewModel> Table;
-	private TextField PathField;
-	private Button UpButton;
-	private Button BackButton;
-	private LinkedList<File> BackQueue = new LinkedList<File>();
-	private Button NextButton;
-	private LinkedList<File> NextQueue = new LinkedList<File>();
-	private Button Explorer;
-	private TextField SearchFeild; // was search
-	private Button ClearButton;
-	private WelcomeController parentWelcome;
-	private FileTracker mfileTracker;
-	private TextField PredictNavigation;
-	private CheckBox recursiveSearch;
-	private Label LabelItemsNumber;
-	private Button NavigateRecursive;
-	private MenuButton ToolsMenu;
+
+	/**
+	 * specify working current view position
+	 */
 	private boolean isLeft;
+
 	// this always respect the path field pattern
 	// if anything goes wrong return to it
 	private String truePathField;
-	private static List<String> SpecialPath = Arrays.asList("/", "?", "&", "|");
+
+	private ObservableList<TableViewModel> DataTable;
+	SortedList<TableViewModel> sortedData;
+	private TableView<TableViewModel> Table;
 
 	public SplitViewController() {
-	};
+	}
 
 	// TableColumn<TableViewModel, ImageView> colIconTestResize;
-	public SplitViewController(Path path, Boolean isleft, WelcomeController parent,
-			ObservableList<TableViewModel> dataTable, javafx.scene.control.TextField pathField, Button upButton,
-			javafx.scene.control.TextField searchFeild, Button clearButton, TableView<TableViewModel> table,
-			Button explorer, TableColumn<TableViewModel, HBox> hboxActions, Button backButton, Button nextButton,
-			TextField predictNavigation, CheckBox recursivesearch, Label labelItemsNumber, Button navigateRecursive,
-			MenuButton toolsMenu) {
+	public SplitViewController(Path path, Boolean isLeft, WelcomeController parent,
+			ObservableList<TableViewModel> dataTable, TextField pathField, Button upButton, TextField searchField,
+			Button refreshButton, TableView<TableViewModel> table, Button explorer,
+			TableColumn<TableViewModel, HBox> hBoxActions, Button backButton, Button nextButton,
+			TextField predictNavigation, CheckBox recursiveSearch, Label labelItemsNumber, Button navigateRecursive,
+			MenuButton toolsMenu, TableColumn<TableViewModel, String> noteColumn,
+			TableColumn<TableViewModel, String> nameColumn) {
 		super();
 		// colIconTestResize=colIcon;
-		isLeft = isleft;
+		this.isLeft = isLeft;
 		DataTable = dataTable;
 		PathField = pathField;
 		UpButton = upButton;
 		NextButton = nextButton;
 		BackButton = backButton;
 		Explorer = explorer;
-		SearchFeild = searchFeild;
-		ClearButton = clearButton;
+		SearchField = searchField;
+		RefreshButton = refreshButton;
 		Table = table;
 		parentWelcome = parent;
 		PredictNavigation = predictNavigation;
-		recursiveSearch = recursivesearch;
+		this.recursiveSearch = recursiveSearch;
 		LabelItemsNumber = labelItemsNumber;
 		ToolsMenu = toolsMenu;
 		mDirectory = new File(path.toString());
 		truePathField = mDirectory.getAbsolutePath();
 		NavigateRecursive = navigateRecursive;
 		Table.getSelectionModel().setSelectionMode(SelectionMode.MULTIPLE);
-		mfileTracker = new FileTracker(this);
+		mFileTracker = new FileTracker(this);
 
-		initializeSplitButton();
 		initializePathField();
+		initializeSplitButton();
 
 		initializeTable();
 		// initialize column rule comparator
-		hboxActions.setComparator(new Comparator<HBox>() {
+		hBoxActions.setComparator(new Comparator<HBox>() {
 
 			@Override
 			public int compare(HBox o1, HBox o2) {
 				// first children is button watch status
 				// TableRow<TableViewModel> row = (TableRow<TableViewModel>) o1.getParent();
 				// TODO
-				if (o1.getChildren().size() == 0)
+				if (o1.getChildren().size() == 0) {
 					return -1;
-				ToggleButton markseen1 = (ToggleButton) o1.getChildren().get(0);
-				if (markseen1.getText().equals("S"))
+				}
+				ToggleButton markSeen1 = (ToggleButton) o1.getChildren().get(0);
+				if (markSeen1.getText().equals("S")) {
 					return 1;
+				}
 				return 0;
 			}
 		});
-		// hboxActions.setCellFactory(col -> new TableCell<TableViewModel, HBox>() {
+		noteColumn.setComparator(new WindowsExplorerComparator());
+		nameColumn.setComparator(new WindowsExplorerComparator());
+
+		// hBoxActions.setCellFactory(col -> new TableCell<TableViewModel, HBox>() {
 		//
 		// protected void updateItem(HBox item, boolean empty) {
 		// super.updateItem(item, empty);
@@ -185,7 +218,9 @@ public class SplitViewController {
 	}
 
 	private void initializePathField() {
+		PathField.getStyleClass().removeAll("*.text-field>*.right-button>*.right-button-graphic");
 		PathField.setStyle("-fx-font-size: 14px;");
+
 		PathField.focusedProperty().addListener((obs, wasFocused, isNowFocused) -> {
 			if (isNowFocused) {
 				Platform.runLater(() -> PathField.selectAll());
@@ -200,44 +235,398 @@ public class SplitViewController {
 		});
 	}
 
-	// https://howtodoinjava.com/java/multi-threading/java-thread-pool-executor-example/
-	ThreadPoolExecutor executor = (ThreadPoolExecutor) Executors.newCachedThreadPool();
-	private boolean doBack = true;
-	// first use : prevent excessive back when cleaning prediction text with
-	private Thread enablemisback = new Thread() {
+	public void setPathFieldThenRefresh(String pathField) {
+		pathField = pathField.trim();
+		String test = pathField;
+		if (test.equals("cmd")) {
+			// system dependency
+			StringHelper.RunRuntimeProcess(new String[] { "cmd.exe", " /c start cd /d", mDirectory.toString() });
+		}
+		File file = new File(getQueryPathFromEmbed(pathField));
 
-		public void run() {
-			try {
-				TimeUnit.MILLISECONDS.sleep(500);
-				// to prevent mis back button
-				doBack = true;
-			} catch (InterruptedException e) {
-				// e.printStackTrace();
+		// Important see there is navigate is not just a boolean ::
+		if (file.exists() && navigate(file.toPath())) {
+			// apply query only if file exist and file is a directory after changing view to
+			// it
+			if (SpecialPath.stream().anyMatch(sp -> test.contains(sp))) {
+
+				// out of the box
+				if (pathField.equals("/")) {
+					resetForm();
+					OutOfTheBoxListRoots();
+				} else if (pathField.contains("?")) {
+					// ?search=Kaza;few&another=fwe
+					try {
+
+						// we need at first applying recursive then search
+						String doSearchDelayed = null;
+						for (Map.Entry<String, String> entry : getQueryOptionsAsMap(pathField).entrySet()) {
+							String key = entry.getKey().toLowerCase().trim();
+							if (key.equals("recursive")) {
+								// we invert answer cause on fire also this gonna go back
+								// if (!recursiveSearch.isSelected())
+								recursiveSearch.setSelected(!Boolean.parseBoolean(entry.getValue()));
+								recursiveSearch.fire();
+							} else if (key.equals("search")) {
+								doSearchDelayed = entry.getValue();
+							}
+						}
+						if (doSearchDelayed != null) {
+							SearchField.setText(doSearchDelayed);
+							reloadSearchField();
+						}
+					} catch (Exception e) {
+						DialogHelper.showAlert(AlertType.ERROR, "Incorrect Path", "The Provided input is Incorrect",
+								"Example Template: .../path?option1=value1&option2=value2");
+						e.printStackTrace();
+					}
+
+				}
 			}
 		}
-	};
+		PathField.setText(truePathField);
+	}
 
-	private boolean doUp = false;
-	// second use: do excessive up(goParent function)
-	private Thread doUpThreadOff = new Thread() {
-
-		public void run() {
-			try {
-				TimeUnit.MILLISECONDS.sleep(1000);
-				// to prevent mis back button
-				doUp = false;
-			} catch (InterruptedException e) {
-				// e.printStackTrace();
-			}
+	private Map<String, String> getQueryOptionsAsMap(String FullPathEmbed) {
+		int from = FullPathEmbed.indexOf("?") + 1;
+		if (from == -1) {
+			return null;
 		}
-	};
+		String optionsString = FullPathEmbed.substring(from);
+		return Arrays.asList(optionsString.split("&")).stream()
+				.filter(s -> s.contains("=") && !s.isEmpty() && s.split("=").length > 1)
+				.collect(Collectors.toMap(x -> x.split("=")[0], x -> x.split("=")[1]));
+	}
+
+	private String getQueryPathFromEmbed(String FullPathEmbed) {
+		int temp = FullPathEmbed.indexOf("?");
+		String query;
+		if (temp != -1) {
+			query = FullPathEmbed.substring(temp);
+		} else {
+			query = "";
+		}
+		return FullPathEmbed.replace(query, "");
+	}
+
+	private void addQueryOptionsPathField(String optionItem, String value) {
+		String text = PathField.getText();
+		Map<String, String> options = getQueryOptionsAsMap(text);
+		// clean existing option
+		if (options == null) {
+			options = new HashMap<String, String>();
+		}
+
+		if (value == null || value.trim().isEmpty() && options.containsKey(optionItem)) {
+			options.remove(optionItem);
+		} else {
+			options.put(optionItem, value.trim());
+		}
+		updatePathField(options);
+	}
+
+	public void reloadSearchField() {
+		String temp = SearchField.getText();
+		SearchField.setText("");
+		SearchField.setText(temp);
+	}
+
+	private void resetForm() {
+		clearSearchField();
+		updatePathField(null);
+		refresh(null);
+	}
+
+	// used to loop over items that meet same prediction and when entering a key
+	// that cannot filter further
+	private int rollerPrediction;
+
+	private void initializeSplitButton() {
+
+		initializeToolsMenu();
+		NavigateRecursive.setVisible(false);
+
+		NavigateRecursive.setOnAction(new EventHandler<ActionEvent>() {
+
+			@Override
+			public void handle(ActionEvent event) {
+				TableViewModel toNavigateFor = Table.getSelectionModel().getSelectedItem();
+				Path path = toNavigateFor.getmFilePath().getParent();
+				navigate(path);
+				resetForm();
+				NavigateForNameAndScrollTo(toNavigateFor);
+			}
+		});
+		initializeRecursiveSearch();
+
+		UpButton.setOnAction(new EventHandler<ActionEvent>() {
+
+			@Override
+			public void handle(ActionEvent event) {
+				goUpParent();
+				Table.requestFocus();
+			}
+		});
+
+		BackButton.setDisable(true);
+		BackButton.setOnAction(new EventHandler<ActionEvent>() {
+
+			@Override
+			public void handle(ActionEvent event) {
+				NextQueue.add(mDirectory);
+				NextButton.setDisable(false);
+				File temp = BackQueue.removeLast();
+				if (temp.exists()) {
+					mDirectory = temp;
+				}
+				if (BackQueue.isEmpty()) {
+					BackButton.setDisable(true);
+				}
+				refresh(null);
+			}
+		});
+
+		NextButton.setDisable(true);
+		NextButton.setOnAction(new EventHandler<ActionEvent>() {
+
+			@Override
+			public void handle(ActionEvent event) {
+				BackQueue.add(mDirectory);
+				BackButton.setDisable(false);
+				File temp = NextQueue.removeLast();
+				if (temp.exists()) {
+					mDirectory = temp;
+				}
+				if (NextQueue.isEmpty()) {
+					NextButton.setDisable(true);
+				}
+				refresh(null);
+			}
+		});
+
+		Explorer.setOnAction(new EventHandler<ActionEvent>() {
+
+			@Override
+			public void handle(ActionEvent event) {
+				if (!isOutOfTheBoxHelper || isOutOfTheBoxRecursive()) {
+					int index;
+					index = Table.getSelectionModel().getFocusedIndex();
+					if (index != -1) {
+						TableViewModel test = sortedData.get(index);
+
+						try {
+							StringHelper
+									.RunRuntimeProcess(
+											new String[] { "explorer.exe", "/select,", test.getmFilePath().toString() })
+									.waitFor();
+						} catch (InterruptedException e) {
+							// TODO Auto-generated catch block
+							e.printStackTrace();
+						}
+					} else {
+						StringHelper.open(mDirectory.toURI().toString());
+					}
+				} else {
+					if (truePathField.equals("/")) {
+						String cmd = "explorer.exe /select," + DataTable.get(0).getmFilePath();
+						try {
+							Runtime.getRuntime().exec(cmd);
+						} catch (IOException e) {
+							e.printStackTrace();
+						}
+					}
+				}
+			}
+		});
+
+		// https://code.makery.ch/blog/javafx-8-tableview-sorting-filtering/
+		FilteredList<TableViewModel> filteredData = new FilteredList<>(DataTable, p -> true);
+		SearchField.textProperty().addListener((observable, oldValue, newValue) -> {
+			PredictNavigation.setText("");
+			filteredData.setPredicate(model -> {
+				// be aware of doing something here it apply on every item in list
+				return filterModel(newValue, model);
+			});
+			addQueryOptionsPathField("search", newValue);
+			LabelItemsNumber.setText(" #" + filteredData.size() + " items");
+		});
+
+		sortedData = new SortedList<>(filteredData);
+		sortedData.comparatorProperty().bind(Table.comparatorProperty());
+		Table.setItems(sortedData);
+
+		DataTable.addListener((ListChangeListener<TableViewModel>) c -> {
+			while (c.next()) {
+				if (c.wasAdded()) {
+					// String key = keyStringMapper(c);
+					for (TableViewModel t : c.getAddedSubList()) {
+						String key = keyMapperToString(t);
+						if (key != null) {
+							// TODO when adding new files to current directory null pointer exception is
+							// detected
+							t.updateMarkSeenText(mFileTracker.isSeen(key));
+							t.setNoteText(mFileTracker.getNoteTooltipText(key));
+						} else {
+							t.emptyCell();
+						}
+					}
+				}
+				if (c.wasRemoved()) {
+					rowMap.clear();
+				}
+			}
+		});
+
+		Table.getSelectionModel().selectedItemProperty().addListener((obs, oldSelection, newSelection) -> {
+			// TODO if ctrl + A is pressed is not detected
+			if (Table.getSelectionModel().getSelectedItems().size() > 1) {
+				reloadColorLastRowSelected();
+			} else {
+				deColorLastRowSelected();
+			}
+			LabelItemsNumber
+					.setText(" #" + Table.getSelectionModel().getSelectedItems().size() + "/" + sortedData.size());
+		});
+		PredictNavigation.textProperty().addListener((observable, oldValue, newValue) -> {
+			deColorLastRowSelected();
+			Table.getSelectionModel().clearSelection();
+			if (newValue.trim().isEmpty()) {
+				newValue = "";
+				rollerPrediction = 0;
+				PredictNavigation.setVisible(false);
+				return;
+			}
+			if (!newValue.equals(newValue.toLowerCase())) {
+				PredictNavigation.setText(newValue.toLowerCase());
+				return;
+			}
+			PredictNavigation.setVisible(true);
+			ArrayList<Pair<Integer, Integer>> toSelectList = new ArrayList<>();
+			for (TableViewModel t : sortedData) {
+				int where = t.getName().toLowerCase().indexOf(newValue);
+				if (where >= 0) {
+					toSelectList.add(new Pair<Integer, Integer>(where, sortedData.indexOf(t)));
+				}
+			}
+
+			// Trying to auto complete special character
+			if (toSelectList.isEmpty()) {
+				// try once to add space then add character
+				// if yes go for it
+				for (TableViewModel t : sortedData) {
+					for (String st : StringHelper.getKeyAsShiftDown().values()) {
+						String toSearchFor = oldValue + st + newValue.substring(newValue.length() - 1);
+						int where = t.getName().toLowerCase().indexOf(toSearchFor);
+						if (where >= 0) {
+							PredictNavigation.setText(toSearchFor);
+							return;
+						}
+					}
+				}
+
+				// trying to roll to next selected element in case if it was the first or last
+				// character
+				if (oldValue.length() > 0) {
+					if (newValue.substring(0, 1).equals(oldValue.substring(0, 1)) || newValue
+							.substring(newValue.length() - 1).equals(oldValue.substring(oldValue.length() - 1))) {
+						// Table.getSelectionModel().getSelectedItems()
+						Table.getSelectionModel().clearSelection(sortedData.indexOf(Table.getSelectionModel()
+								.getSelectedItems().get(Table.getSelectionModel().getSelectedItems().size() - 1)));
+						Table.getSelectionModel().select(Table.getSelectionModel().getSelectedItems()
+								.get(Table.getSelectionModel().getSelectedItems().size() - 2));
+						rollerPrediction++;
+						PredictNavigation.setText(oldValue);
+						return;
+
+					}
+				}
+			}
+
+			if (!toSelectList.isEmpty()) {
+				// sort list upon priority to first occurrence is last selected
+				// to get opened in case and scroll to it
+				toSelectList.sort(new Comparator<Pair<Integer, Integer>>() {
+
+					@Override
+					public int compare(Pair<Integer, Integer> o1, Pair<Integer, Integer> o2) {
+						// the least value is better
+						return o1.getKey() - o2.getKey();
+					}
+				});
+				// for a proper selection do last select the greater one to make it on enter
+				Collections.reverse(toSelectList);
+
+				// for a roller if same key is typed
+				Collections.swap(toSelectList, toSelectList.size() - 1,
+						Math.abs(toSelectList.size() - 1 - rollerPrediction) % toSelectList.size());
+
+				// https://stackoverflow.com/questions/41104798/javafx-simplest-way-to-get-cell-data-using-table-index?rq=1
+				// System.out.println(Table.getColumns().get(1)
+				// .getCellObservableValue(toSelectList.get(toSelectList.size() -
+				// 1).getValue()).getClass());
+				// https://stackoverflow.com/questions/960431/how-to-convert-listinteger-to-int-in-java
+				int[] toSelect = toSelectList.stream().mapToInt(i -> i.getValue()).toArray();
+				int lastIndexToBeSelected = toSelectList.get(toSelectList.size() - 1).getValue();
+				Table.scrollTo(smartScrollIndex(lastIndexToBeSelected));
+				Table.getSelectionModel().selectIndices(-1, toSelect);
+				colorLastRowSelected();
+			} else {
+				PredictNavigation.setText(oldValue);
+			}
+
+		});
+		// scroll on button search to automatically clear
+		// the search field
+
+		// https://stackoverflow.com/questions/29735651/mouse-scrolling-in-java-fx
+		RefreshButton.setOnScroll((ScrollEvent event) -> {
+			// Adjust the zoom factor as per your requirement
+			double deltaY = event.getDeltaY();
+			if (deltaY < 0) {
+				SearchField.setText("un");
+			} else {
+				SearchField.setText("yes");
+			}
+		});
+		RefreshButton.setOnMouseClicked(m -> {
+			if (!m.getButton().equals(MouseButton.PRIMARY)) {
+				SearchField.setText(SearchField.getText() + rollerSearchKey.get(rollerSearchIndex));
+				rollerSearchIndex = (rollerSearchIndex + 1) % rollerSearchKey.size();
+				m.consume();
+			}
+		});
+
+		RefreshButton.setOnAction(e -> {
+			resetForm();
+		});
+	}
+
+	private void reloadColorLastRowSelected() {
+		deColorLastRowSelected();
+		colorLastRowSelected();
+	}
+
+	private TableRow<TableViewModel> lastRowSelected = null;
+
+	private void deColorLastRowSelected() {
+		if (lastRowSelected != null) {
+			lastRowSelected.getStyleClass().removeAll(Collections.singletonList("lastRowSelected"));
+		}
+	}
+
+	private void colorLastRowSelected() {
+		lastRowSelected = rowMap.get(Table.getSelectionModel().getSelectedItem());
+		if (lastRowSelected != null) {
+			lastRowSelected.getStyleClass().add("lastRowSelected");
+		}
+		if (lastRowSelected != null) {
+			lastRowSelected.getStyleClass().add("lastRowSelected");
+		}
+	}
 
 	/**
-	 * can ou {@link SplitViewController#UpButton this is link example}
-	 * 
-	 * @param isLeft
-	 *            needed here to separate on click action so if left open the
-	 *            directory in the right
+	 * {@link SplitViewController#UpButton this is link example}
+	 *
 	 */
 	public void initializeTable() {
 
@@ -247,19 +636,20 @@ public class SplitViewController {
 			switch (key.getCode()) {
 			case ENTER:
 				if (Table.isFocused()) {
-					if (lastSelectedTemp != null) // it may be table focused but not item selected
+					if (lastSelectedTemp != null) {
 						navigate(lastSelectedTemp.getmFilePath());
+					}
 				}
 				break;
 			case BACK_SPACE:
-				if (doBack)
+				if (doBack) {
 					back();
-				else {
+				} else {
 					if (!test.isEmpty()) {
 						test = test.substring(0, test.length() - 1);
 						PredictNavigation.setText(test);
 					} else {
-						executor.execute(enablemisback);
+						executor.execute(EnableMisBack);
 					}
 				}
 				break;
@@ -277,22 +667,26 @@ public class SplitViewController {
 				break;
 			case LEFT:
 				if (!isLeft) {
-					Path temppath = getSelectedPathIfDirectory();
-					if (temppath == null)
+					Path tempPath = getSelectedPathIfDirectory();
+					if (tempPath == null) {
 						break;
-					parentWelcome.SynctoLeft(temppath.toString());
-					if (!getSelectedItem().getmFilePath().toFile().isDirectory())
-						parentWelcome.getLeftView().NavigateForNameAndScrollto(lastSelectedTemp);
+					}
+					parentWelcome.SynctoLeft(tempPath.toString());
+					if (!getSelectedItem().getmFilePath().toFile().isDirectory()) {
+						parentWelcome.getLeftView().NavigateForNameAndScrollTo(lastSelectedTemp);
+					}
 				}
 				break;
 			case RIGHT:
 				if (isLeft) {
-					Path temppath2 = getSelectedPathIfDirectory();
-					if (temppath2 == null)
+					Path tempPath2 = getSelectedPathIfDirectory();
+					if (tempPath2 == null) {
 						break;
-					parentWelcome.SynctoRight(temppath2.toString());
-					if (!getSelectedItem().getmFilePath().toFile().isDirectory())
-						parentWelcome.getRightView().NavigateForNameAndScrollto(lastSelectedTemp);
+					}
+					parentWelcome.SynctoRight(tempPath2.toString());
+					if (!getSelectedItem().getmFilePath().toFile().isDirectory()) {
+						parentWelcome.getRightView().NavigateForNameAndScrollTo(lastSelectedTemp);
+					}
 				}
 				break;
 			case ESCAPE:
@@ -305,16 +699,22 @@ public class SplitViewController {
 			default:
 				// ignore special character
 				String newText = PredictNavigation.getText();
-				// TODO detect special character event
-				if (key.isControlDown() || key.isAltDown())
-					break;
-				if (key.isShiftDown()) {
-					if (StringHelper.getKeyAsShiftDown().containsKey(key.getText()))
-						newText += StringHelper.getKeyAsShiftDown().get(key.getText());
+				// detect special character event
+				if (key.isControlDown() || key.isAltDown()) {
 					break;
 				}
-				if (newText.equals(PredictNavigation.getText()))
+				if (key.isShiftDown()) {
+					// if (StringHelper.getKeyAsShiftDown().containsKey(key.getText()))
+					// newText += StringHelper.getKeyAsShiftDown().get(key.getText());
+					// Get Note Prompt
+					if (key.getText().toLowerCase().equals("n") && lastSelectedTemp != null) {
+						lastSelectedTemp.getmNoteButton().fire();
+					}
+					break;
+				}
+				if (newText.equals(PredictNavigation.getText())) {
 					newText += key.getText();
+				}
 				PredictNavigation.setText(newText.toLowerCase());
 
 				doBack = false;
@@ -340,7 +740,7 @@ public class SplitViewController {
 			public void handle(DragEvent event) {
 				Dragboard db = event.getDragboard();
 				if (db.hasFiles()) {
-					// TODO later resolve if drag and drop occure in same node
+					// TODO later resolve if drag and drop occurs in same node
 					// temp solution:
 					List<Path> ToOperatePath = new ArrayList<>();
 					db.getFiles().forEach(file3 -> {
@@ -389,9 +789,9 @@ public class SplitViewController {
 			if (SHORTCUT_FOCUS_TEXT_FIELD.match(e)) {
 				PathField.requestFocus();
 			} else if (SHORTCUT_SEARCH.match(e)) {
-				focusSearchFeild();
+				focusSearchField();
 			} else if (SHORTCUT_Clear_Search.match(e)) {
-				clearSearchFeild();
+				clearSearchField();
 			} else if (SHORTCUT_GO_UP.match(e)) {
 				goUpParent();
 			} else if (TOGGLE_FAVORITE.match(e)) {
@@ -409,46 +809,35 @@ public class SplitViewController {
 				showContextMenu();
 				m.consume();
 			}
-			if (t == null)
+			if (t == null) {
 				return;
+			}
 
-			boolean tempisDirectory = t.getmFilePath().toFile().isDirectory();
+			boolean tempIsDirectory = t.getmFilePath().toFile().isDirectory();
 
 			if (m.getButton().equals(MouseButton.PRIMARY) && m.getClickCount() == 2) {
 				navigate(t.getmFilePath());
-				if (!isLeft && Setting.isBackSync() && tempisDirectory)
+				if (!isLeft && Setting.isBackSync() && tempIsDirectory) {
 					parentWelcome.SynctoLeftParent();
-			} else if (isLeft && m.getButton().equals(MouseButton.PRIMARY) && tempisDirectory
-					&& parentWelcome.isAutoExpandToRight()) {
-				parentWelcome.SynctoRight(t.getmFilePath().toString());
+				}
+			} else if (isLeft && m.getButton().equals(MouseButton.PRIMARY) && parentWelcome.isAutoExpandToRight()) {
+				if (tempIsDirectory) {
+					parentWelcome.SynctoRight(t.getmFilePath().toString());
+				} else if (isOutOfTheBoxHelper()) {
+					parentWelcome.SynctoRight(getSelectedPathIfDirectory().toString());
+					parentWelcome.getRightView().NavigateForNameAndScrollTo(t);
+				}
 			}
 		});
 
 		initializeTableRowFactory();
 	}
 
-	private void goUpParent() {
-		PredictNavigation.setText("");
-		File parent = mDirectory.getParentFile();
-		if (parent != null) {
-			AddToQueue(mDirectory);
-			EmptyNextQueue();
-			mDirectory = parent;
-			if (mDirectory.exists()) {
-				Table.scrollTo(0);
-				refresh(null);
-			} else {
-				goUpParent();
-			}
-		} else {
-			OutofTheBoxListRoots();
-		}
-	}
-
 	Map<TableViewModel, TableRow<TableViewModel>> rowMap = new HashMap<>();
-	private int rollerPrediction;
 
-	// this row factory only work when user do scroll to show the correspond row
+	/**
+	 * this row factory only work when user do scroll to show the correspond row
+	 */
 	private void initializeTableRowFactory() {
 		// https://stackoverflow.com/questions/26220896/showing-tooltips-in-javafx-at-specific-row-position-in-the-tableview
 		Table.setRowFactory(tv -> new TableRow<TableViewModel>() {
@@ -474,15 +863,17 @@ public class SplitViewController {
 							updateVisualSeenButton(key, t);
 
 						} catch (Exception e) {
-							System.out.println("i entered as wrong key");
+							// fileTracker MapDetails return null for this key!
+							// Even when printed it contain it.. but the good thing later on scroll do not
+							// cause any problem and show status correctly.
+							System.out.println("i entered as wrong key ");
 							System.out.println(key);
-							// TODO: handle exception
 						}
 
-						t.setNoteText(mfileTracker.getNoteTooltipText(t.getName()));
+						t.setNoteText(mFileTracker.getNoteTooltipText(t.getName()));
 
-						List<String> options = mfileTracker.getMapDetails().get(key);
-						tooltipPreText = mfileTracker.getNoteTooltipText(key);
+						List<String> options = mFileTracker.getMapDetails().get(key);
+						tooltipPreText = mFileTracker.getNoteTooltipText(key);
 						t.setNoteText(tooltipPreText);
 						if (!tooltipPreText.isEmpty()) {
 							setTooltip(getHoverTooltip(tooltipPreText));
@@ -492,24 +883,26 @@ public class SplitViewController {
 							public void handle(ActionEvent event) {
 								String note = DialogHelper.showTextInputDialog("Quick Note Editor",
 										"Add Note To see on hover",
-										"Old note Was:\n" + mfileTracker.getNoteTooltipText(key),
-										mfileTracker.getNoteTooltipText(key));
+										"Old note Was:\n" + mFileTracker.getNoteTooltipText(key),
+										mFileTracker.getNoteTooltipText(key));
 
 								// if null set it to space like it was
-								if (note == null)
+								if (note == null) {
 									return; // keep note unchanged
-								if (note.isEmpty())
+								}
+								if (note.isEmpty()) {
 									note = " "; // reset note if is empty
+								}
 								// ensure > is not used
 								note = note.replace('>', '<');
-								if (!OutofTheBoxRecursive) {
-									mfileTracker.setTooltipsTexts(Table.getSelectionModel().getSelectedItems(), note);
-									mfileTracker.setTooltipText(t.getName(), note);
+								if (!OutOfTheBoxRecursive) {
+									mFileTracker.setTooltipsTexts(Table.getSelectionModel().getSelectedItems(), note);
+									mFileTracker.setTooltipText(t.getName(), note);
 								} else {
-									mfileTracker.OutofTheBoxsetTooltipsTexts(
+									mFileTracker.OutofTheBoxsetTooltipsTexts(
 											Table.getSelectionModel().getSelectedItems(), t, note);
 								}
-								RefreshTablewithSameData();
+								refreshTableWithSameData();
 							}
 						});
 						// action method for toggle will make all selection to toggle
@@ -522,7 +915,7 @@ public class SplitViewController {
 						});
 
 						// exclusive to normal view
-						if (!OutofTheBoxRecursive) {
+						if (!OutOfTheBoxRecursive) {
 							if (VLC.isVLCMediaExt(t.getName())) {
 								t.getOpenVLC().setOnMouseClicked(m -> {
 									Path path = getDirectoryPath().resolve(t.getName());
@@ -530,7 +923,7 @@ public class SplitViewController {
 									// if it is media file
 									if (m.getButton().equals(MouseButton.PRIMARY)) {
 										// load the preview
-										new FilterVLCController(t.getmFilePath(), mfileTracker);
+										new FilterVLCController(t.getmFilePath(), mFileTracker);
 									} else {
 										ArrayList<MediaCutData> list = new ArrayList<MediaCutData>();
 										// later try to remove this if
@@ -541,9 +934,10 @@ public class SplitViewController {
 														options.get(i + 2)));
 											}
 											VLC.SavePlayListFile(path, list, true, true, true);
-										} else
+										} else {
 											// just start the file with remote features
 											VLC.watchWithRemote(t.getmFilePath(), "");
+										}
 									}
 								});
 							}
@@ -558,8 +952,9 @@ public class SplitViewController {
 							public void handle(ActionEvent event) {
 								if (!untrackedBehavior(t)) {
 									t.getMarkSeen().setSelected(false);
-								} else
+								} else {
 									ToggleSeenHelper(t);
+								}
 							}
 						});
 						t.getmNoteButton().setOnAction(new EventHandler<ActionEvent>() {
@@ -584,20 +979,512 @@ public class SplitViewController {
 		});
 	}
 
-	// return the correct key to be used in map details
-	public String keyMapperToString(TableViewModel t) {
-		if (OutofTheBoxRecursive) {
-			if (mfileTracker.isTrackedOutFolder(t.getmFilePath().getParent()))
-				// the key is the full path
-				return t.getmFilePath().toUri().toString();
+	public static int count = 1; // optimized !
+	public static boolean isLastChangedLeft = false;
 
-		} else if (isOutofTheBoxHelper) {
-			return null;
-		} else if (mfileTracker.isTracked())
-			// normal case key is just the name
-			return t.getName();
+	/**
+	 * if you want to change directory view then change mDirectory then refresh view
+	 * you can use instead {@link #setmDirectoryThenRefresh(File)}
+	 */
+	public void refresh(String isOutOfTheBoxPath) {
+		// System.out.println(count);
+		// count++;
+		// if (count > 3)
+		// try {
+		// throw new Exception();
+		// } catch (Exception e) {
+		// e.printStackTrace();
+		// }
+		isLastChangedLeft = isLeft;
+		if (isOutOfTheBoxPath != null) {
+			// for out of the box do change directory or add your DataTable stuff
+			// before coming here .. this only used to update title and common preview stuff
+			truePathField = isOutOfTheBoxPath;
+			refreshIsOutOfTheBox();
+			// refresh state
+			Main.UpdateTitle(truePathField);
+		} else {
+			OutOfTheBoxRecursive = false;
+			recursiveSearch.setSelected(false);
+			NavigateRecursive.setVisible(false);
+			addQueryOptionsPathField("recursive", null);
+			truePathField = mDirectory.getAbsolutePath() + getQueryOptions();
+			// PathField.setText(mDirectory.getAbsolutePath());
+			// truePathField = mDirectory.getAbsolutePath();
+			refreshIsOutOfTheBox();
+			mFileTracker.loadMap(getDirectoryPath(), true, false);
+			mFileTracker.resolveConflict();
+			mWatchServiceHelper.changeObservableDirectory(mDirectory.toPath());
+			showList(getCurrentFilesList());
+			reloadSearchField();
+			String stageTitle = mDirectory.getName();
+			if (stageTitle.isEmpty()) {
+				stageTitle = mDirectory.getAbsolutePath();
+			}
+			Main.UpdateTitle(stageTitle);
+		}
+		if (isLeft) {
+			parentWelcome.updateFavoriteCheckBox(isOutOfTheBoxHelper);
+		}
+		PathField.setText(truePathField);
 
-		return null;
+		LabelItemsNumber.setText(" #" + DataTable.size() + " items");
+
+	}
+
+	private static List<String> SpecialPath = Arrays.asList("/", "?", "&", "|");
+
+	private boolean refreshIsOutOfTheBox() {
+		// System.out.println((isLeft) ? "I'm left " : "i'm right");
+
+		if (SpecialPath.stream().anyMatch(sp -> truePathField.contains(sp))) {
+			// excluding search from out of the box
+			if (getQueryOptions().contains("search=") && !getQueryOptions().contains("&")) {
+				isOutOfTheBoxHelper = false;
+				return false;
+			}
+			// out of the box
+			// System.out.println("i'm out of the box");
+			isOutOfTheBoxHelper = true;
+			return true;
+		} else {
+			// System.out.println("i'm the box");
+			isOutOfTheBoxHelper = false;
+			return false;
+		}
+	}
+
+	private static boolean alertError = true;
+
+	private void showList(ArrayList<File> list) {
+		DataTable.clear();
+
+		// Resolving name section
+		String error = "";
+		String ExpandedError = "";
+		boolean doRefresh = false;
+		if (Setting.isAutoRenameUTFFile()) {
+			List<File> toBeRemoved = new ArrayList<File>();
+			for (File s : list) {
+				try {
+					// if (FileHelper.rename(s.toPath(), this, true) != null)
+					if (FileHelper.rename(s.toPath(), true) != null) {
+						doRefresh = true;
+					}
+				} catch (Exception e) {
+					// Cannot Fix name unfortunately
+					ExpandedError += e.getMessage();
+					toBeRemoved.add(new File(s.toString()));
+				}
+			}
+			if (doRefresh) {
+				refresh(null);
+				return;
+			}
+			if (alertError && !ExpandedError.isEmpty()) {
+				if (isLeft) {
+					error = "Left View Exception\n";
+				} else {
+					error = "Right View Exception\n";
+				}
+				alertError = DialogHelper.showExpandableConfirmationDialog("Show Files",
+						"Illegal Character !  ----> Some File Could Not be shown",
+						error + "- Press Cancel to ignore future Similar Messages", ExpandedError);
+				error = "";
+				ExpandedError = "";
+			}
+			toBeRemoved.forEach(s -> list.remove(s));
+		}
+
+		// end resolving name section
+
+		for (File file : list) {
+			TableViewModel t = new TableViewModel(" ", file.getName(), file.toPath());
+			// check also initializeTableRowFactory for generating table row action
+			// and DataTable.addListener for adding search parameters
+			DataTable.add(t);
+		}
+	}
+
+	private LinkedList<File> BackQueue = new LinkedList<File>();
+	private LinkedList<File> NextQueue = new LinkedList<File>();
+
+	private void AddToQueue(File file) {
+		// prevent redundant successive items
+		if (BackQueue.isEmpty() || BackQueue.peekLast().compareTo(mDirectory) != 0) {
+			BackQueue.add(file);
+			BackButton.setDisable(false);
+		}
+	}
+
+	/**
+	 * As it Say back to last navigated directory if there isn't, go parent
+	 * directory
+	 */
+	private void back() {
+		// when back button is disabled mean that recent directory queue is empty
+		if (!doUp && !BackButton.isDisabled()) {
+			BackButton.fire();
+			if (!doUp) {
+				doUp = true;
+				executor.execute(doUpThreadOff);
+			}
+		} else {
+			goUpParent();
+		}
+	}
+
+	// go up directory until reaching root
+	private void goUpParent() {
+		PredictNavigation.setText("");
+		File parent = mDirectory.getParentFile();
+		File oldmDirectory = mDirectory;
+		if (parent != null) {
+			AddToQueue(mDirectory);
+			EmptyNextQueue();
+			mDirectory = parent;
+			if (mDirectory.exists()) {
+				refresh(null);
+				ScrollToName(oldmDirectory.getName());
+			} else {
+				goUpParent();
+			}
+		} else {
+			OutOfTheBoxListRoots();
+		}
+	}
+
+	// TODO separate this from resetting form only reset search !
+	public void clearSearchField() {
+
+		TableViewModel selected = Table.getSelectionModel().getSelectedItem();
+
+		// addQueryOptionsPathField("search", null); already done in listener
+		SearchField.setText("");
+		Table.getSelectionModel().clearSelection(); // to prevent mis scroll
+		Table.getSelectionModel().select(selected);
+
+		// for better view item like centralize view it on escape
+		// Table.getSelectionModel().select(DataTable.indexOf(selected));
+		// Table.scrollTo(smartScrollIndex(scrollIndex));
+		NavigateForNameAndScrollTo(selected);
+	}
+
+	private void OutOfTheBoxListRoots() {
+		List<File> roots = Arrays.asList(File.listRoots());
+		if (recursiveSearch.isSelected()) {
+			// do not set to false since fire do invert selection !
+			// recursiveSearch.setSelected(false);
+			// recursiveSearch.fire();
+			switchRecursive();
+		}
+		refresh("/");
+		DataTable.clear();
+
+		for (File root : roots) {
+			TableViewModel t = new TableViewModel(" ", root.getAbsolutePath(), root.toPath());
+			t.getHboxActions().getChildren().clear();
+			DataTable.add(t);
+		}
+	}
+
+	private void doRecursiveSearch() {
+		// String depthANS = DialogHelper.showTextInputDialog("Recursive Search", "Depth
+		// to consider",
+		// "Enter depth value to consider beginning from left view folder and track all
+		// sub directory in it\n"
+		// + "Input must be a number format if anything goes wrong '0' is the default
+		// value",
+		// "0");
+		// if (depthANS == null)
+		// return;
+		// Integer depth = 50;
+		// try {
+		// depth = Integer.parseInt(depthANS);
+		// } catch (NumberFormatException e1) {
+		// depth = 0;
+		// // e1.printStackTrace();
+		// }
+		// boolean saveIndex = DialogHelper.showConfirmationDialog("Recursive Search",
+		// "Save Index File?",
+		// "This to make it faster a second time");
+		// Measure execution time for this method
+		Main.ProcessTitle("Please Wait .. It might Take long for the first time...Indexing...");
+		mWatchServiceHelper.setRuning(false);
+		/**
+		 * History data: 120130 Files Indexed in 122858 milliseconds! 120130 Files
+		 * Indexed in 116692 milliseconds!
+		 *
+		 * after updating javafx using only platform: Showing 120292 Files Indexed of
+		 * 196713 in 58641 milliseconds!
+		 *
+		 * after using keyName of the map in generating TableViewModel and unifying the
+		 * structure of value of MapDetails as options.get(0) == name Showing 120001
+		 * Files Indexed of 196610 in 56487 milliseconds!
+		 *
+		 *
+		 */
+		Thread recursiveThread = new Thread() {
+
+			@Override
+			public void run() {
+				Instant start = Instant.now();
+				Instant finish;
+				long timeElapsed;
+				String msg;
+				Path dir = getDirectoryPath();
+				mFileTracker.getMapDetails().clear();
+				Platform.runLater(() -> DataTable.clear());
+				OutOfTheBoxRecursive = true;
+				boolean doSort = false;
+
+				// TODO check UTF Validity
+				// mfileTracker.OutofTheBoxAddToMapRecusive(dir);
+				// https://github.com/brettryan/io-recurse-tests
+				RecursiveFileWalker r = new RecursiveFileWalker();
+				// to handle if recursive search was pressed in middle of
+				// search without wiping all data
+				recursiveSearch.setOnAction(e -> {
+					if (recursiveSearch.isSelected()) {
+						recursiveSearch.setSelected(true);
+					}
+				});
+
+				try {
+					// StringHelper.startTimer();
+					Files.walkFileTree(dir, r);
+					if (r.getFilesCount() > Setting.getMaxLimitFilesRecursive()) {
+						doSort = true;
+					}
+					Stream<Path> paths = r.getParent().stream();
+					if (doSort) {
+						paths = paths.sorted((p1, p2) -> {
+							// sort directory as traversal bfs not dfs
+							// String p1st = p1.toString();
+							// String p2st = p2.toString();
+							// Integer p1depth = ;
+							// Integer p2depth = p2.getNameCount();
+							return p1.getNameCount() - p2.getNameCount();
+						});
+					}
+					// dir is not added into paths
+					mFileTracker.OutofTheBoxAddToMapRecusive(dir);
+					for (Path p : paths.collect(Collectors.toList())) {
+						if (!recursiveSearch.isSelected()) {
+							break;
+						}
+						mFileTracker.OutofTheBoxAddToMapRecusive(p);
+						if (mFileTracker.getMapDetails().size() > Setting.getMaxLimitFilesRecursive()) {
+							break;
+						}
+					}
+					// TODO working here
+					// this is faster than walk but couldn't handle exception access denied like
+					// this
+					// File file = new
+					// File("D:\\$RECYCLE.BIN\\S-1-5-21-2010406997-1771076405-2024525556-1007");
+					//
+					// System.out.println(file.isHidden());
+
+					// Files.find(dir, Integer.MAX_VALUE,
+					// (filePath, fileAttr) -> fileAttr.isDirectory() &&
+					// !filePath.toFile().isHidden())
+					// .forEach(p -> {
+					// r.getParent().add(p);
+					// });
+
+					// r.getDirSet().stream().forEach(p -> {
+					// mfileTracker.OutofTheBoxAddToMapRecusive(p);
+					// });
+				} catch (IOException e) {
+					Platform.runLater(() -> RecursiveHelperUpdateTitle(e.getMessage()));
+				}
+				List<TableViewModel> allThem = RecursiveHelperGetData();
+				Platform.runLater(() -> {
+					RecursiveHelperLoadDataTable(allThem);
+				});
+
+				finish = Instant.now();
+				mWatchServiceHelper.setRuning(true);
+
+				timeElapsed = Duration.between(start, finish).toMillis(); // in millis
+				msg = "Showing " + allThem.size() + " Files Indexed " + (doSort ? "of " + r.getFilesCount() : "")
+						+ " in " + timeElapsed + " milliseconds!"
+						+ (doSort ? "\nYou Can Change Limit File count in menu Tracker Setting" : "")
+						+ (!recursiveSearch.isSelected()
+								? "\nSearch Stopped To Reset View (do/un)check me Again, Or double click on Clear Button"
+								: "");
+				if (!recursiveSearch.isSelected()) {
+					recursiveSearch.setSelected(true);
+				}
+				// System.out.println(msg);
+				// TODO preserve show in case of search is unselected
+				Platform.runLater(() -> RecursiveHelperUpdateTitle(msg));
+				// we do reinitialize because it's action was changed to handle in middle search
+				// stop see up
+				initializeRecursiveSearch();
+			}
+		};
+		recursiveHelperSetBlocked(true);
+		recursiveThread.start();
+	}
+
+	private void EmptyNextQueue() {
+		NextQueue.clear();
+		NextButton.setDisable(true);
+	}
+
+	/**
+	 *
+	 * @param searchPattern ';' to combine multiple search statement '!' to exclude
+	 *                      from search
+	 *
+	 *                      example i want all vlc media that contain name word and
+	 *                      not excel i search: 'vlc;word;!excel'
+	 * @param model
+	 * @return
+	 */
+	private boolean filterModel(String searchPattern, TableViewModel model) {
+		// If filter text is empty, display all.
+		List<String> advancedFilter = Arrays.asList(searchPattern.split(";"));
+		boolean isRespect = true;
+		boolean state = true;
+		String modelName = model.getName().toLowerCase();
+		String note = model.getNoteText().trim().toLowerCase();
+		boolean isMediaFile = VLC.isVLCMediaExt(modelName);
+		boolean isVideo = VLC.isVideo(modelName);
+		boolean isAudio = VLC.isAudio(modelName);
+		boolean isImage = PhotoViewerController.ArrayIMGExt.contains(StringHelper.getExtention(modelName));
+		for (String filerItem : advancedFilter) {
+			String lowerCaseFilter = filerItem.toLowerCase();
+			state = true;
+			if (lowerCaseFilter.startsWith("!")) {
+				state = false;
+				lowerCaseFilter = lowerCaseFilter.substring(lowerCaseFilter.length() > 0 ? 1 : 0);
+			} else if (lowerCaseFilter.startsWith("|")) {
+				if (isRespect == true) {
+					continue;
+				}
+				isRespect = true;
+				lowerCaseFilter = lowerCaseFilter.substring(lowerCaseFilter.length() > 0 ? 1 : 0);
+			}
+			if (lowerCaseFilter == null || lowerCaseFilter.isEmpty()) {
+				isRespect &= true;
+				continue;
+			}
+			// Compare with filerItem text.
+			if (modelName.contains(lowerCaseFilter)) {
+				isRespect &= state; // filerItem matches name.
+			} else if (lowerCaseFilter.contains("vlc") && isMediaFile) {
+				isRespect &= state;
+			} else if (lowerCaseFilter.contains("video") && isVideo) {
+				isRespect &= state;
+			} else if (lowerCaseFilter.contains("image") && isImage) {
+				isRespect &= state;
+			} else if (lowerCaseFilter.contains("audio") && isAudio) {
+				isRespect &= state;
+			} else if (note.contains(lowerCaseFilter)) {
+				isRespect &= state; // search note if exist
+			} else if ((model.getMarkSeen().getText().equals("U") || model.getMarkSeen().getText().equals("-"))
+					&& "un".toLowerCase().contains(lowerCaseFilter)) {
+				isRespect &= state; // filerItem unseen.
+			} else if (model.getMarkSeen().getText().equals("S") && "yes".toLowerCase().contains(lowerCaseFilter)) {
+				isRespect &= state;// filerItem seen.
+			} else if (lowerCaseFilter.startsWith("<") || lowerCaseFilter.startsWith(">")) {
+				// https://stackoverflow.com/questions/2367381/how-to-extract-numbers-from-a-string-and-get-an-array-of-ints/2367418
+				int toCompareWith = 10;
+				int firstIndexOfSearchNumber = 1;
+				boolean isEqualToo = false;
+				if (lowerCaseFilter.length() > 1 && lowerCaseFilter.startsWith("=", 1)) {
+					isEqualToo = true;
+					firstIndexOfSearchNumber = 2;
+
+				}
+				try {
+					toCompareWith = Integer.parseInt(lowerCaseFilter.substring(firstIndexOfSearchNumber));
+				} catch (Exception e) {
+				}
+				Pattern p = Pattern.compile("-?\\d+");
+				Matcher m = p.matcher(FilenameUtils.getBaseName(modelName));
+				boolean valid = false;
+				if (lowerCaseFilter.startsWith("<")) {
+					while (m.find()) {
+						int nbTemp = Math.abs(Integer.parseInt(m.group()));
+						if (nbTemp < toCompareWith || isEqualToo && nbTemp == toCompareWith) {
+							valid = true;
+						}
+					}
+				} else {
+					while (m.find()) {
+						int nbTemp = Math.abs(Integer.parseInt(m.group()));
+						if (nbTemp > toCompareWith || isEqualToo && nbTemp == toCompareWith) {
+							valid = true;
+						}
+					}
+				}
+				if (valid) {
+					isRespect &= state;
+				} else {
+					isRespect &= !state;
+				}
+			} else {
+				isRespect &= !state; // Does not match.
+			}
+
+		}
+		return isRespect;
+	}
+
+	public void focusSearchField() {
+		SearchField.requestFocus();
+	}
+
+	// this to update pathField also
+	// private void SearchField.setText(String text) {
+	// SearchField.setText(text);
+	// KeyEvent ke = new KeyEvent(KeyEvent.KEY_RELEASED, "a", "", KeyCode.UNDEFINED,
+	// false, false, false, false);
+	// SearchField.fireEvent(ke);
+	// }
+
+	public void focusTable() {
+		if (Table.getSelectionModel().getSelectedCells().size() <= 0) {
+			// Table.getSelectionModel().select(0);
+			Table.getSelectionModel().selectFirst();
+		}
+		Table.requestFocus();
+	}
+
+	public Button getBackButton() {
+		return BackButton;
+	}
+
+	public ArrayList<File> getCurrentFilesList() {
+		File[] arrayFiles = mDirectory.listFiles(file -> !file.isHidden());
+		if (arrayFiles == null) {
+			arrayFiles = new File[0];
+		}
+		// old approach
+		// Arrays.sort(arrayFiles, (f1, f2) -> {
+		// if ((f1.isDirectory() && f2.isDirectory()) || (f1.isFile() && f2.isFile())) {
+		// return f1.compareTo(f2);
+		// }
+		// return f1.isDirectory() ? -1 : 1;
+		// });
+
+		ArrayList<File> listFiles = new ArrayList<>();
+		listFiles.addAll(Arrays.asList(arrayFiles));
+		StringHelper.SortNaturalArrayFiles(listFiles);
+
+		return listFiles;
+	}
+
+	public List<String> getCurrentFilesListName() {
+		return getCurrentFilesList().stream().map(s -> s.getName()).collect(Collectors.toList());
+	}
+
+	public Path getDirectoryPath() {
+		return mDirectory.toPath();
 	}
 
 	private Tooltip getHoverTooltip(String note) {
@@ -612,369 +1499,129 @@ public class SplitViewController {
 		return tooltip;
 	}
 
-	private void ToggleSeenHelper(TableViewModel clicked) {
-		if (!OutofTheBoxRecursive)
-			mfileTracker.toggleSelectionSeen(Table.getSelectionModel().getSelectedItems(),
-					XSPFrelatedWithSelection(clicked), clicked);
-		else {
-			mfileTracker.OutofTheBoxtoggleSelectionSeen(Table.getSelectionModel().getSelectedItems(), clicked);
-		}
-		// when toggle seen if yes or un is in search field do update
-		reloadSearchField();
+	public File getmDirectory() {
+		return mDirectory;
 	}
 
-	/**
-	 * The use of this function is that sometimes after changing
-	 * {@link TableViewModel#setNoteText(String)} the value isn't updated in the
-	 * view unless something refresh the table so here will do it automatically all
-	 * way reserving the old selection also
-	 */
-	private void RefreshTablewithSameData() {
-		List<TableViewModel> Copy = new ArrayList<>(DataTable);
-		// reserve selection before refreshing the table
-		// be aware that if initialized spaces more than needed so table will contain 0
-		// and first row get selected even when it's not
-		int[] toSelect = new int[Table.getSelectionModel().getSelectedItems().size()];
-		int j = 0;
-		for (int i : Table.getSelectionModel().getSelectedIndices())
-			toSelect[j++] = i;
-		DataTable.clear();
-		DataTable.addAll(Copy);
-		// restore reserve
-		Table.getSelectionModel().selectIndices(-1, toSelect);
-		Table.requestFocus();
+	public FileTracker getMfileTracker() {
+		return mFileTracker;
 	}
 
-	private boolean untrackedBehavior(TableViewModel t) {
-		boolean ans;
-		// returned false
-		if (OutofTheBoxRecursive || isOutofTheBoxHelper) {
-			ans = DialogHelper.showConfirmationDialog("Track new Folder[Recursive Mode]", "Ready to Be Stunned ?",
-					"Tracking a new Folder will create a hidden file .tracker_explorer.txt"
-							+ " in the folder to save data tracker !"
-							+ "\nIn recursive mode the creation will trigger on all Selected Items.");
-			if (!ans)
-				return ans;
+	public WatchServiceHelper getmWatchServiceHelper() {
+		return mWatchServiceHelper;
+	}
 
-			Set<Path> paths = Table.getSelectionModel().getSelectedItems().stream()
-					.map(selection -> selection.getmFilePath().getParent()).collect(Collectors.toSet());
-			paths.add(t.getmFilePath().getParent());
-			mfileTracker.OutofTheBoxTrackFolder(paths);
-			RefreshTablewithSameData();
+	public Button getNextButton() {
+		return NextButton;
+	}
+
+	public WelcomeController getParentWelcome() {
+		return parentWelcome;
+	}
+
+	public TextField getPathField() {
+		return PathField;
+	}
+
+	private String getQueryOptions() {
+		int temp = truePathField.indexOf("?");
+		if (temp != -1) {
+			return truePathField.substring(temp);
 		} else {
-
-			ans = mfileTracker.getAns();
-			if (ans)
-				mfileTracker.trackNewFolder();
+			return "";
 		}
-		return ans;
 	}
 
-	public void updateVisualSeenButton(String key, TableViewModel t) {
-		// property of toggle button from map
-		t.updateMarkSeen(mfileTracker.isSeen(key));
-	}
-
-	private void showContextMenu() {
-		TableViewModel t = Table.getSelectionModel().getSelectedItem();
-		if (t != null) {
-			ArrayList<Path> toShow = new ArrayList<>();
-			for (TableViewModel tsel : Table.getSelectionModel().getSelectedItems()) {
-				toShow.add(tsel.getmFilePath());
-			}
-			RunMenu.showMenu(toShow);
-		} else
-			RunMenu.showMenu(Arrays.asList(mDirectory.toPath()));
+	public TableViewModel getSelectedItem() {
+		return Table.getSelectionModel().getSelectedItem();
 	}
 
 	private Path getSelectedPathIfDirectory() {
 		TableViewModel t = Table.getSelectionModel().getSelectedItem();
-		if (t == null)
+		if (t == null) {
 			return null;
-		if (!t.getmFilePath().toFile().isDirectory())
+		}
+		if (!t.getmFilePath().toFile().isDirectory()) {
 			return t.getmFilePath().getParent();
+		}
 		return t.getmFilePath();
 	}
 
-	private void initializeSplitButton() {
+	// this helper is to optimize call of the function
+	// so only call when really need to update state
 
-		initializeToolsMenu();
-		NavigateRecursive.setVisible(false);
+	// for recursive mode use OutOfTheBoxRecursive
 
-		NavigateRecursive.setOnAction(new EventHandler<ActionEvent>() {
+	public List<Path> getSelection() {
+		List<Path> selection = new ArrayList<>();
+		for (TableViewModel item : Table.getSelectionModel().getSelectedItems()) {
+			selection.add(item.getmFilePath());
+		}
+		return selection;
+	}
 
-			@Override
-			public void handle(ActionEvent event) {
-				TableViewModel toNavigateFor = Table.getSelectionModel().getSelectedItem();
-				Path path = toNavigateFor.getmFilePath().getParent();
-				navigate(path);
-				resetForm();
-				NavigateForNameAndScrollto(toNavigateFor);
-			}
-		});
-		initializerecursiveSearch();
-
-		UpButton.setOnAction(new EventHandler<ActionEvent>() {
+	private void initializeRecursiveSearch() {
+		recursiveSearch.setOnAction(new EventHandler<ActionEvent>() {
 
 			@Override
 			public void handle(ActionEvent event) {
-				goUpParent();
-				Table.requestFocus();
-			}
-		});
-
-		PathField.setOnDragDetected(new EventHandler<MouseEvent>() {
-
-			@Override
-			public void handle(MouseEvent event) {
-				Dragboard db = Table.startDragAndDrop(TransferMode.ANY);
-				ClipboardContent cb = new ClipboardContent();
-				cb.putString(mDirectory.toString());
-				db.setContent(cb);
-			}
-		});
-		BackButton.setDisable(true);
-		BackButton.setOnAction(new EventHandler<ActionEvent>() {
-
-			@Override
-			public void handle(ActionEvent event) {
-				NextQueue.add(mDirectory);
-				NextButton.setDisable(false);
-				File temp = BackQueue.removeLast();
-				if (temp.exists())
-					mDirectory = temp;
-				if (BackQueue.isEmpty()) {
-					BackButton.setDisable(true);
-				}
-				refresh(null);
-			}
-		});
-
-		NextButton.setDisable(true);
-		NextButton.setOnAction(new EventHandler<ActionEvent>() {
-
-			@Override
-			public void handle(ActionEvent event) {
-				BackQueue.add(mDirectory);
-				BackButton.setDisable(false);
-				File temp = NextQueue.removeLast();
-				if (temp.exists())
-					mDirectory = temp;
-				if (NextQueue.isEmpty()) {
-					NextButton.setDisable(true);
-				}
-				refresh(null);
-			}
-		});
-
-		Explorer.setOnAction(new EventHandler<ActionEvent>() {
-
-			@Override
-			public void handle(ActionEvent event) {
-				if (!isOutofTheBoxHelper || isOutofTheBoxRecursive()) {
-					int index;
-					index = Table.getSelectionModel().getFocusedIndex();
-					if (index != -1) {
-						TableViewModel test = sortedData.get(index);
-
-						try {
-							StringHelper
-									.RunRuntimeProcess(
-											new String[] { "explorer.exe", "/select,", test.getmFilePath().toString() })
-									.waitFor();
-						} catch (InterruptedException e) {
-							// TODO Auto-generated catch block
-							e.printStackTrace();
-						}
-					} else
-						StringHelper.open(mDirectory.toURI().toString());
-				} else {
-					if (truePathField.equals("/")) {
-						String cmd = "explorer.exe /select," + DataTable.get(0).getmFilePath();
-						try {
-							Runtime.getRuntime().exec(cmd);
-						} catch (IOException e) {
-							e.printStackTrace();
-						}
-					}
-				}
-			}
-		});
-
-		// https://code.makery.ch/blog/javafx-8-tableview-sorting-filtering/
-		FilteredList<TableViewModel> filteredData = new FilteredList<>(DataTable, p -> true);
-		SearchFeild.textProperty().addListener((observable, oldValue, newValue) -> {
-			PredictNavigation.setText("");
-			filteredData.setPredicate(model -> {
-				// be aware of doing somthing here it apply on every item in list
-				return filterModel(newValue, model);
-			});
-			addQueryOptionsPathField("search", newValue);
-			LabelItemsNumber.setText(" #" + filteredData.size() + " items");
-		});
-
-		sortedData = new SortedList<>(filteredData);
-		sortedData.comparatorProperty().bind(Table.comparatorProperty());
-		Table.setItems(sortedData);
-
-		DataTable.addListener((ListChangeListener<TableViewModel>) c -> {
-			while (c.next()) {
-				if (c.wasAdded()) {
-					// String key = keyStringMapper(c);
-					for (TableViewModel t : c.getAddedSubList()) {
-						String key = keyMapperToString(t);
-						if (key != null) {
-							// TODO when adding new files to current directory null pointer exception is
-							// detected
-							t.updateMarkSeenText(mfileTracker.isSeen(key));
-							t.setNoteText(mfileTracker.getNoteTooltipText(key));
-						} else
-							t.emptyCell();
-					}
-				}
-				if (c.wasRemoved()) {
-					rowMap.clear();
-				}
-			}
-		});
-
-		Table.getSelectionModel().selectedItemProperty().addListener((obs, oldSelection, newSelection) -> {
-			// TODO if ctrl + A is pressed is not detected
-			if (Table.getSelectionModel().getSelectedItems().size() > 1)
-				reloadColorlastRowSelected();
-			else
-				deColorlastRowSelected();
-			LabelItemsNumber
-					.setText(" #" + Table.getSelectionModel().getSelectedItems().size() + "/" + sortedData.size());
-		});
-		PredictNavigation.textProperty().addListener((observable, oldValue, newValue) -> {
-			deColorlastRowSelected();
-			Table.getSelectionModel().clearSelection();
-			if (newValue.trim().isEmpty()) {
-				newValue = "";
-				rollerPrediction = 0;
-				PredictNavigation.setVisible(false);
-				return;
-			}
-			if (!newValue.equals(newValue.toLowerCase())) {
-				PredictNavigation.setText(newValue.toLowerCase());
-				return;
-			}
-			PredictNavigation.setVisible(true);
-			ArrayList<Pair<Integer, Integer>> toSelectList = new ArrayList<>();
-			for (TableViewModel t : sortedData) {
-				int where = t.getName().toLowerCase().indexOf(newValue);
-				if (where >= 0) {
-					toSelectList.add(new Pair<Integer, Integer>(where, sortedData.indexOf(t)));
-				}
-			}
-
-			// Trying to auto complete special character
-			if (toSelectList.isEmpty()) {
-				// try once to add space then add character
-				// if yes go for it
-				for (TableViewModel t : sortedData) {
-					for (String st : StringHelper.getKeyAsShiftDown().values()) {
-						String tosearchfor = oldValue + st + newValue.substring(newValue.length() - 1);
-						int where = t.getName().toLowerCase().indexOf(tosearchfor);
-						if (where >= 0) {
-							PredictNavigation.setText(tosearchfor);
-							return;
-						}
-					}
-				}
-
-				// trying to roll to next selected element in case if it was the first or last
-				// character
-				if (oldValue.length() > 0)
-					if (newValue.substring(0, 1).equals(oldValue.substring(0, 1)) || newValue
-							.substring(newValue.length() - 1).equals(oldValue.substring(oldValue.length() - 1))) {
-						// Table.getSelectionModel().getSelectedItems()
-						Table.getSelectionModel().clearSelection(sortedData.indexOf(Table.getSelectionModel()
-								.getSelectedItems().get(Table.getSelectionModel().getSelectedItems().size() - 1)));
-						Table.getSelectionModel().select(Table.getSelectionModel().getSelectedItems()
-								.get(Table.getSelectionModel().getSelectedItems().size() - 2));
-						rollerPrediction++;
-						PredictNavigation.setText(oldValue);
+				if (recursiveSearch.isSelected()) {
+					if (isOutOfTheBoxHelper) {
+						recursiveSearch.setSelected(false);
 						return;
-
 					}
+					addQueryOptionsPathField("recursive", "true");
+					NavigateRecursive.setVisible(true);
+					doRecursiveSearch();
+				} else {
+					addQueryOptionsPathField("recursive", null);
+					NavigateRecursive.setVisible(false);
+					setPathFieldThenRefresh(truePathField);
+				}
 			}
-
-			if (!toSelectList.isEmpty()) {
-				// sort list upon priority to first occurrence is last selected
-				// to get opened in case and scroll to it
-				toSelectList.sort(new Comparator<Pair<Integer, Integer>>() {
-
-					@Override
-					public int compare(Pair<Integer, Integer> o1, Pair<Integer, Integer> o2) {
-						// the least value is better
-						return o1.getKey() - o2.getKey();
-					}
-				});
-				// for a proper selection do last select the greater one to make it on enter
-				Collections.reverse(toSelectList);
-
-				// for a roller if same key is typed
-				Collections.swap(toSelectList, toSelectList.size() - 1,
-						Math.abs((toSelectList.size() - 1 - rollerPrediction)) % toSelectList.size());
-
-				// https://stackoverflow.com/questions/41104798/javafx-simplest-way-to-get-cell-data-using-table-index?rq=1
-				// System.out.println(Table.getColumns().get(1)
-				// .getCellObservableValue(toSelectList.get(toSelectList.size() -
-				// 1).getValue()).getClass());
-				// https://stackoverflow.com/questions/960431/how-to-convert-listinteger-to-int-in-java
-				int[] toSelect = toSelectList.stream().mapToInt(i -> i.getValue()).toArray();
-				int LastIndexTobeSelected = toSelectList.get(toSelectList.size() - 1).getValue();
-				Table.scrollTo(smartScrollIndex(LastIndexTobeSelected));
-				Table.getSelectionModel().selectIndices(-1, toSelect);
-				colorLastRowSelected();
-			} else {
-				PredictNavigation.setText(oldValue);
-			}
-
-		});
-		// scroll on button search to automatically clear
-		// the search feild
-
-		// https://stackoverflow.com/questions/29735651/mouse-scrolling-in-java-fx
-		ClearButton.setOnScroll((ScrollEvent event) -> {
-			// Adjust the zoom factor as per your requirement
-			double deltaY = event.getDeltaY();
-			if (deltaY < 0) {
-				SearchFeild.setText("un");
-			} else {
-				SearchFeild.setText("yes");
-			}
-		});
-		ClearButton.setOnMouseClicked(m -> {
-			PredictNavigation.setText("");
-			if (m.getButton().equals(MouseButton.PRIMARY) && m.getClickCount() == 2) {
-				resetForm();
-				m.consume();
-			} else if (!m.getButton().equals(MouseButton.PRIMARY)) {
-				SearchFeild.setText(SearchFeild.getText() + rollerSearchKey.get(rollerSearchIndex));
-				rollerSearchIndex = (rollerSearchIndex + 1) % rollerSearchKey.size();
-				m.consume();
-			}
-		});
-
-		ClearButton.setOnAction(e -> {
-			clearSearchFeild();
 		});
 	}
+
+	/**
+	 * check {@link #rollerSearchKey}
+	 */
+	private Integer rollerSearchIndex = 0;
+
+	/**
+	 * check it's roller key at {@link #rollerSearchIndex}
+	 */
+	static private List<String> rollerSearchKey = new ArrayList<String>() {
+		/**
+		 *
+		 */
+		private static final long serialVersionUID = 6421021611798519588L;
+
+		{
+			add(";vlc");
+			add(";andThis");
+			add(";|orThis");
+			add(";!notThis");
+			add(";video");
+			add(";audio");
+		}
+	};
+
+	// Needed to redo last modification rename
+	private static LinkedList<HashMap<Path, Path>> NewToOldRename = new LinkedList<>();
 
 	private void initializeToolsMenu() {
 		MenuItem copyBaseNames = new MenuItem("Copy Base Names");
 		MenuItem pasteBaseNames = new MenuItem("Paste Base Names");
-
+		MenuItem redoLastPasteNames = new MenuItem("Redo Last Paste Names");
 		ToolsMenu.getItems().add(copyBaseNames);
 		ToolsMenu.getItems().add(pasteBaseNames);
+		ToolsMenu.getItems().add(redoLastPasteNames);
+		redoLastPasteNames.setDisable(true);
 
 		copyBaseNames.setOnAction(new EventHandler<ActionEvent>() {
 
 			/**
-			 * Check similar {@link FilterVLCController#getcopyRaw}
+			 * Check similar {@link FilterVLCController#getCopyRaw}
 			 */
 			@Override
 			public void handle(ActionEvent arg0) {
@@ -984,9 +1631,8 @@ public class SplitViewController {
 					toWorkWith = Table.getSelectionModel().getSelectedItems();
 				} else {
 					toWorkWith = sortedData;
-					warningAlert = "- It's better To make a selection Source First from the Table!\n";
+					warningAlert = "- You can also make a selection Source First from the Table!\n";
 				}
-
 				String myString = "";
 				for (TableViewModel t : toWorkWith) {
 					String item = FilenameUtils.getBaseName(t.getName()) + "\n";
@@ -998,7 +1644,8 @@ public class SplitViewController {
 				clipboard.setContent(content);
 				DialogHelper.showExpandableAlert(AlertType.INFORMATION, "Copy Base Names",
 						"Content Copied Successfully to Clipboard\n-----   " + toWorkWith.size() + " ----- Items Added",
-						warningAlert + "Use it as you like with Paste Names Options!\nContent:", myString);
+						"Note:\n" + warningAlert + "- Use it as you like with Paste Names Options!\nContent:",
+						myString);
 			}
 		});
 
@@ -1023,7 +1670,7 @@ public class SplitViewController {
 						toWorkWith = Table.getSelectionModel().getSelectedItems();
 					} else {
 						toWorkWith = sortedData;
-						warningAlert = "\nIt's better To make a selection Target First from the Table!";
+						warningAlert = "\nYou can also make a selection Target First from the Table!";
 					}
 					int i = 0;
 					List<String> toRenameWithFinal = new ArrayList<>();
@@ -1031,10 +1678,11 @@ public class SplitViewController {
 						if (i < swapNames.length) {
 							String ext = FilenameUtils.getExtension(t.getName());
 							String report = "";
-							if (ext.length() > 0)
+							if (ext.length() > 0) {
 								ext = "." + ext;
+							}
 							String finalName = swapNames[i] + ext;
-							// removing invalid character
+							// removing invalid special character
 							finalName = finalName.replaceAll("[\\\\/:*?\"<>|\r]", "");
 							toRenameWithFinal.add(finalName);
 
@@ -1048,20 +1696,26 @@ public class SplitViewController {
 					}
 
 					boolean ans = DialogHelper.showExpandableConfirmationDialog("Paste Base Names",
-							"Preview Change" + warningAlert,
-							"Each Seperated line Name assigned to selection item in table order. \n", fullAlertReport);
+							"Preview Change" + "\nPending -----   " + toRenameWithFinal.size()
+									+ " ----- Changes Pair Rename\n",
+							"Each Separated line Name assigned to selection item in table order. \n" + "Note:"
+									+ warningAlert,
+							fullAlertReport);
 					if (ans) {
 						i = 0;
-						String sourceError = "";
 						String renameError = "";
+						HashMap<Path, Path> currentNewToOldRename = new HashMap<>();
 						for (TableViewModel t : toWorkWith) {
 							if (i < toRenameWithFinal.size()) {
 								try {
-									Files.move(t.getmFilePath(),
-											t.getmFilePath().resolveSibling(toRenameWithFinal.get(i)));
+									Path oldFile = t.getmFilePath();
+									Path newFile = t.getmFilePath().resolveSibling(toRenameWithFinal.get(i));
+									FileHelper.RenameHelper(oldFile, newFile);
+									currentNewToOldRename.put(newFile, oldFile);
+
 								} catch (IOException e) {
-									sourceError += t.getmFilePath().getFileName() + "\n";
-									renameError += toRenameWithFinal.get(i) + "\n";
+									renameError += t.getmFilePath().getFileName() + " --> " + toRenameWithFinal.get(i)
+											+ "\n";
 									warningAlert += e.getClass() + ": " + e.getMessage() + "\n";
 									e.printStackTrace();
 								}
@@ -1070,12 +1724,13 @@ public class SplitViewController {
 								break;
 							}
 						}
-						if (!sourceError.isEmpty()) {
+						NewToOldRename.add(currentNewToOldRename);
+						redoLastPasteNames.setDisable(false);
+						if (!renameError.isEmpty()) {
 							DialogHelper.showExpandableAlert(AlertType.ERROR, "Paste Base Names",
 									"Some Content were not renamed Successfully!",
-									"This may be caused by illegal character or redandant names in input clipboard. \n",
-									warningAlert + "\nSource File:\n" + sourceError + "\nRename expected:\n"
-											+ renameError);
+									"This may be caused by illegal character or redundant names in input clipboard. \n",
+									warningAlert + "\nSource File --> Rename expected:\n" + renameError);
 						}
 
 					}
@@ -1085,668 +1740,118 @@ public class SplitViewController {
 				}
 				if (error) {
 					DialogHelper.showTextInputDialog("Paste Raw Data", "Content Parse failed!",
-							"SomeThing went wrong,\nAre you Sure You have the Data,\n Try pasting it here to recheck\nReseting DataTable to initial value",
+							"SomeThing went wrong,\nAre you Sure You have the Data,\n Try pasting it here to recheck\nResetting DataTable to initial value",
 							"Raw Data Here");
 				}
 
 			}
 		});
-	}
-
-	private void initializerecursiveSearch() {
-		recursiveSearch.setOnAction(new EventHandler<ActionEvent>() {
+		redoLastPasteNames.setOnAction(new EventHandler<ActionEvent>() {
 
 			@Override
 			public void handle(ActionEvent event) {
-				if (recursiveSearch.isSelected()) {
-					if (isOutofTheBoxHelper) {
-						recursiveSearch.setSelected(false);
-						return;
-					}
-					addQueryOptionsPathField("recursive", "true");
-					NavigateRecursive.setVisible(true);
-					doRecursiveSearch();
-				} else {
-					addQueryOptionsPathField("recursive", null);
-					NavigateRecursive.setVisible(false);
-					setPathFieldThenRefresh(truePathField);
+				String summary = "This action is used when wrongly 'Pasted base names'."
+						+ "\nIn that case a report of redo will be displayed for to be confirmed.";
+				String title = "Redo Last Paste Names";
+				// due to disable status it will never enter this if, but just in case more
+				// check...
+				if (NewToOldRename.size() == 0) {
+					DialogHelper.showAlert(AlertType.INFORMATION, title, "No recent modification applied.", summary);
+					return;
 				}
+				String changeReportFiles = "";
+				String notFoundFiles = "";
+				HashMap<Path, Path> lastNewToOldRename = NewToOldRename.peekLast();
+				Path workingDir = lastNewToOldRename.get(lastNewToOldRename.keySet().toArray()[0]).getParent();
+				int i = 0;
+				int found = 0;
+				for (Path newPath : lastNewToOldRename.keySet()) {
+					if (newPath.toFile().exists()) {
+						changeReportFiles += "*R" + (i + 1) + "- " + newPath.getFileName() + " --> "
+								+ lastNewToOldRename.get(newPath).getFileName() + "\n";
+						found++;
+					} else {
+						notFoundFiles += "*N" + (i + 1) + "- " + newPath.getFileName() + " !!->"
+								+ lastNewToOldRename.get(newPath).getFileName() + "\n";
+					}
+					i++;
+				}
+				if (!notFoundFiles.isEmpty()) {
+					notFoundFiles = "Not Found Files:\n" + notFoundFiles;
+				}
+				boolean ans = DialogHelper.showExpandableConfirmationDialog(title, "Preview Change"
+						+ "\nPending -----   " + found + " ----- Changes Pair Rename"
+						+ (i - found != 0 ? "\nNot Found -----   " + (i - found) + " ----- Files (renamed or moved)\n"
+								: ""),
+						summary, "Working in:  " + workingDir + "\n\nModifications:\n" + changeReportFiles + "\n"
+								+ notFoundFiles);
+				if (ans) {
+					i = 0;
+					String renameError = "";
+					String warningAlert = "";
+					for (Path newPath : lastNewToOldRename.keySet()) {
+						try {
+							if (newPath.toFile().exists()) {
+								Files.move(newPath, lastNewToOldRename.get(newPath));
+							}
+						} catch (IOException e) {
+							renameError += newPath.getFileName() + " -->"
+									+ lastNewToOldRename.get(newPath).getFileName() + "\n";
+							warningAlert += e.getClass() + ": " + e.getMessage() + "\n";
+							e.printStackTrace();
+						}
+						i++;
+					}
+					NewToOldRename.removeLast();
+					if (NewToOldRename.size() == 0) {
+						redoLastPasteNames.setDisable(true);
+					}
+					if (!renameError.isEmpty()) {
+						DialogHelper.showExpandableAlert(AlertType.ERROR, title,
+								"Some Content were not renamed Successfully!",
+								"This may be caused by illegal character names. \n",
+								warningAlert + "\nSource File --> Rename expected:\n" + renameError);
+					}
+
+				}
+
 			}
 		});
+
 	}
 
-	private TableRow<TableViewModel> lastRowSelected = null;
-
-	private void colorLastRowSelected() {
-		lastRowSelected = rowMap.get(Table.getSelectionModel().getSelectedItem());
-		if (lastRowSelected != null)
-			lastRowSelected.getStyleClass().add("lastRowSelected");
-		if (lastRowSelected != null)
-			lastRowSelected.getStyleClass().add("lastRowSelected");
+	public boolean isFocused() {
+		return Table.isFocused() || UpButton.isFocused() || RefreshButton.isFocused() || SearchField.isFocused();
 	}
 
-	private void deColorlastRowSelected() {
-		if (lastRowSelected != null)
-			lastRowSelected.getStyleClass().removeAll(Collections.singletonList("lastRowSelected"));
+	public boolean isFocusedTable() {
+		return Table.isFocused();
 	}
 
-	private void reloadColorlastRowSelected() {
-		deColorlastRowSelected();
-		colorLastRowSelected();
+	public boolean isOutOfTheBoxHelper() {
+		return isOutOfTheBoxHelper;
 	}
 
-	/**
-	 * check {@link #rollerSearchKey}
-	 */
-	private Integer rollerSearchIndex = 0;
+	public boolean isOutOfTheBoxRecursive() {
+		return OutOfTheBoxRecursive;
+	}
 
-	// this to update pathfield also
-	// private void SearchFeild.setText(String text) {
-	// SearchFeild.setText(text);
-	// KeyEvent ke = new KeyEvent(KeyEvent.KEY_RELEASED, "a", "", KeyCode.UNDEFINED,
-	// false, false, false, false);
-	// SearchFeild.fireEvent(ke);
-	// }
-
-	private boolean OutofTheBoxRecursive = false;
-
-	private void doRecursiveSearch() {
-		// String depthANS = DialogHelper.showTextInputDialog("Recursive Search", "Depth
-		// to consider",
-		// "Enter depht value to consider begining from left view folder and track all
-		// sub directory in it\n"
-		// + "Input must be a number format if anything goes wrong '0' is the default
-		// value",
-		// "0");
-		// if (depthANS == null)
-		// return;
-		// Integer depth = 50;
-		// try {
-		// depth = Integer.parseInt(depthANS);
-		// } catch (NumberFormatException e1) {
-		// depth = 0;
-		// // e1.printStackTrace();
-		// }
-		// boolean saveIndex = DialogHelper.showConfirmationDialog("Recursive Search",
-		// "Save Index File?",
-		// "This to make it faster a second time");
-		// Measure execution time for this method
-		Main.ProcessTitle("Please Wait .. It might Take long for the first time...Indexing...");
-		mWatchServiceHelper.setRuning(false);
-		/**
-		 * History data: 120130 Files Indexed in 122858 milliseconds! 120130 Files
-		 * Indexed in 116692 milliseconds!
-		 * 
-		 * after updating javafx using only platform: Showing 120292 Files Indexed of
-		 * 196713 in 58641 milliseconds!
-		 * 
-		 * after using keyname of the map in generating tableviewmodel and unifying the
-		 * structure of value of mapdetails as options.get(0) == name Showing 120001
-		 * Files Indexed of 196610 in 56487 milliseconds!
-		 * 
-		 * 
-		 */
-		Thread recursiveThread = new Thread() {
-
-			public void run() {
-				Instant start = Instant.now();
-				Instant finish;
-				long timeElapsed;
-				String msg;
-				Path dir = getDirectoryPath();
-				mfileTracker.getMapDetails().clear();
-				OutofTheBoxRecursive = true;
-				boolean dosort = false;
-
-				// TODO check UTF Validity
-				// mfileTracker.OutofTheBoxAddToMapRecusive(dir);
-				// https://github.com/brettryan/io-recurse-tests
-				RecursiveFileWalker r = new RecursiveFileWalker();
-				// to handle if recursive search was pressed in middle of
-				// search without wiping all data
-				recursiveSearch.setOnAction(e -> {
-					if (recursiveSearch.isSelected()) {
-						recursiveSearch.setSelected(true);
-					}
-				});
-
-				try {
-					// StringHelper.startTimer();
-					Files.walkFileTree(dir, r);
-					if (r.getFilesCount() > Setting.getMaxLimitFilesRecursive()) {
-						dosort = true;
-					}
-					Stream<Path> paths = r.getParent().stream();
-					if (dosort) {
-						paths = paths.sorted((p1, p2) -> {
-							// sort directory as traversal bfs not dfs
-							// String p1st = p1.toString();
-							// String p2st = p2.toString();
-							// Integer p1depth = ;
-							// Integer p2depth = p2.getNameCount();
-							return p1.getNameCount() - p2.getNameCount();
-						});
-					}
-					// dir is not added into paths
-					mfileTracker.OutofTheBoxAddToMapRecusive(dir);
-					for (Path p : paths.collect(Collectors.toList())) {
-						if (!recursiveSearch.isSelected())
-							break;
-						mfileTracker.OutofTheBoxAddToMapRecusive(p);
-						if (mfileTracker.getMapDetails().size() > Setting.getMaxLimitFilesRecursive())
-							break;
-					}
-					// TODO working here
-					// this is faster than walk but couldn't handle exception access denied like
-					// this
-					// File file = new
-					// File("D:\\$RECYCLE.BIN\\S-1-5-21-2010406997-1771076405-2024525556-1007");
-					//
-					// System.out.println(file.isHidden());
-
-					// Files.find(dir, Integer.MAX_VALUE,
-					// (filePath, fileAttr) -> fileAttr.isDirectory() &&
-					// !filePath.toFile().isHidden())
-					// .forEach(p -> {
-					// r.getParent().add(p);
-					// });
-
-					// r.getDirSet().stream().forEach(p -> {
-					// mfileTracker.OutofTheBoxAddToMapRecusive(p);
-					// });
-				} catch (IOException e) {
-					Platform.runLater(() -> RecursiveHelperUpdateTitle(e.getMessage()));
-				}
-				List<TableViewModel> allthem = RecursiveHelperGetData();
-				Platform.runLater(() -> {
-					RecursiveHelperLoadDataTable(allthem);
-				});
-
-				finish = Instant.now();
-				mWatchServiceHelper.setRuning(true);
-
-				timeElapsed = Duration.between(start, finish).toMillis(); // in millis
-				msg = "Showing " + allthem.size() + " Files Indexed " + ((dosort) ? "of " + r.getFilesCount() : "")
-						+ " in " + timeElapsed + " milliseconds!"
-						+ ((dosort) ? "\nYou Can Change Limit File count in menu Tracker Setting" : "")
-						+ ((!recursiveSearch.isSelected())
-								? "\nSearch Stopped To Reset View (do/un)check me Again, Or double click on Clear Button"
-								: "");
-				if (!recursiveSearch.isSelected())
-					recursiveSearch.setSelected(true);
-				// System.out.println(msg);
-				// TODO preserve show in case of search is unselected
-				Platform.runLater(() -> RecursiveHelperUpdateTitle(msg));
-				// we do re initalize because it's action was changed to handle in middle search
-				// stop see up
-				initializerecursiveSearch();
+	// return the correct key to be used in map details
+	public String keyMapperToString(TableViewModel t) {
+		if (OutOfTheBoxRecursive) {
+			if (mFileTracker.isTrackedOutFolder(t.getmFilePath().getParent())) {
+				// the key is the full path
+				return t.getmFilePath().toUri().toString();
 			}
-		};
-		RecursiveHelpersetBlocked(true);
-		recursiveThread.start();
-	}
 
-	private void RecursiveHelperLoadDataTable(List<TableViewModel> allRowModel) {
-		DataTable.clear();
-		DataTable.addAll(allRowModel);
-	}
-
-	private List<TableViewModel> RecursiveHelperGetData() {
-		// DataTable.clear();
-		List<TableViewModel> allRowModel = new ArrayList<>();
-		// sorting to show directory first
-		// this cost useless factor time by ~*1.3
-		// mfileTracker.getMapDetails().keySet().stream().sorted((pst1, pst2) -> {
-		// File f1 = Paths.get(URI.create(pst1)).toFile();
-		// File f2 = Paths.get(URI.create(pst2)).toFile();
-		// // return f1.compareTo(f2);
-		// return new FileComparator().compare(f1, f2);
-		// }).collect(Collectors.toList());
-		for (String pathST : mfileTracker.getMapDetails().keySet()) {
-			// List<String> options = mfileTracker.getMapDetails().get(pathST);
-			Path pathItem = Paths.get(URI.create(pathST));
-			allRowModel.add(new TableViewModel(" ", pathItem.toFile().getName(), pathItem));
-		}
-		// StringHelper.endTimerAndDisplay();
-		return allRowModel;
-	}
-
-	private void RecursiveHelperUpdateTitle(String message) {
-		ContextMenu mn = new ContextMenu();
-		MenuItem mnchild = new MenuItem(message);
-		mn.getItems().add(mnchild);
-		mn.getStyleClass().addAll("lastRowSelected");
-		mnchild.getStyleClass().addAll("lastRowSelected");
-		double xloc = Main.getPrimaryStage().getX() + Table.getLayoutX() + Table.getWidth() * 0.1;
-		double yloc = Main.getPrimaryStage().getY() + Table.getLayoutY() + Table.getHeight() + 70;
-		mn.show(Main.getPrimaryStage(), xloc, yloc);
-		Main.ResetTitle();
-		refresh(truePathField);
-		RecursiveHelpersetBlocked(false);
-		Table.requestFocus();
-		// to refresh selection number and select the first one
-		Table.getSelectionModel().select(0);
-	}
-
-	private void RecursiveHelpersetBlocked(boolean state) {
-		ClearButton.setDisable(state);
-		Table.setDisable(state);
-		NavigateRecursive.setDisable(state);
-		PathField.setDisable(state);
-		UpButton.setDisable(state);
-		BackButton.setDisable(state);
-		NextButton.setDisable(state);
-		Explorer.setDisable(state);
-		SearchFeild.setDisable(state);
-		parentWelcome.RecursiveHelpersetBlocked(state);
-
-	}
-
-	private void addQueryOptionsPathField(String optionItem, String value) {
-		String text = PathField.getText();
-		Map<String, String> options = getQueryOptionsAsMap(text);
-		// clean existing option
-		if (options == null)
-			options = new HashMap<String, String>();
-
-		if ((value == null) || value.trim().isEmpty() && options.containsKey(optionItem))
-			options.remove(optionItem);
-		else
-			options.put(optionItem, value.trim());
-		updatePathField(options);
-	}
-
-	private Map<String, String> getQueryOptionsAsMap(String FullPathEmbed) {
-		int from = FullPathEmbed.indexOf("?") + 1;
-		if (from == -1)
+		} else if (isOutOfTheBoxHelper) {
 			return null;
-		String optionsString = FullPathEmbed.substring(from);
-		return Arrays.asList(optionsString.split("&")).stream()
-				.filter(s -> s.contains("=") && !s.isEmpty() && s.split("=").length > 1)
-				.collect(Collectors.toMap(x -> x.split("=")[0], x -> x.split("=")[1]));
-	}
-
-	private String getQueryPathFromEmbed(String FullPathEmbed) {
-		int temp = FullPathEmbed.indexOf("?");
-		String query;
-		if (temp != -1)
-			query = FullPathEmbed.substring(temp);
-		else
-			query = "";
-		return FullPathEmbed.replace(query, "");
-	}
-
-	private void updatePathField(Map<String, String> options) {
-		truePathField = truePathField.replace(getQueryOptions(), "");
-		if (options == null)
-			return;
-		truePathField += "?";
-		int i = 0;
-		for (String Keyoption : options.keySet()) {
-			if (i++ != 0)
-				truePathField += "&";
-			truePathField += Keyoption + "=" + options.get(Keyoption);
-		}
-		if (truePathField.endsWith("?"))
-			truePathField = truePathField.replace("?", "");
-		PathField.setText(truePathField);
-	}
-
-	private String getQueryOptions() {
-		int temp = truePathField.indexOf("?");
-		if (temp != -1)
-			return truePathField.substring(temp);
-		else
-			return "";
-	}
-
-	/**
-	 * check it's roller key at {@link #rollerSearchIndex}
-	 */
-	static private List<String> rollerSearchKey = new ArrayList<String>() {
-		/**
-		 * 
-		 */
-		private static final long serialVersionUID = 6421021611798519588L;
-
-		{
-			add(";vlc");
-			add(";andthis");
-			add(";|orthis");
-			add(";!notthis");
-			add(";video");
-			add(";audio");
-		}
-	};
-
-	/**
-	 * 
-	 * @param searchPattern
-	 *            ';' to combine multiple search statement '!' to exclude from
-	 *            search
-	 * 
-	 *            example i want all vlc media that contain name word and not excel
-	 *            i search: 'vlc;word;!excel'
-	 * @param model
-	 * @return
-	 */
-	private boolean filterModel(String searchPattern, TableViewModel model) {
-		// If filter text is empty, display all.
-		List<String> advancedFilter = Arrays.asList(searchPattern.split(";"));
-		boolean isRespect = true;
-		boolean state = true;
-		String modelName = model.getName().toLowerCase();
-		String note = model.getNoteText().trim().toLowerCase();
-		boolean isMediaFile = VLC.isVLCMediaExt(modelName);
-		boolean isVideo = VLC.isVideo(modelName);
-		boolean isAudio = VLC.isAudio(modelName);
-		for (String filerItem : advancedFilter) {
-			String lowerCasefilter = filerItem.toLowerCase();
-			state = true;
-			if (lowerCasefilter.startsWith("!")) {
-				state = false;
-				lowerCasefilter = lowerCasefilter.substring((lowerCasefilter.length() > 0) ? 1 : 0);
-			} else if (lowerCasefilter.startsWith("|")) {
-				if (isRespect == true)
-					continue;
-				isRespect = true;
-				lowerCasefilter = lowerCasefilter.substring((lowerCasefilter.length() > 0) ? 1 : 0);
-			}
-			if (lowerCasefilter == null || lowerCasefilter.isEmpty()) {
-				isRespect &= true;
-				continue;
-			}
-			// Compare with filerItem text.
-			if (modelName.contains(lowerCasefilter)) {
-				isRespect &= state; // filerItem matches name.
-			} else if (lowerCasefilter.contains("vlc") && isMediaFile)
-				isRespect &= state;
-			else if (lowerCasefilter.contains("video") && isVideo)
-				isRespect &= state;
-			else if (lowerCasefilter.contains("audio") && isAudio)
-				isRespect &= state;
-			else if (note.contains(lowerCasefilter))
-				isRespect &= state; // search note if exist
-			else if ((model.getMarkSeen().getText().equals("U") || model.getMarkSeen().getText().equals("-"))
-					&& "un".toLowerCase().contains(lowerCasefilter)) {
-				isRespect &= state; // filerItem unseen.
-			} else if (model.getMarkSeen().getText().equals("S") && "yes".toLowerCase().contains(lowerCasefilter)) {
-				isRespect &= state;// filerItem seen.
-			} else if (lowerCasefilter.startsWith("<") || lowerCasefilter.startsWith(">")) {
-				// https://stackoverflow.com/questions/2367381/how-to-extract-numbers-from-a-string-and-get-an-array-of-ints/2367418
-				int toComparewith = 10;
-				int firstIndexOfSearchNumber = 1;
-				boolean isEqualToo = false;
-				if (lowerCasefilter.length() > 1 && lowerCasefilter.startsWith("=", 1)) {
-					isEqualToo = true;
-					firstIndexOfSearchNumber = 2;
-
-				}
-				try {
-					toComparewith = Integer.parseInt(lowerCasefilter.substring(firstIndexOfSearchNumber));
-				} catch (Exception e) {
-				}
-				Pattern p = Pattern.compile("-?\\d+");
-				Matcher m = p.matcher(FilenameUtils.getBaseName(modelName));
-				boolean valid = false;
-				if (lowerCasefilter.startsWith("<")) {
-					while (m.find()) {
-						int nbTemp = Math.abs(Integer.parseInt(m.group()));
-						if (nbTemp < toComparewith || (isEqualToo && nbTemp == toComparewith)) {
-							valid = true;
-						}
-					}
-				} else {
-					while (m.find()) {
-						int nbTemp = Math.abs(Integer.parseInt(m.group()));
-						if (nbTemp > toComparewith || (isEqualToo && nbTemp == toComparewith)) {
-							valid = true;
-						}
-					}
-				}
-				if (valid) {
-					isRespect &= state;
-				} else {
-					isRespect &= !state;
-				}
-			} else
-				isRespect &= !state; // Does not match.
-
-		}
-		return isRespect;
-	}
-
-	public static boolean isLastChangedLeft = false;
-	public static int count = 1; // optimized !
-	// set isisOutofTheBoxPath to null for false result
-	// otherwise provide it
-
-	public void refresh(String isOutofTheBoxPath) {
-		// System.out.println(count);
-		// count++;
-		// if (count > 3)
-		// try {
-		// throw new Exception();
-		// } catch (Exception e) {
-		// e.printStackTrace();
-		// }
-		isLastChangedLeft = isLeft;
-		if (isOutofTheBoxPath != null) {
-			// for out of the box do change directory or add your datatable stuff
-			// before coming here .. this only used to update title and common preview stuff
-			truePathField = isOutofTheBoxPath;
-			RefreshisOutofTheBox();
-			// refresh state
-			Main.UpdateTitle(truePathField);
-		} else {
-			OutofTheBoxRecursive = false;
-			recursiveSearch.setSelected(false);
-			NavigateRecursive.setVisible(false);
-			addQueryOptionsPathField("recursive", null);
-			truePathField = mDirectory.getAbsolutePath() + getQueryOptions();
-			// PathField.setText(mDirectory.getAbsolutePath());
-			// truePathField = mDirectory.getAbsolutePath();
-			RefreshisOutofTheBox();
-			mfileTracker.loadMap(getDirectoryPath(), true, false);
-			mfileTracker.resolveConflict();
-			mWatchServiceHelper.changeObservableDirectory(mDirectory.toPath());
-			showList(getCurrentFilesList());
-			reloadSearchField();
-			String Stagetitle = mDirectory.getName();
-			if (Stagetitle.isEmpty())
-				Stagetitle = mDirectory.getAbsolutePath();
-			Main.UpdateTitle(Stagetitle);
-		}
-		if (isLeft)
-			parentWelcome.updateFavoriteCheckBox(isOutofTheBoxHelper);
-		PathField.setText(truePathField);
-
-		LabelItemsNumber.setText(" #" + DataTable.size() + " items");
-
-	}
-
-	public void reloadSearchField() {
-		String temp = SearchFeild.getText();
-		SearchFeild.setText("");
-		SearchFeild.setText(temp);
-	}
-
-	// this helper is to optimize call of the function
-	// so only call when really need to update state
-
-	// for recursive mode use OutofTheBoxRecursive
-
-	private boolean isOutofTheBoxHelper = false;
-
-	public boolean isOutofTheBoxHelper() {
-		return isOutofTheBoxHelper;
-	}
-
-	public boolean isOutofTheBoxRecursive() {
-		return OutofTheBoxRecursive;
-	}
-
-	private boolean RefreshisOutofTheBox() {
-		// System.out.println((isLeft) ? "I'm left " : "i'm right");
-
-		if (SpecialPath.stream().anyMatch(sp -> truePathField.contains(sp))) {
-			// excluding search from out of the box
-			if (getQueryOptions().contains("search=") && !getQueryOptions().contains("&")) {
-				isOutofTheBoxHelper = false;
-				return false;
-			}
-			// out of the box
-			// System.out.println("i'm out of the box");
-			isOutofTheBoxHelper = true;
-			return true;
-		} else {
-			// System.out.println("i'm the box");
-			isOutofTheBoxHelper = false;
-			return false;
-		}
-	}
-
-	public TextField getPathField() {
-		return PathField;
-	}
-
-	public List<Path> getSelection() {
-		List<Path> selection = new ArrayList<>();
-		for (TableViewModel item : Table.getSelectionModel().getSelectedItems()) {
-			selection.add(item.getmFilePath());
-		}
-		return selection;
-	}
-
-	public TableViewModel getSelectedItem() {
-		return Table.getSelectionModel().getSelectedItem();
-	}
-
-	public void select(String regex) {
-		if (regex.startsWith("*"))
-			regex = "." + regex;
-		Table.getSelectionModel().clearSelection();
-		for (int i = 0; i < DataTable.size(); ++i) {
-			TableViewModel model = DataTable.get(i);
-			String item = model.getName();
-			if (item.matches(regex) || StringHelper.containsWord(item, regex)) {
-				Table.getSelectionModel().select(model);
-			}
-		}
-	}
-
-	public ArrayList<File> getCurrentFilesList() {
-		File[] arrayFiles = mDirectory.listFiles(file -> !file.isHidden());
-		if (arrayFiles == null) {
-			arrayFiles = new File[0];
-		}
-		// old approach
-		// Arrays.sort(arrayFiles, (f1, f2) -> {
-		// if ((f1.isDirectory() && f2.isDirectory()) || (f1.isFile() && f2.isFile())) {
-		// return f1.compareTo(f2);
-		// }
-		// return f1.isDirectory() ? -1 : 1;
-		// });
-
-		ArrayList<File> listFiles = new ArrayList<>();
-		listFiles.addAll(Arrays.asList(arrayFiles));
-		StringHelper.SortArrayFiles(listFiles);
-
-		return listFiles;
-	}
-
-	public List<String> getCurrentFilesListName() {
-		return getCurrentFilesList().stream().map(s -> s.getName()).collect(Collectors.toList());
-	}
-
-	private static boolean alertError = true;
-
-	private void showList(ArrayList<File> list) {
-		DataTable.clear();
-
-		// Resolving name section
-		String error = "";
-		String ExpandedError = "";
-		boolean dorefresh = false;
-		if (Setting.isAutoRenameUTFFile()) {
-			List<File> toBeRemoved = new ArrayList<File>();
-			for (File s : list) {
-				try {
-					// if (FileHelper.rename(s.toPath(), this, true) != null)
-					if (FileHelper.rename(s.toPath(), true) != null)
-						dorefresh = true;
-				} catch (Exception e) {
-					// Cannot Fix name unfortunately
-					ExpandedError += e.getMessage();
-					toBeRemoved.add(new File(s.toString()));
-				}
-			}
-			if (dorefresh) {
-				refresh(null);
-				return;
-			}
-			if (alertError && !ExpandedError.isEmpty()) {
-				if (isLeft)
-					error = "Left View Exception\n";
-				else
-					error = "Right View Exception\n";
-				alertError = DialogHelper.showExpandableConfirmationDialog("Show Files",
-						"Illegal Character !  ----> Some File Could Not be shown",
-						error + "- Press Cancel to ignore future Similar Messages", ExpandedError);
-				error = "";
-				ExpandedError = "";
-			}
-			toBeRemoved.forEach(s -> list.remove(s));
+		} else if (mFileTracker.isTracked()) {
+			// normal case key is just the name
+			return t.getName();
 		}
 
-		// end resolving name section
-
-		for (File file : list) {
-			TableViewModel t = new TableViewModel(" ", file.getName(), file.toPath());
-			// check also initializeTableRowFactory for generating table row action
-			// and DataTable.addListener for adding search parameters
-			DataTable.add(t);
-		}
-	}
-
-	private ArrayList<TableViewModel> XSPFrelatedWithSelection(TableViewModel clicked) {
-
-		// if XSPF is clicked also auto sync seen its video files if exist
-
-		// to collect all model to sync
-		ArrayList<TableViewModel> Allrelated = new ArrayList<>();
-
-		// to collect all base name of XSPF
-		Map<String, TableViewModel> mapAllXSPF = new HashMap<String, TableViewModel>();
-		;
-
-		// to include clicked in below for loop
-		// Table.getSelectionModel().select(DataTable.indexOf(clicked));
-		ArrayList<TableViewModel> tempover = new ArrayList<>();
-		tempover.addAll(Table.getSelectionModel().getSelectedItems());
-		tempover.add(clicked);
-
-		for (TableViewModel t : tempover) {
-			String ext = StringHelper.getExtention(t.getName());
-			if (ext.equals("XSPF") && t.getName().length() > 15) {
-				String basename = t.getName().substring(0, t.getName().length() - 15).toUpperCase();
-				mapAllXSPF.put(basename, t);
-			}
-		}
-		for (TableViewModel tsearch : DataTable) {
-			String tbase = StringHelper.getBaseName(tsearch.getName());
-			if (mapAllXSPF.containsKey(tbase)) {
-				mfileTracker.setSeen(tsearch.getName(), mfileTracker.getSeen(mapAllXSPF.get(tbase)), tsearch);
-				// first if -> to force toggle if only video is selected and clicked on XSPF
-				// second if ->to prevent double toggle
-				if (Table.getSelectionModel().getSelectedItems().size() == 1
-						|| !Table.getSelectionModel().getSelectedItems().contains(tsearch))
-					Allrelated.add(tsearch);
-			}
-		}
-		if (Allrelated.size() == 0)
-			return null;
-		return Allrelated;
+		return null;
 	}
 
 	// true if the navigate was a directory
@@ -1772,16 +1877,42 @@ public class SplitViewController {
 			isDirectory = true;
 		} else {
 			try {
-				String files = " --playlist-enqueue --loop";
 				if (VLC.isInstalled() && VLC.isVLCMediaExt(filePath.toFile().getName())) {
+					String files = " --playlist-enqueue --loop";
 					for (TableViewModel t : Table.getSelectionModel().getSelectedItems()) {
-						if (VLC.isVLCMediaExt(t.getName()))
+						if (VLC.isVLCMediaExt(t.getName())) {
 							files += " " + t.getmFilePath().toUri();
+						}
 					}
 					VLC.StartVlc(files);
 					// we always start media because playlist do not start automatically
-				} else
-					StringHelper.open(selectedFile);
+				} else {
+					// deal other types of files
+					if (StringHelper.getExtention(selectedFile.getName()).equals("PDF")) {
+						// open bunch of PDF
+						StringHelper.openFiles(Table.getSelectionModel().getSelectedItems().stream()
+								.map(p -> p.getmFilePath().toFile())
+								.filter(p -> StringHelper.getExtention(p.getName()).equals("PDF"))
+								.collect(Collectors.toList()));
+
+						// open bunch of Image or an image
+					} else if (PhotoViewerController.ArrayIMGExt
+							.contains(StringHelper.getExtention(selectedFile.getName()))) {
+						new PhotoViewerController(Table.getSelectionModel().getSelectedItems().stream()
+								.map(p -> p.getmFilePath().toFile())
+								.filter(p -> PhotoViewerController.ArrayIMGExt
+										.contains(StringHelper.getExtention(p.getName())))
+								.collect(Collectors.toList()), selectedFile, parentWelcome);
+
+					} else {
+						// default option
+						// AWT function used here for better support of opening file from network
+						// AWT was not used to prevent hole stack of AWT but no good alternative in
+						// javaFX
+						Desktop.getDesktop().open(selectedFile);
+//						StringHelper.openFile(selectedFile);
+					}
+				}
 
 			} catch (Exception e) {
 				DialogHelper.showException(e);
@@ -1792,106 +1923,177 @@ public class SplitViewController {
 		return isDirectory;
 	}
 
-	private void EmptyNextQueue() {
-		NextQueue.clear();
-		NextButton.setDisable(true);
+	protected void NavigateForNameAndScrollTo(TableViewModel toNavigateFor) {
+		if (toNavigateFor != null) {
+			ScrollToName(toNavigateFor.getName());
+		}
 	}
 
-	private void AddToQueue(File file) {
-		BackQueue.add(file);
-		BackButton.setDisable(false);
+	public void ScrollToName(String fileName) {
+		TableViewModel found = getViewModelOfName(fileName);
+		if (found == null) {
+			return;
+		}
+		Table.getSelectionModel().select(found);
+		Table.scrollTo(smartScrollIndex(sortedData.indexOf(found)));
 	}
 
-	// the parent directory was on old version of this application
-	// named like this
-	private void back() {
-		if (!doUp && !BackButton.isDisabled()) {
-			BackButton.fire();
-			if (!doUp) {
-				doUp = true;
-				executor.execute(doUpThreadOff);
+	/**
+	 * Otherwise TableViewModel in sorted data that have corresponding name
+	 *
+	 * @param fileName name to search for
+	 * @return
+	 */
+	private TableViewModel getViewModelOfName(String fileName) {
+		TableViewModel found = null;
+		for (TableViewModel t : DataTable) {
+			if (t.getName().equals(fileName)) {
+				found = t;
+				break;
 			}
-		} else {
-			goUpParent();
 		}
+		return found;
 	}
 
-	private void OutofTheBoxListRoots() {
-		List<File> roots = Arrays.asList(File.listRoots());
-		if (recursiveSearch.isSelected()) {
-			// do not set to false since fire do invert selection !
-			// recursiveSearch.setSelected(false);
-			// recursiveSearch.fire();
-			switchRecursive();
+	private int smartScrollIndex(int scrollIndex) {
+		for (int i = 4; i > 0; i--) {
+			if (scrollIndex - i > 0) {
+				scrollIndex -= i;
+				break;
+			}
 		}
-		refresh("/");
+		return scrollIndex;
+	}
+
+	private boolean doBack = true;
+	private boolean doUp = false;
+	// second use: do excessive up(goParent function)
+	private Thread doUpThreadOff = new Thread() {
+
+		@Override
+		public void run() {
+			try {
+				TimeUnit.MILLISECONDS.sleep(1000);
+				// to prevent mis back button
+				doUp = false;
+			} catch (InterruptedException e) {
+				// e.printStackTrace();
+			}
+		}
+	};
+	// first use : prevent excessive back when cleaning prediction text with
+	private Thread EnableMisBack = new Thread() {
+
+		@Override
+		public void run() {
+			try {
+				TimeUnit.MILLISECONDS.sleep(500);
+				// to prevent mis back button
+				doBack = true;
+			} catch (InterruptedException e) {
+				// e.printStackTrace();
+			}
+		}
+	};
+	// https://howtodoinjava.com/java/multi-threading/java-thread-pool-executor-example/
+	ThreadPoolExecutor executor = (ThreadPoolExecutor) Executors.newCachedThreadPool();
+
+	private List<TableViewModel> RecursiveHelperGetData() {
+		// DataTable.clear();
+		List<TableViewModel> allRowModel = new ArrayList<>();
+		// sorting to show directory first
+		// this cost useless factor time by ~*1.3
+		// mfileTracker.getMapDetails().keySet().stream().sorted((pst1, pst2) -> {
+		// File f1 = Paths.get(URI.create(pst1)).toFile();
+		// File f2 = Paths.get(URI.create(pst2)).toFile();
+		// // return f1.compareTo(f2);
+		// return new FileComparator().compare(f1, f2);
+		// }).collect(Collectors.toList());
+		for (String pathST : mFileTracker.getMapDetails().keySet()) {
+			// List<String> options = mfileTracker.getMapDetails().get(pathST);
+			Path pathItem = Paths.get(URI.create(pathST));
+			allRowModel.add(new TableViewModel(" ", pathItem.toFile().getName(), pathItem));
+		}
+		// StringHelper.endTimerAndDisplay();
+		return allRowModel;
+	}
+
+	private void RecursiveHelperLoadDataTable(List<TableViewModel> allRowModel) {
 		DataTable.clear();
+		DataTable.addAll(allRowModel);
+	}
 
-		for (File root : roots) {
-			TableViewModel t = new TableViewModel(" ", root.getAbsolutePath(), root.toPath());
-			t.getHboxActions().getChildren().clear();
-			DataTable.add(t);
+	private void recursiveHelperSetBlocked(boolean state) {
+		RefreshButton.setDisable(state);
+		Table.setDisable(state);
+		NavigateRecursive.setDisable(state);
+		PathField.setDisable(state);
+		UpButton.setDisable(state);
+		BackButton.setDisable(state);
+		NextButton.setDisable(state);
+		Explorer.setDisable(state);
+		SearchField.setDisable(state);
+		parentWelcome.RecursiveHelpersetBlocked(state);
+
+	}
+
+	private void RecursiveHelperUpdateTitle(String message) {
+		ContextMenu mn = new ContextMenu();
+		MenuItem mnChild = new MenuItem(message);
+		mn.getItems().add(mnChild);
+		mn.getStyleClass().addAll("lastRowSelected");
+		mnChild.getStyleClass().addAll("lastRowSelected");
+		double xLoc = Main.getPrimaryStage().getX() + Table.getLayoutX() + Table.getWidth() * 0.1;
+		double yLoc = Main.getPrimaryStage().getY() + Table.getLayoutY() + Table.getHeight() + 70;
+		mn.show(Main.getPrimaryStage(), xLoc, yLoc);
+		Main.ResetTitle();
+		refresh(truePathField);
+		recursiveHelperSetBlocked(false);
+		Table.requestFocus();
+		// to refresh selection number and select the first one
+		Table.getSelectionModel().select(0);
+	}
+
+	public void refreshAsPathField() {
+		// when doing search this cause to false navigate
+		// this doesn't work with multiSelection
+		// auto scroll
+		// TODO
+		saveLastSelectToScroll();
+		setPathFieldThenRefresh(getPathField().getText());
+		restoreLastSelectAndScroll();
+	}
+
+	/**
+	 * The use of this function is that sometimes after changing
+	 * {@link TableViewModel#setNoteText(String)} the value isn't updated in the
+	 * view unless something refresh the table so here will do it automatically all
+	 * way reserving the old selection also
+	 */
+	private void refreshTableWithSameData() {
+		List<TableViewModel> Copy = new ArrayList<>(DataTable);
+		// reserve selection before refreshing the table
+		// be aware that if initialized spaces more than needed so table will contain 0
+		// and first row get selected even when it's not
+		int[] toSelect = new int[Table.getSelectionModel().getSelectedItems().size()];
+		int j = 0;
+		for (int i : Table.getSelectionModel().getSelectedIndices()) {
+			toSelect[j++] = i;
 		}
-	}
-
-	public File getmDirectory() {
-		return mDirectory;
-	}
-
-	// this method is useful to handle call of changing directory
-	// and enqueue it to back button..
-	// and so adding old directory to queue and so on
-	public void setmDirectoryThenRefresh(File mDirectory) {
-		AddToQueue(this.mDirectory);
-		EmptyNextQueue();
-		this.mDirectory = mDirectory;
-
-		refresh(null);
-		Table.scrollTo(0);
-	}
-
-	// special use like for rename and do not Queue
-	public void setmDirectory(File mdirectory) {
-		mDirectory = mdirectory;
-	}
-
-	public Path getDirectoryPath() {
-		return mDirectory.toPath();
-	}
-
-	public boolean isFocused() {
-		return this.Table.isFocused() || this.UpButton.isFocused() || this.ClearButton.isFocused()
-				|| this.SearchFeild.isFocused();
+		DataTable.clear();
+		DataTable.addAll(Copy);
+		// restore reserve
+		Table.getSelectionModel().selectIndices(-1, toSelect);
+		Table.requestFocus();
 	}
 
 	public void requestFocus() {
-		this.Table.requestFocus();
+		Table.requestFocus();
 
 	}
 
-	public WelcomeController getParentWelcome() {
-		return parentWelcome;
-	}
-
-	public void setParentWelcome(WelcomeController parentWelcome) {
-		this.parentWelcome = parentWelcome;
-	}
-
-	public FileTracker getMfileTracker() {
-		return mfileTracker;
-	}
-
-	public void setMfileTracker(FileTracker mfileTracker) {
-		this.mfileTracker = mfileTracker;
-	}
-
-	public void focusSearchFeild() {
-		SearchFeild.requestFocus();
-	}
-
-	public void switchRecursive() {
-		// important fire a checkbox do/un check it before calling it's action
-		recursiveSearch.fire();
+	private void restoreLastSelectAndScroll() {
+		NavigateForNameAndScrollTo(LastSelectedToScroll);
 	}
 
 	public void RevealINExplorer() {
@@ -1909,170 +2111,193 @@ public class SplitViewController {
 			// } catch (IOException e) {
 			// e.printStackTrace();
 			// }
-		} else
+		} else {
 			Explorer.fire();
+		}
 	}
 
-	// is this function causing the warinining ?
+	private TableViewModel LastSelectedToScroll;
+
+	private void saveLastSelectToScroll() {
+		LastSelectedToScroll = Table.getSelectionModel().getSelectedItem();
+	}
+
+	// is this function causing the warning ?
 	// May 03, 2019 8:02:57 PM com.sun.javafx.scene.control.skin.VirtualFlow
 	// addTrailingCells
 	// INFO: index exceeds maxCellCount. Check size calculations for class
 	// application.SplitViewController$1
 
-	// do later separete this from reseting form only reset search !
-	public void clearSearchFeild() {
-
-		TableViewModel selected = Table.getSelectionModel().getSelectedItem();
-
-		// addQueryOptionsPathField("search", null); already done in listener
-		SearchFeild.setText("");
-		Table.getSelectionModel().clearSelection(); // to prevent mis scroll
-		Table.getSelectionModel().select(selected);
-
-		// for better view item like centralize view it on escape
-		// Table.getSelectionModel().select(DataTable.indexOf(selected));
-		// Table.scrollTo(smartScrollIndex(scrollindex));
-		NavigateForNameAndScrollto(selected);
-	}
-
-	private void resetForm() {
-		clearSearchFeild();
-		updatePathField(null);
-		refresh(null);
-	}
-
-	protected void NavigateForNameAndScrollto(TableViewModel toNavigateFor) {
-		if (toNavigateFor == null)
-			return;
-		TableViewModel found = null;
-		for (TableViewModel t : DataTable) {
-			if (t.getName().equals(toNavigateFor.getName())) {
-				found = t;
-				break;
+	public void select(String regex) {
+		if (regex.startsWith("*")) {
+			regex = "." + regex;
+		}
+		Table.getSelectionModel().clearSelection();
+		for (int i = 0; i < DataTable.size(); ++i) {
+			TableViewModel model = DataTable.get(i);
+			String item = model.getName();
+			if (item.matches(regex) || StringHelper.containsWord(item, regex)) {
+				Table.getSelectionModel().select(model);
 			}
 		}
-		if (found == null)
-			return;
-		Table.getSelectionModel().select(found);
-		Table.scrollTo(smartScrollIndex(sortedData.indexOf(found)));
-
-	}
-
-	private int smartScrollIndex(int scrollindex) {
-		for (int i = 4; i > 0; i--) {
-			if (scrollindex - i > 0) {
-				scrollindex -= i;
-				break;
-			}
-		}
-		return scrollindex;
-	}
-
-	public void focusTable() {
-		if (Table.getSelectionModel().getSelectedCells().size() <= 0)
-			// Table.getSelectionModel().select(0);
-			Table.getSelectionModel().selectFirst();
-		Table.requestFocus();
-	}
-
-	public boolean isFocusedTable() {
-		return Table.isFocused();
-	}
-
-	public Button getNextButton() {
-		return NextButton;
-	}
-
-	public void setNextButton(Button nextButton) {
-		NextButton = nextButton;
-	}
-
-	public Button getBackButton() {
-		return BackButton;
 	}
 
 	public void setBackButton(Button backButton) {
 		BackButton = backButton;
 	}
 
-	private TableViewModel lastSelectedScroller;
-
-	private void SaveLastSelectToSroll() {
-		lastSelectedScroller = Table.getSelectionModel().getSelectedItem();
+	// special use like for rename and do not Queue
+	public void setmDirectory(File mDirectory) {
+		this.mDirectory = mDirectory;
 	}
 
-	private void RestoreLastSelectAndSroll() {
-		NavigateForNameAndScrollto(lastSelectedScroller);
-	}
-
-	public void refreshAsPathField() {
-		// when doing search this cause to false navigate
-		// this doesn't work with multiselection
-		// auto scroll
-		// TODO
-		SaveLastSelectToSroll();
-		setPathFieldThenRefresh(getPathField().getText());
-		RestoreLastSelectAndSroll();
-	}
-
-	public void setPathFieldThenRefresh(String pathField) {
-		pathField = pathField.trim();
-		String test = pathField;
-		if (test.equals("cmd")) {
-			// system dependency
-			StringHelper.RunRuntimeProcess(new String[] { "cmd.exe", " /c start cd /d", mDirectory.toString() });
+	// this method is useful to handle call of changing directory
+	// and enqueue it to back button..
+	// and so adding old directory to queue and so on
+	public void setmDirectoryThenRefresh(File mDirectory) {
+		if (mDirectory.compareTo(this.mDirectory) != 0) {
+			AddToQueue(this.mDirectory);
+			EmptyNextQueue();
 		}
-		File file = new File(getQueryPathFromEmbed(pathField));
-
-		// Important see there is navigate is not just a boolean ::
-		if (file.exists() && navigate(file.toPath())) {
-			// apply query only if file exist and file is a directory after changing view to
-			// it
-			if (SpecialPath.stream().anyMatch(sp -> test.contains(sp))) {
-
-				// out of the box
-				if (pathField.equals("/")) {
-					resetForm();
-					OutofTheBoxListRoots();
-				} else if (pathField.contains("?")) {
-					// ?search=kaza;few&another=fwe
-					try {
-
-						// we need at first applying recursive then search
-						String dosearchDelayed = null;
-						for (Map.Entry<String, String> entry : getQueryOptionsAsMap(pathField).entrySet()) {
-							String key = entry.getKey().toLowerCase().trim();
-							if (key.equals("recursive")) {
-								// we invert answer cause on fire also this gonna go back
-								// if (!recursiveSearch.isSelected())
-								recursiveSearch.setSelected(!Boolean.parseBoolean(entry.getValue()));
-								// System.out.println("i'm pathfield" + recursiveSearch.isSelected());
-								recursiveSearch.fire();
-							} else if (key.equals("search")) {
-								dosearchDelayed = entry.getValue();
-							}
-						}
-						if (dosearchDelayed != null) {
-							SearchFeild.setText(dosearchDelayed);
-							reloadSearchField();
-						}
-					} catch (Exception e) {
-						DialogHelper.showAlert(AlertType.ERROR, "Incorect Path", "The Provided input is Incorrect",
-								"Example Template: .../path?option1=value1&option2=value2");
-						e.printStackTrace();
-					}
-
-				}
-			}
-		}
-		PathField.setText(truePathField);
+		this.mDirectory = mDirectory;
+		refresh(null);
+		Table.scrollTo(0);
 	}
 
-	public WatchServiceHelper getmWatchServiceHelper() {
-		return mWatchServiceHelper;
+	public void setMfileTracker(FileTracker mfileTracker) {
+		mFileTracker = mfileTracker;
+	}
+
+	public void setNextButton(Button nextButton) {
+		NextButton = nextButton;
+	}
+
+	public void setParentWelcome(WelcomeController parentWelcome) {
+		this.parentWelcome = parentWelcome;
 	}
 
 	public void setPredictNavigation(String predictNavigation) {
 		PredictNavigation.setText(predictNavigation);
+	}
+
+	private void showContextMenu() {
+		TableViewModel t = Table.getSelectionModel().getSelectedItem();
+		if (t != null) {
+			ArrayList<Path> toShow = new ArrayList<>();
+			for (TableViewModel temp : Table.getSelectionModel().getSelectedItems()) {
+				toShow.add(temp.getmFilePath());
+			}
+			RunMenu.showMenu(toShow);
+		} else {
+			RunMenu.showMenu(Arrays.asList(mDirectory.toPath()));
+		}
+	}
+
+	public void switchRecursive() {
+		// important fire a checkbox do/un check it before calling it's action
+		recursiveSearch.fire();
+	}
+
+	private void ToggleSeenHelper(TableViewModel clicked) {
+		if (!OutOfTheBoxRecursive) {
+			mFileTracker.toggleSelectionSeen(Table.getSelectionModel().getSelectedItems(),
+					xspfRelatedWithSelection(clicked), clicked);
+		} else {
+			mFileTracker.OutofTheBoxtoggleSelectionSeen(Table.getSelectionModel().getSelectedItems(), clicked);
+		}
+		// when toggle seen if yes or un is in search field do update
+		reloadSearchField();
+	}
+
+	private boolean untrackedBehavior(TableViewModel t) {
+		boolean ans;
+		// returned false
+		if (OutOfTheBoxRecursive || isOutOfTheBoxHelper) {
+			ans = DialogHelper.showConfirmationDialog("Track new Folder[Recursive Mode]", "Ready to Be Stunned ?",
+					"Tracking a new Folder will create a hidden file .tracker_explorer.txt"
+							+ " in the folder to save data tracker !"
+							+ "\nIn recursive mode the creation will trigger on all Selected Items.");
+			if (!ans) {
+				return ans;
+			}
+
+			Set<Path> paths = Table.getSelectionModel().getSelectedItems().stream()
+					.map(selection -> selection.getmFilePath().getParent()).collect(Collectors.toSet());
+			paths.add(t.getmFilePath().getParent());
+			mFileTracker.OutofTheBoxTrackFolder(paths);
+			refreshTableWithSameData();
+		} else {
+
+			ans = mFileTracker.getAns();
+			if (ans) {
+				mFileTracker.trackNewFolder();
+			}
+		}
+		return ans;
+	}
+
+	private void updatePathField(Map<String, String> options) {
+		truePathField = truePathField.replace(getQueryOptions(), "");
+		if (options == null) {
+			return;
+		}
+		truePathField += "?";
+		int i = 0;
+		for (String Keyoption : options.keySet()) {
+			if (i++ != 0) {
+				truePathField += "&";
+			}
+			truePathField += Keyoption + "=" + options.get(Keyoption);
+		}
+		if (truePathField.endsWith("?")) {
+			truePathField = truePathField.replace("?", "");
+		}
+		PathField.setText(truePathField);
+	}
+
+	public void updateVisualSeenButton(String key, TableViewModel t) {
+		// property of toggle button from map
+		t.updateMarkSeen(mFileTracker.isSeen(key));
+	}
+
+	private ArrayList<TableViewModel> xspfRelatedWithSelection(TableViewModel clicked) {
+
+		// if XSPF is clicked also auto sync seen its video files if exist
+
+		// to collect all model to sync
+		ArrayList<TableViewModel> allRelated = new ArrayList<>();
+
+		// to collect all base name of XSPF
+		Map<String, TableViewModel> mapAllXSPF = new HashMap<String, TableViewModel>();
+
+		// to include clicked in below for loop
+		// Table.getSelectionModel().select(DataTable.indexOf(clicked));
+		ArrayList<TableViewModel> tempOver = new ArrayList<>();
+		tempOver.addAll(Table.getSelectionModel().getSelectedItems());
+		tempOver.add(clicked);
+
+		for (TableViewModel t : tempOver) {
+			String ext = StringHelper.getExtention(t.getName());
+			if (ext.equals("XSPF") && t.getName().length() > 15) {
+				String basename = t.getName().substring(0, t.getName().length() - 15).toUpperCase();
+				mapAllXSPF.put(basename, t);
+			}
+		}
+		for (TableViewModel tSearch : DataTable) {
+			String tBase = StringHelper.getBaseName(tSearch.getName());
+			if (mapAllXSPF.containsKey(tBase)) {
+				mFileTracker.setSeen(tSearch.getName(), mFileTracker.getSeen(mapAllXSPF.get(tBase)), tSearch);
+				// first if -> to force toggle if only video is selected and clicked on XSPF
+				// second if ->to prevent double toggle
+				if (Table.getSelectionModel().getSelectedItems().size() == 1
+						|| !Table.getSelectionModel().getSelectedItems().contains(tSearch)) {
+					allRelated.add(tSearch);
+				}
+			}
+		}
+		if (allRelated.size() == 0) {
+			return null;
+		}
+		return allRelated;
 	}
 }

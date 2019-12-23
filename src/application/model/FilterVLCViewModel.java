@@ -7,7 +7,7 @@ import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.util.Duration;
 
-public class FilterVLCTableView implements Comparable<FilterVLCTableView> {
+public class FilterVLCViewModel implements Comparable<FilterVLCViewModel> {
 
 	private final SimpleStringProperty ShowStart;
 	private final SimpleStringProperty ShowEnd;
@@ -20,7 +20,7 @@ public class FilterVLCTableView implements Comparable<FilterVLCTableView> {
 	private Button RunVLC;
 	private Button Remove;
 
-	public FilterVLCTableView(Duration start, Duration end, String description) {
+	public FilterVLCViewModel(Duration start, Duration end, String description) {
 		super();
 		Start = start;
 		End = end;
@@ -31,7 +31,7 @@ public class FilterVLCTableView implements Comparable<FilterVLCTableView> {
 		initializeButtonViews();
 	}
 
-	public FilterVLCTableView(String start, String end, String description) {
+	public FilterVLCViewModel(String start, String end, String description) {
 		super();
 		Start = Duration.seconds(Integer.parseInt(start));
 		End = Duration.seconds(Integer.parseInt(end));
@@ -65,7 +65,7 @@ public class FilterVLCTableView implements Comparable<FilterVLCTableView> {
 	}
 
 	@Override
-	public int compareTo(FilterVLCTableView o) {
+	public int compareTo(FilterVLCViewModel o) {
 		// TODO Auto-generated method stub
 		if (o.getStart().toSeconds() < this.getStart().toSeconds())
 			return 1;

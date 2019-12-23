@@ -1,0 +1,8 @@
+workaround to do it:
+in file /.setting/org.eclipse.jdt.core.prefs
+edit this line:
+org.eclipse.jdt.core.compiler.problem.forbiddenReference = ignore
+
+then clean java server language
+
+https://github.com/redhat-developer/vscode-java/wiki/Troubleshooting#clean-the-workspace-directory

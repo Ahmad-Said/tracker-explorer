@@ -27,13 +27,17 @@ So Happy Exploring! [Download here](https://github.com/Ahmad-Said/tracker-explor
 
 ## Sketch Images
 
+Main View
+
 ![Main](https://i.imgur.com/g4DADGi.png)
 
-Main View
+Menu Tracker Options
 
 ![Menu](https://i.imgur.com/kPYkr29.png)
 
-Menu Tracker Options
+Photo Explorer
+
+![Photo](https://i.imgur.com/mECgVA8.png)
 
 ## Features
 
@@ -70,11 +74,13 @@ Note: you can right click on 'clear' button so it roll showing these options als
 | ; | combine multiple search statement (and) |
 | ;! | exclude from search (not) |
 | ;\| | make another search ignoring previous (or) |
+| < | # operator to make comparison with numbers |
 |||
 |Reserved keywords | |
 | vlc | show all media supported by vlc |
 | audio | show all audio |
 | video |  show all video |
+| image |  show all images |
 
 ```bash
 Example showing all vlc media that contain name word and not excel:
@@ -95,7 +101,7 @@ Example showing all vlc media that contain name word and not excel:
 |Alt + Up or BackSpace | Go To parent Directory|
 |Alt + Left Arrow | Go Back To Previous Folder|
 |Alt + Right Arrow | Go Next|
-|Ctrl + Shift + R | Reveal in Windows Explorer|
+|Alt + Shift + R | Reveal in Windows Explorer|
 |Shift + D | Focus On Path Field|
 |Shift + F | Mark Folder As Favorite|
 |||

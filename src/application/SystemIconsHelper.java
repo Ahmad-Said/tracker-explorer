@@ -22,26 +22,27 @@ public class SystemIconsHelper {
 
 		Image fileIcon = mapOfFileExtToSmallIcon.get(ext);
 		if (fileIcon == null) {
-			javax.swing.Icon jswingIcon = null;
+			javax.swing.Icon jSwingIcon = null;
 
 			File file = new File(filePath);
 			if (file.exists()) {
-				jswingIcon = getJSwingIconFromFileSystem(file);
+				jSwingIcon = getJSwingIconFromFileSystem(file);
 			} else {
 				File tempFile = null;
 				try {
 					tempFile = File.createTempFile("icon", ext);
-					jswingIcon = getJSwingIconFromFileSystem(tempFile);
+					jSwingIcon = getJSwingIconFromFileSystem(tempFile);
 				} catch (IOException ignored) {
 					// Cannot create temporary file.
 				} finally {
-					if (tempFile != null)
+					if (tempFile != null) {
 						tempFile.delete();
+					}
 				}
 			}
 
-			if (jswingIcon != null) {
-				fileIcon = jswingIconToImage(jswingIcon);
+			if (jSwingIcon != null) {
+				fileIcon = jSwingIconToImage(jSwingIcon);
 				mapOfFileExtToSmallIcon.put(ext, fileIcon);
 			}
 		}
@@ -56,26 +57,29 @@ public class SystemIconsHelper {
 			ext = filePath.substring(p);
 		}
 
-		// resolving if a file doesn't have an extention:
+		// resolving if a file doesn't have an extension:
 		File file = new File(filePath);
-		if (file.isFile() && ext == ".")
+		if (file.isFile() && ext == ".") {
 			ext = ".SomethingNotAnextention";
+		}
 
-		// resolving same name extetion with different icon
+		// resolving same name extension with different icon
 		if (Setting.getLoadAllIcon()) {
-			if (ext.equals(".exe") || ext.equals(".lnk"))
+			if (ext.equals(".exe") || ext.equals(".lnk")) {
 				ext = file.getName();
+			}
 
 			if (file.isDirectory()) {
 				// check if directory have ini file for icon
-				File iniCheck = new File(filePath + ("\\desktop.ini"));
-				if (iniCheck.exists())
+				File iniCheck = new File(filePath + "\\desktop.ini");
+				if (iniCheck.exists()) {
 					ext = file.getName();
-				else {
+				} else {
 					// check if it was a root
 					File filep = new File(filePath);
-					if (filep.toPath().getNameCount() == 0)
+					if (filep.toPath().getNameCount() == 0) {
 						ext = "root" + id++;
+					}
 				}
 			}
 		}
@@ -89,10 +93,10 @@ public class SystemIconsHelper {
 		return icon;
 	}
 
-	private static Image jswingIconToImage(javax.swing.Icon jswingIcon) {
-		BufferedImage bufferedImage = new BufferedImage(jswingIcon.getIconWidth(), jswingIcon.getIconHeight(),
+	private static Image jSwingIconToImage(javax.swing.Icon jSwingIcon) {
+		BufferedImage bufferedImage = new BufferedImage(jSwingIcon.getIconWidth(), jSwingIcon.getIconHeight(),
 				BufferedImage.TYPE_INT_ARGB);
-		jswingIcon.paintIcon(null, bufferedImage.getGraphics(), 0, 0);
+		jSwingIcon.paintIcon(null, bufferedImage.getGraphics(), 0, 0);
 		return SwingFXUtils.toFXImage(bufferedImage, null);
 	}
 }

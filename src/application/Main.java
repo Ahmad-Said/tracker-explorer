@@ -1,5 +1,5 @@
 package application;
-// if system have icon for a folder 
+// if system have icon for a folder
 
 // all folder will be the same icon because i saved in a map for faster rendering
 
@@ -57,7 +57,7 @@ public class Main extends Application {
 		// FXMLLoader.load(getClass().getResource("/fxml/bootstrap3.fxml"));
 		// Parent root = FXMLLoader.load(getClass().getResource("/fxml/Welcome.fxml"));
 		// so i get my loader in another variable to get controller from it :)
-		// if asking what controller does to this scene as it say with it i can controll
+		// if asking what controller does to this scene as it say with it i can control
 		// all the content of the scene
 		// Setting.loadSetting();
 
@@ -73,6 +73,8 @@ public class Main extends Application {
 		mWelcomeController = loader.getController();
 
 		Scene scene = new Scene(root);
+
+//		new JMetro(JMetro.Style.LIGHT).applyTheme(root);
 		scene.getStylesheets().add("/css/bootstrap3.css");
 
 		scene.addEventFilter(KeyEvent.KEY_RELEASED, e -> {
@@ -125,36 +127,36 @@ public class Main extends Application {
 
 	public static void main(String[] args) {
 		Setting.loadSetting();
-		boolean doneleft = false, doneright = false;
+		boolean doneLeft = false, doneRight = false;
 		// priority to argument then last know location then root 0 (C)
 		if (args.length == 0) {
 			File temp;
 			if (Setting.getLeftLastKnowLocation() != null) {
-				// check if file still exist then distrubute task and switch the missing one to
+				// check if file still exist then distribute task and switch the missing one to
 				// the other
 				temp = new File(Setting.getLeftLastKnowLocation().toString());
 				if (temp.exists()) {
 					StringHelper.InitialLeftPath = Setting.getLeftLastKnowLocation();
-					doneleft = true;
+					doneLeft = true;
 				}
 			}
 			if (Setting.getRightLastKnowLocation() != null) {
 				temp = new File(Setting.getRightLastKnowLocation().toString());
 				if (temp.exists()) {
 					StringHelper.InitialRightPath = Setting.getRightLastKnowLocation();
-					doneright = true;
-					if (!doneleft) {
+					doneRight = true;
+					if (!doneLeft) {
 						StringHelper.InitialLeftPath = StringHelper.InitialRightPath;
-						doneleft = true;
+						doneLeft = true;
 					}
 				}
 			}
-			if (doneleft && !doneright) {
+			if (doneLeft && !doneRight) {
 				StringHelper.InitialRightPath = StringHelper.InitialLeftPath;
-				doneright = true;
+				doneRight = true;
 			}
 
-			if (!doneleft) {
+			if (!doneLeft) {
 				File[] roots = File.listRoots();
 				StringHelper.InitialLeftPath = roots[0].toPath();
 				StringHelper.InitialRightPath = roots[0].toPath();
@@ -205,7 +207,7 @@ public class Main extends Application {
 	private static char pr = '\\';
 
 	public static void ProcessTitle(String toAppend) {
-		pr = (pr == '\\') ? '/' : '\\';
+		pr = pr == '\\' ? '/' : '\\';
 		PrimaryStage.setTitle(" " + pr + toAppend);
 	}
 
@@ -218,7 +220,7 @@ public class Main extends Application {
 	// JAVA_HOME = C:\Program Files\Java\jdk1.8.0_211
 	// https://stackoverflow.com/questions/24840414/javafx-build-failed
 	// https://code.makery.ch/library/javafx-tutorial/part7/
-	// if error encountered get older version of InnoSetup
+	// if error encountered get older version of Inno Setup
 	// about icon
 	// https://github.com/BilledTrain380/javafx-gradle-plugin/blob/648acafa7198e9bd7cf1a2ef933456ce5e0b65f9/README.md#customize-icons
 }

@@ -1,3 +1,18 @@
+v3.0:
+New Rename multiple Files together
+New Photo Viewer Explorer
+New search Key (image)
+New Open Multiple Files together based on extension 
+
+v2.1
+Fix encoding VLC to work with UTF-8
+Fix Start Button behavior On move files
+CTRL +O to open favorite location
+Shift + N to open note button
+Improved Rename Utility
+Add Comparator (['<','>']'=') features to search field
+"cmd" command in path field to open a cmd in current directory
+
 v2.0:
 New filter format file XSPF for media. (https://wiki.videolan.org/XSPF/)
 New VLC remote cross platform (Web+android+iOS)

@@ -27,7 +27,7 @@ public class Setting {
 	// this things are temporary solution later will use :
 	// lightbend refrence.conf see testimagewthatable project
 	// these initial definition are even if not initialized
-	private static String Version = "2.1";
+	private static String Version = "2.1"; 
 	private static Boolean BackSync = false;
 	private static Boolean AutoExpand = true;
 	private static Boolean LoadAllIcon = true;
@@ -67,7 +67,6 @@ public class Setting {
 		ActiveUser = "default";
 		MaxLimitFilesRecursive = 10000;
 		setVLCHttpPass("1234");
-
 		if (VLC.initializeDefaultVLCPath())
 			VLCPath = VLC.getPath_Setup().toUri().toString();
 		UserNames.add("default");
@@ -155,35 +154,40 @@ public class Setting {
 				// always overwrite version
 				// if (key.equals("Version"))
 				// Version = value;
-				if (key.equals("VLCHttpPass"))
-					setVLCHttpPass(value);
-				else if (key.equals("VLCPath"))
-					setVLCPath(value);
-				else if (key.equals("BackSync"))
-					BackSync = Boolean.parseBoolean(value);
-				else if (key.equals("AutoExpand"))
-					AutoExpand = Boolean.parseBoolean(value);
-				else if (key.equalsIgnoreCase("LoadAllIcon"))
-					LoadAllIcon = Boolean.parseBoolean(value);
-				else if (key.equalsIgnoreCase("ShowLeftNotesColumn"))
-					ShowLeftNotesColumn = Boolean.parseBoolean(value);
-				else if (key.equalsIgnoreCase("ShowRightNotesColumn"))
-					ShowRightNotesColumn = Boolean.parseBoolean(value);
-				else if (key.equals("MaxLimitFilesRecursive"))
-					MaxLimitFilesRecursive = Integer.parseInt(value);
-				else if (key.equals("LeftLastKnowLocation"))
-					LeftLastKnowLocation = Paths.get(URI.create(value));
-				else if (key.equals("RightLastKnowLocation"))
-					RightLastKnowLocation = Paths.get(URI.create(value));
-				else if (key.equals("ActiveUser"))
-					ActiveUser = value;
-				else if (key.equals("UserNames")) {
-					UserNames.clear();
-					UserNames.addAll(Arrays.asList(value.split(";")));
-				} else if (key.equals("FavoritesLocations"))
-					FavoritesLocations.addAll(Arrays.asList(value.split(";")).stream().map(s -> {
-						return Paths.get(URI.create(s));
-					}).collect(Collectors.toList()));
+				try {
+					if (key.equals("VLCHttpPass"))
+						setVLCHttpPass(value);
+					else if (key.equals("VLCPath"))
+						setVLCPath(value);
+					else if (key.equals("BackSync"))
+						BackSync = Boolean.parseBoolean(value);
+					else if (key.equals("AutoExpand"))
+						AutoExpand = Boolean.parseBoolean(value);
+					else if (key.equalsIgnoreCase("LoadAllIcon"))
+						LoadAllIcon = Boolean.parseBoolean(value);
+					else if (key.equalsIgnoreCase("ShowLeftNotesColumn"))
+						ShowLeftNotesColumn = Boolean.parseBoolean(value);
+					else if (key.equalsIgnoreCase("ShowRightNotesColumn"))
+						ShowRightNotesColumn = Boolean.parseBoolean(value);
+					else if (key.equals("MaxLimitFilesRecursive"))
+						MaxLimitFilesRecursive = Integer.parseInt(value);
+					else if (key.equals("LeftLastKnowLocation"))
+						LeftLastKnowLocation = Paths.get(URI.create(value));
+					else if (key.equals("RightLastKnowLocation"))
+						RightLastKnowLocation = Paths.get(URI.create(value));
+					else if (key.equals("ActiveUser"))
+						ActiveUser = value;
+					else if (key.equals("UserNames")) {
+						UserNames.clear();
+						UserNames.addAll(Arrays.asList(value.split(";")));
+					} else if (key.equals("FavoritesLocations"))
+						FavoritesLocations.addAll(Arrays.asList(value.split(";")).stream().map(s -> {
+							return Paths.get(URI.create(s));
+						}).collect(Collectors.toList()));
+				} catch (Exception e) {
+					System.out.println("Something went wrong loading setting");
+					e.printStackTrace();
+				}
 			}
 		}
 		scan.close();

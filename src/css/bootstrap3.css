@@ -1,5 +1,148 @@
 /* JavaFX CSS - Leave this comment until you have at least create one rule which uses -fx-Property */
 
+/*
+ * Copyright (c) 2011-2018 JFXtras
+ *  All rights reserved.
+ *
+ *  Redistribution and use in source and binary forms, with or without
+ *  modification, are permitted provided that the following conditions are met:
+ *      * Redistributions of source code must retain the above copyright
+ *        notice, this list of conditions and the following disclaimer.
+ *      * Redistributions in binary form must reproduce the above copyright
+ *        notice, this list of conditions and the following disclaimer in the
+ *        documentation and/or other materials provided with the distribution.
+ *      * Neither the name of the organization nor the
+ *        names of its contributors may be used to endorse or promote products
+ *        derived from this software without specific prior written permission.
+ *
+ *  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+ *  ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+ *  WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+ *  DISCLAIMED. IN NO EVENT SHALL <COPYRIGHT HOLDER> BE LIABLE FOR ANY
+ *  DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+ *  (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+ *  LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
+ *  ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ *  (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+ *  SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ */
+ 
+.root {
+    /* Root variables */
+    accent_color: #0078d7;
+}
+
+.text-input{
+    -fx-background-radius: 0, 0;
+
+    -fx-background-color: border_color, text_input_background_color;
+    -fx-background-insets: 0, 2;
+
+    -fx-prompt-text-fill: prompt_text_color;
+
+    -fx-highlight-fill: highlight_color;
+    -fx-highlight-text-fill: highlighted_text_color;
+
+    -fx-font-size: 1em; /* 12 */
+
+    -fx-text-fill: text_color;
+}
+
+.text-input > Pane {
+    -fx-background-color: transparent;
+}
+
+/* hover */
+.text-input:hover{
+    -fx-background-color: border_hover_color, background_hover_color;
+}
+
+/* focused */
+.text-input:focused{
+    -fx-background-color: accent_color, background_focused_color;
+
+    -fx-text-fill: text_focused_color;
+}
+
+/* disabled */
+.text-input:disabled
+{
+    -fx-opacity: 1;
+    -fx-background-insets: 0, 2;
+    -fx-background-color: border_disabled_color, background_disabled_color;
+    -fx-text-fill: text_disabled_color;
+    -fx-prompt-text-fill: text_disabled_color;
+}
+
+/*******************************************************************************
+ *                                                                             *
+ * Text Field (and PasswordField)                                              *
+ *                                                                             *
+ ******************************************************************************/
+
+.text-field{
+    -fx-skin: "impl.jfxtras.styles.jmetro8.TextFieldSkin";
+}
+
+
+.text-field > .right-button{
+    -fx-cursor: default;
+
+    -fx-background-insets: -0.1666665em -0.45em -0.1666665em -0.45em; /* 4 7 4 7 -> this values are subtracted by 2px in em because of the border of the textfield */
+    -fx-background-color: background_focused_color;  /* We must give it a color so that it reacts to the mouse */
+}
+
+.text-field:hover > .right-button:hover > .right-button-graphic {
+	-fx-background-color: accent_color;
+	
+    -fx-shape: "M221.738,305.873l6.135,6.16l-2.875,2.863l-6.135-6.159l-6.263,6.237l-2.864-2.875l6.263-6.238l-6.177-6.202l2.875-2.863l6.177,6.201l6.244-6.22l2.864,2.876L221.738,305.873z";
+	-fx-padding: 0.416667em;
+    -fx-background-color: red;
+	
+}
+.always-show-cross > .right-button > .right-button-graphic {
+	-fx-background-color: accent_color;
+	
+	-fx-shape: "M221.738,305.873l6.135,6.16l-2.875,2.863l-6.135-6.159l-6.263,6.237l-2.864-2.875l6.263-6.238l-6.177-6.202l2.875-2.863l6.177,6.201l6.244-6.22l2.864,2.876L221.738,305.873z";
+	-fx-padding: 0.416667em;
+	-fx-background-color: red;
+
+}
+
+
+/* from some other JMetroLightTheme css */
+/*******************************************************************************
+ *                                                                             *
+ * Text Common (TextField, PasswordField, TextArea)                            *
+ *                                                                             *
+ ******************************************************************************/
+
+.text-input {
+    border_color: #999999;
+    border_hover_color: #666666;
+    border_disabled_color: #d9d9d9;
+
+    text_input_background_color: white;
+    background_focused_color: white;
+    background_hover_color: white;
+    background_disabled_color: #eaeaea;
+
+    text_color: #111;
+    text_focused_color: #111;
+    text_disabled_color: #adadad;
+    prompt_text_color: #666666;
+
+    highlight_color: accent_color;
+    highlighted_text_color: white;
+
+    graphic_color: #747474;
+}
+
+
+
+/* JavaFX CSS - Leave this comment until you have at least create one rule which uses -fx-Property */
+/* Bootstrap list */
+
 .root {
 	-fx-body-color : #F5F5F5;
 	-fx-outer-border : #cecece;

@@ -15,10 +15,15 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 import org.apache.commons.io.FilenameUtils;
 
+import application.controller.SplitViewController;
 import javafx.application.Application;
+import javafx.scene.Node;
+import javafx.scene.text.Text;
+import javafx.scene.text.TextFlow;
 import javafx.stage.Stage;
 
 public class StringHelper {
@@ -28,7 +33,7 @@ public class StringHelper {
 	public static Integer temp;
 	private static Map<String, String> KeyAsShiftDown = new HashMap<String, String>() {
 		/**
-		 * 
+		 *
 		 */
 		private static final long serialVersionUID = 4486947120104662470L;
 
@@ -60,8 +65,9 @@ public class StringHelper {
 		String[] words = getWords(text);
 		word = word.toLowerCase();
 		for (String item : words) {
-			if (item.equals(word))
+			if (item.equals(word)) {
 				return true;
+			}
 		}
 		return false;
 	}
@@ -133,8 +139,21 @@ public class StringHelper {
 
 		@Override
 		public int compare(File f1, File f2) {
-			if ((f1.isDirectory() && f2.isDirectory()) || (f1.isFile() && f2.isFile())) {
+			if (f1.isDirectory() && f2.isDirectory() || f1.isFile() && f2.isFile()) {
 				return f1.compareTo(f2);
+			}
+			return f1.isDirectory() ? -1 : 1;
+		}
+	}
+
+	public static class NaturalFileComparator implements Comparator<File> {
+		private final Comparator<String> NATURAL_SORT = new WindowsExplorerComparator();
+
+		@Override
+		public int compare(File f1, File f2) {
+
+			if (f1.isDirectory() && f2.isDirectory() || f1.isFile() && f2.isFile()) {
+				return NATURAL_SORT.compare(f1.getName(), f2.getName());
 			}
 			return f1.isDirectory() ? -1 : 1;
 		}
@@ -142,6 +161,10 @@ public class StringHelper {
 
 	public static void SortArrayFiles(List<File> listFiles) {
 		Collections.sort(listFiles, new FileComparator());
+	}
+
+	public static void SortNaturalArrayFiles(List<File> listFiles) {
+		Collections.sort(listFiles, new NaturalFileComparator());
 	}
 
 	public static Map<String, String> getKeyAsShiftDown() {
@@ -180,8 +203,55 @@ public class StringHelper {
 		a.getHostServices().showDocument(resources);
 	}
 
-	public static void open(File resources) {
+	public static void openFile(File resources) {
 		open(resources.toURI().toString());
+	}
+
+	/**
+	 * TODO in {@link SplitViewController#navigate(Path)} open multiple files in
+	 * same program this is done tweak with vlc by process builder not on any
+	 * program like windows explorer do
+	 *
+	 * @param resources
+	 */
+	public static void openFiles(List<File> resources) {
+		// TODO get multiple files from table and
+		Thread multiFileStarter = new Thread() {
+
+			@Override
+			public void run() {
+				Application a = new Application() {
+					@Override
+					public void start(Stage primaryStage) throws Exception {
+					}
+				};
+				resources.stream().map(r -> r.toURI().toString()).forEach(r -> {
+					a.getHostServices().showDocument(r);
+					try {
+						// wait 500 MILLISECONDS between each file to not over the computer
+						TimeUnit.MILLISECONDS.sleep(500);
+					} catch (InterruptedException e) {
+						// TODO Auto-generated catch block
+						e.printStackTrace();
+					}
+				});
+				open(resources.get(0).toURI().toString());
+			}
+		};
+		multiFileStarter.start();
+
+	}
+
+	// https://stackoverflow.com/questions/43572022/javafx-convert-textflow-to-string
+	public static String textFlowToString(TextFlow textFlow) {
+		StringBuilder sb = new StringBuilder();
+		for (Node node : textFlow.getChildren()) {
+			if (node instanceof Text) {
+				sb.append(((Text) node).getText());
+			}
+		}
+		String fullText = sb.toString();
+		return fullText;
 	}
 
 	public static Path StringUriToPath(String uri) {

@@ -1,0 +1,211 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import java.lang.String?>
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.Cursor?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.CheckBox?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.Slider?>
+<?import javafx.scene.control.TextField?>
+<?import javafx.scene.control.ToggleButton?>
+<?import javafx.scene.image.ImageView?>
+<?import javafx.scene.layout.BorderPane?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.Pane?>
+<?import javafx.scene.layout.VBox?>
+
+<BorderPane fx:id="borderPane" prefHeight="547.0" prefWidth="881.0" xmlns="http://javafx.com/javafx/8.0.171" xmlns:fx="http://javafx.com/fxml/1">
+   <bottom>
+      <VBox prefHeight="131.0" prefWidth="654.0" BorderPane.alignment="CENTER">
+         <children>
+            <HBox alignment="CENTER" prefHeight="100.0" prefWidth="200.0">
+               <children>
+                  <Label text="Size:">
+                     <padding>
+                        <Insets left="10.0" />
+                     </padding>
+                     <HBox.margin>
+                        <Insets right="10.0" />
+                     </HBox.margin>
+                  </Label>
+                  <Label fx:id="sizeMb" maxWidth="1.7976931348623157E308" text="Size Mb" HBox.hgrow="ALWAYS">
+                     <padding>
+                        <Insets right="10.0" />
+                     </padding>
+                  </Label>
+                  <CheckBox fx:id="fitWidthCheckBox" mnemonicParsing="false" text="Fit Width">
+                     <HBox.margin>
+                        <Insets right="5.0" />
+                     </HBox.margin>
+                  </CheckBox>
+                  <CheckBox fx:id="continousCheckBox" mnemonicParsing="false" text="Continous">
+                     <HBox.margin>
+                        <Insets right="5.0" />
+                     </HBox.margin>
+                  </CheckBox>
+                  <Label text="Zoom Level">
+                     <HBox.margin>
+                        <Insets right="10.0" />
+                     </HBox.margin>
+                  </Label>
+                  <Slider fx:id="zoomSlider" maxWidth="1.7976931348623157E308" prefHeight="18.0" prefWidth="360.0" HBox.hgrow="NEVER" />
+                  <Label fx:id="zoomLevelLabel" maxWidth="1.7976931348623157E308" text="X1" HBox.hgrow="ALWAYS">
+                     <HBox.margin>
+                        <Insets right="5.0" />
+                     </HBox.margin>
+                  </Label>
+                  <ToggleButton fx:id="markSeen" mnemonicParsing="false" onAction="#toggleSeen" prefWidth="58.0" text="S">
+                     <HBox.margin>
+                        <Insets right="10.0" />
+                     </HBox.margin>
+                  </ToggleButton>
+               </children>
+            </HBox>
+            <HBox alignment="CENTER" prefHeight="100.0" prefWidth="200.0">
+               <children>
+                  <Label prefWidth="50.0" text="Width: ">
+                     <HBox.margin>
+                        <Insets left="10.0" />
+                     </HBox.margin>
+                  </Label>
+                  <Label fx:id="widthPx" minWidth="-Infinity" text="9999 Px">
+                     <HBox.margin>
+                        <Insets left="5.0" right="20.0" />
+                     </HBox.margin>
+                  </Label>
+                  <Label fx:id="labelDescription" minHeight="-Infinity" minWidth="-Infinity" prefHeight="35.0" prefWidth="90.0" text="Name-M-F2">
+                     <HBox.margin>
+                        <Insets left="10.0" />
+                     </HBox.margin>
+                     <styleClass>
+                        <String fx:value="info" />
+                        <String fx:value="label" />
+                        <String fx:value="first" />
+                     </styleClass>
+                  </Label>
+                  <TextField fx:id="nameImage" minWidth="-Infinity" prefWidth="100.0" styleClass="last" HBox.hgrow="ALWAYS">
+                     <HBox.margin>
+                        <Insets left="40.0" right="20.0" />
+                     </HBox.margin>
+                  </TextField>
+                  <Button fx:id="applyName" alignment="CENTER" minWidth="-Infinity" mnemonicParsing="false" onAction="#renameImage" prefWidth="105.0" styleClass="primary" text="Apply Name">
+                     <HBox.margin>
+                        <Insets left="10.0" right="20.0" />
+                     </HBox.margin>
+                  </Button>
+               </children>
+            </HBox>
+            <HBox alignment="CENTER" layoutX="10.0" layoutY="76.0" prefHeight="100.0" prefWidth="200.0">
+               <children>
+                  <Label text="Height:">
+                     <HBox.margin>
+                        <Insets left="10.0" />
+                     </HBox.margin>
+                  </Label>
+                  <Label fx:id="heightPx" minWidth="-Infinity" text="9999 Px">
+                     <HBox.margin>
+                        <Insets left="5.0" right="20.0" />
+                     </HBox.margin>
+                  </Label>
+                  <Label fx:id="labelDescription1" minHeight="-Infinity" minWidth="-Infinity" prefHeight="35.0" prefWidth="58.0" text="Note-N">
+                     <HBox.margin>
+                        <Insets left="10.0" />
+                     </HBox.margin>
+                     <styleClass>
+                        <String fx:value="info" />
+                        <String fx:value="label" />
+                        <String fx:value="first" />
+                     </styleClass>
+                  </Label>
+                  <TextField fx:id="noteInput" minWidth="-Infinity" prefWidth="100.0" styleClass="last" HBox.hgrow="ALWAYS">
+                     <HBox.margin>
+                        <Insets left="10.0" right="20.0" />
+                     </HBox.margin>
+                  </TextField>
+                  <Button fx:id="applyNote" alignment="CENTER" mnemonicParsing="false" onAction="#addNoteImage" style="-fx-background-color: #7F00FF; -fx-text-fill: white; -fx-font-weight: bold;" text="Apply Note">
+                     <HBox.margin>
+                        <Insets right="20.0" />
+                     </HBox.margin>
+                  </Button>
+               </children>
+            </HBox>
+         </children>
+      </VBox>
+   </bottom>
+   <right>
+      <HBox prefHeight="213.0" prefWidth="93.0" BorderPane.alignment="CENTER">
+         <children>
+            <Slider fx:id="ySlider" blockIncrement="0.1" max="1.0" maxWidth="-Infinity" orientation="VERTICAL" rotate="180.0" value="0.5" HBox.hgrow="NEVER">
+               <HBox.margin>
+                  <Insets top="10.0" />
+               </HBox.margin>
+            </Slider>
+            <Button fx:id="nextButton" maxHeight="1.7976931348623157E308" maxWidth="1.7976931348623157E308" mnemonicParsing="false" onAction="#nextImage" prefHeight="255.0" prefWidth="52.0" text="F&gt;" HBox.hgrow="ALWAYS">
+               <HBox.margin>
+                  <Insets bottom="10.0" left="10.0" top="10.0" />
+               </HBox.margin>
+            </Button>
+         </children>
+      </HBox>
+   </right>
+   <top>
+      <VBox prefHeight="56.0" prefWidth="654.0" BorderPane.alignment="CENTER">
+         <children>
+            <HBox prefHeight="100.0" prefWidth="200.0">
+               <children>
+                  <Label text="Location">
+                     <HBox.margin>
+                        <Insets left="10.0" right="5.0" top="5.0" />
+                     </HBox.margin>
+                  </Label>
+                  <Label fx:id="indexOfImage" prefHeight="21.0" prefWidth="77.0" text="index">
+                     <HBox.margin>
+                        <Insets left="5.0" right="10.0" top="5.0" />
+                     </HBox.margin>
+                  </Label>
+                  <TextField fx:id="locationField" minWidth="-Infinity" prefWidth="100.0" styleClass="last" HBox.hgrow="ALWAYS">
+                     <HBox.margin>
+                        <Insets left="10.0" right="10.0" />
+                     </HBox.margin></TextField>
+                  <Button mnemonicParsing="false" onAction="#deleteIMG" styleClass="danger" text="Delete - D" />
+                  <Button fx:id="revealLocation" mnemonicParsing="false" onAction="#revealInExplorer" text="Reveal - R">
+                     <HBox.margin>
+                        <Insets right="10.0" />
+                     </HBox.margin>
+                  </Button>
+               </children>
+               <VBox.margin>
+                  <Insets top="5.0" />
+               </VBox.margin>
+            </HBox>
+            <Slider blockIncrement="0.1" max="1.0" value="0.5" fx:id="xSlider">
+               <VBox.margin>
+                  <Insets left="60.0" right="90.0" />
+               </VBox.margin>
+            </Slider>
+         </children>
+      </VBox>
+   </top>
+   <left>
+      <HBox prefHeight="263.0" prefWidth="57.0" BorderPane.alignment="CENTER">
+         <children>
+            <Button fx:id="previousButton" maxHeight="1.7976931348623157E308" maxWidth="1.7976931348623157E308" mnemonicParsing="false" onAction="#previousImage" prefHeight="255.0" prefWidth="52.0" text="&lt;A">
+               <HBox.margin>
+                  <Insets bottom="10.0" top="10.0" />
+               </HBox.margin>
+            </Button>
+         </children>
+      </HBox>
+   </left>
+   <center>
+      <Pane fx:id="imagePane" maxHeight="1.7976931348623157E308" maxWidth="1.7976931348623157E308" BorderPane.alignment="CENTER">
+         <children>
+            <ImageView fx:id="imageView" fitHeight="156.0" fitWidth="320.0" pickOnBounds="true" preserveRatio="true" />
+         </children>
+         <cursor>
+            <Cursor fx:constant="DEFAULT" />
+         </cursor>
+      </Pane>
+   </center>
+</BorderPane>

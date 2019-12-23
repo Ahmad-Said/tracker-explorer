@@ -1,0 +1,12 @@
+{
+    "configurations": [
+        {
+            "type": "java",
+            "name": "CodeLens (Launch) - Main",
+            "request": "launch",
+            "mainClass": "application.Main",
+            "projectName": "Tracker_Explorer_2"
+            
+        }
+    ]
+}

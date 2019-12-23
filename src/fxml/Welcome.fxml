@@ -94,12 +94,16 @@
                   <String fx:value="btn" />
                </styleClass>
             </Button>
-            <TextField fx:id="leftSearchField" layoutX="85.0" layoutY="104.0" maxWidth="-Infinity" minWidth="-Infinity" prefHeight="31.0" prefWidth="160.0" promptText="Search..un..yes" styleClass="first" GridPane.halignment="CENTER">
+            <TextField fx:id="leftSearchField" layoutX="85.0" layoutY="104.0" maxWidth="-Infinity" minWidth="-Infinity" prefHeight="31.0" prefWidth="160.0" promptText="Search..un..yes" GridPane.halignment="CENTER">
                <GridPane.margin>
                   <Insets left="20.0" right="75.0" top="50.0" />
                </GridPane.margin>
+               <styleClass>
+                  <String fx:value="first" />
+                  <String fx:value="always-show-cross" />
+               </styleClass>
             </TextField>
-            <Button fx:id="leftSearchButton" alignment="CENTER" layoutX="20.0" layoutY="104.0" mnemonicParsing="false" prefHeight="38.0" prefWidth="70.0" text="Clear" GridPane.halignment="CENTER">
+            <Button fx:id="leftSearchButton" alignment="CENTER" layoutX="20.0" layoutY="104.0" mnemonicParsing="false" prefHeight="38.0" prefWidth="70.0" text="Refresh" GridPane.halignment="CENTER">
                <GridPane.margin>
                   <Insets left="175.0" top="50.0" />
                </GridPane.margin>
@@ -140,12 +144,16 @@
                   <String fx:value="btn" />
                </styleClass>
             </Button>
-            <TextField fx:id="rightSearchField" layoutX="108.0" layoutY="64.0" maxWidth="-Infinity" minWidth="-Infinity" prefHeight="31.0" prefWidth="160.0" promptText="Seach..un..yes" styleClass="first" GridPane.columnIndex="1" GridPane.halignment="CENTER">
+            <TextField fx:id="rightSearchField" layoutX="108.0" layoutY="64.0" maxWidth="-Infinity" minWidth="-Infinity" prefHeight="31.0" prefWidth="160.0" promptText="Seach..un..yes" GridPane.columnIndex="1" GridPane.halignment="CENTER">
                <GridPane.margin>
                   <Insets left="10.0" right="75.0" top="50.0" />
                </GridPane.margin>
+               <styleClass>
+                  <String fx:value="first" />
+                  <String fx:value="always-show-cross" />
+               </styleClass>
             </TextField>
-            <Button fx:id="rightSearchButton" alignment="CENTER" layoutX="285.0" layoutY="64.0" mnemonicParsing="false" prefHeight="38.0" prefWidth="70.0" text="Clear" GridPane.columnIndex="1" GridPane.halignment="CENTER">
+            <Button fx:id="rightSearchButton" alignment="CENTER" layoutX="285.0" layoutY="64.0" mnemonicParsing="false" prefHeight="38.0" prefWidth="70.0" text="Refresh" GridPane.columnIndex="1" GridPane.halignment="CENTER">
                <GridPane.margin>
                   <Insets left="165.0" top="50.0" />
                </GridPane.margin>
@@ -242,7 +250,7 @@
                   <Insets left="330.0" top="50.0" />
                </GridPane.margin>
             </CheckBox>
-            <Button mnemonicParsing="false" onAction="#SwapView" text="Swap" GridPane.columnIndex="1">
+            <Button fx:id="SwapButton" mnemonicParsing="false" onAction="#SwapView" text="Swap" GridPane.columnIndex="1">
                <GridPane.margin>
                   <Insets bottom="50.0" left="140.0" />
                </GridPane.margin>

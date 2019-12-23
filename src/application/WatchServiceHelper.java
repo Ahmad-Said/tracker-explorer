@@ -13,12 +13,12 @@ import javafx.application.Platform;
 
 public class WatchServiceHelper {
 
-	private WatchService mWatchService;
-	private WatchKey mWatchKey;
-	private volatile Thread mWatchThread;
 	private boolean isRuning = true;
-	private SplitViewController SplitView;
 	private Path mCurrentDirectory;
+	private WatchKey mWatchKey;
+	private WatchService mWatchService;
+	private volatile Thread mWatchThread;
+	private SplitViewController SplitView;
 
 	public WatchServiceHelper(SplitViewController listView) {
 		SplitView = listView;
@@ -43,10 +43,8 @@ public class WatchServiceHelper {
 								|| watchEvent.context().toString().contains(".tracker_explorer")) {
 							doChange = false;
 						}
-						// System.out.printf("Event... kind=%s, count=%d, context=%s Context type=%s%n",
-						// watchEvent.kind(),
-						// watchEvent.count(), watchEvent.context(), ((Path)
-						// watchEvent.context()).getClass());
+//						System.out.printf("Event... kind=%s, count=%d, context=%s type=%s%n", watchEvent.kind(),
+//						watchEvent.count(), watchEvent.context(), ((Path) watchEvent.context()).getClass());
 					}
 					// watchKey.pollEvents();
 					// if (doChange && isRuning && !isForceStopped) {
@@ -65,8 +63,9 @@ public class WatchServiceHelper {
 	}
 
 	public void changeObservableDirectory(Path newDirectory) {
-		if (mCurrentDirectory.equals(newDirectory))
+		if (mCurrentDirectory.equals(newDirectory)) {
 			return;
+		}
 		mWatchKey.cancel();
 		try {
 			mWatchKey = newDirectory.register(mWatchService, StandardWatchEventKinds.ENTRY_CREATE,
@@ -75,12 +74,6 @@ public class WatchServiceHelper {
 		} catch (IOException e) {
 			DialogHelper.showException(e);
 		}
-	}
-
-	private void updateUI() {
-		// TODO change to refreshasPathField
-		// Platform.runLater(() -> SplitView.refresh(null));
-		Platform.runLater(() -> SplitView.refreshAsPathField());
 	}
 
 	public boolean isRuning() {
@@ -92,14 +85,20 @@ public class WatchServiceHelper {
 	 * still having watch key better approach use
 	 * {@link WatchServiceHelper#TemporarychangeObservableDirectory()
 	 * [This.TemporarychangeObservableDirectory] }
-	 * 
+	 *
 	 * new edit for better appraoch i think there is no need for this approach
 	 * anymore filter context in up
-	 * 
+	 *
 	 * @param isRuning
 	 */
 	public void setRuning(boolean isRuning) {
 		this.isRuning = isRuning;
+	}
+
+	private void updateUI() {
+		// TODO change to refreshasPathField
+		// Platform.runLater(() -> SplitView.refresh(null));
+		Platform.runLater(() -> SplitView.refreshAsPathField());
 	}
 
 }
