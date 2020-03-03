@@ -1,4 +1,4 @@
-package application.model;
+package application.datatype;
 
 import java.awt.Desktop;
 import java.io.File;
@@ -27,7 +27,7 @@ public class Setting {
 	// this things are temporary solution later will use :
 	// lightbend refrence.conf see testimagewthatable project
 	// these initial definition are even if not initialized
-	private static String Version = "3.0";
+	private static String Version = "4.0";
 	private static Boolean BackSync = false;
 	private static Boolean AutoExpand = true;
 	private static Boolean LoadAllIcon = true;
@@ -41,10 +41,13 @@ public class Setting {
 	private static int MaxDepthFilesRecursive = 5;
 	private static String VLCPath = null;
 	private static boolean isDebugMode = false;
-	private static boolean autoRenameUTFFile = true;
+	private static boolean autoRenameUTFFile = false;
+
+	private static boolean restoreLastOpenedFavorite = true;
+	private static ArrayList<Integer> lastOpenedFavoriteIndex = new ArrayList<Integer>();
 
 	private static ArrayList<String> UserNames = new ArrayList<String>();
-	private static ArrayList<Path> FavoritesLocations = new ArrayList<>();
+	private static FavoriteViewList FavoritesLocations = new FavoriteViewList();
 	/**
 	 * backsync > BackSync loadallicon > LoadAllIcon LeftLastKnowLocation >
 	 * LeftLastKnowLocation > RightLastKnowLocation
@@ -55,7 +58,7 @@ public class Setting {
 			System.getenv("APPDATA") + "\\Tracker Explorer\\TrackerExplorerSetting.txt");
 
 	public static void initializeSetting() {
-		Version = "3.0";
+		Version = "4.0";
 		BackSync = false;
 		AutoExpand = true;
 		LoadAllIcon = true;
@@ -97,6 +100,8 @@ public class Setting {
 			p.println("VLCPath=" + VLCPath);
 			p.println("BackSync=" + BackSync);
 			p.println("AutoExpand=" + AutoExpand);
+			p.println("autoRenameUTFFile=" + autoRenameUTFFile);
+			p.println("restoreLastOpenedFavorite=" + restoreLastOpenedFavorite);
 			p.println("LoadAllIcon=" + LoadAllIcon);
 			p.println("ActiveUser=" + ActiveUser);
 			p.println("ShowLeftNotesColumn=" + ShowLeftNotesColumn);
@@ -114,12 +119,20 @@ public class Setting {
 				p.println("RightLastKnowLocation=null");
 			}
 			p.println("UserNames=" + String.join(";", UserNames));
+			p.println("lastOpenedFavoriteIndex=" + String.join(";",
+					lastOpenedFavoriteIndex.stream().map(m -> m.toString()).collect(Collectors.toList())));
 			// p.println("FavoritesLocations=" + String.join(";", (String[])
 			// FavoritesLocations.toArray(new
 			// String[FavoritesLocations.size()])));
 			// check https://winterbe.com/posts/2014/07/31/java8-stream-tutorial-examples/
-			p.println("FavoritesLocations="
-					+ FavoritesLocations.stream().map(s -> s.toUri().toString()).collect(Collectors.joining(";")));
+			p.println("FavoritesTitlesLocations="
+					+ FavoritesLocations.getTitle().stream().map(s -> s).collect(Collectors.joining(";")));
+
+			p.println("FavoritesLeftLocations=" + FavoritesLocations.getLeftLoc().stream()
+					.map(s -> s.toUri().toString()).collect(Collectors.joining(";")));
+
+			p.println("FavoritesRightLocations=" + FavoritesLocations.getRightLoc().stream()
+					.map(s -> s.toUri().toString()).collect(Collectors.joining(";")));
 			p.close();
 		} catch (IOException e) {
 			e.printStackTrace();
@@ -154,6 +167,7 @@ public class Setting {
 		}
 		// those assuming they are in order
 		// very bad as same as quickly on the go just for now
+
 		for (String key : mapOptions.keySet()) {
 			String value = mapOptions.get(key);
 			if (value != null && !value.equals("null")) {
@@ -167,6 +181,10 @@ public class Setting {
 						setVLCPath(value);
 					} else if (key.equals("BackSync")) {
 						BackSync = Boolean.parseBoolean(value);
+					} else if (key.equals("autoRenameUTFFile")) {
+						autoRenameUTFFile = Boolean.parseBoolean(value);
+					} else if (key.equals("restoreLastOpenedFavorite")) {
+						restoreLastOpenedFavorite = Boolean.parseBoolean(value);
 					} else if (key.equals("AutoExpand")) {
 						AutoExpand = Boolean.parseBoolean(value);
 					} else if (key.equalsIgnoreCase("LoadAllIcon")) {
@@ -186,8 +204,19 @@ public class Setting {
 					} else if (key.equals("UserNames")) {
 						UserNames.clear();
 						UserNames.addAll(Arrays.asList(value.split(";")));
-					} else if (key.equals("FavoritesLocations")) {
-						FavoritesLocations.addAll(Arrays.asList(value.split(";")).stream().map(s -> {
+					} else if (key.equals("lastOpenedFavoriteIndex")) {
+						lastOpenedFavoriteIndex.clear();
+						Arrays.asList(value.split(";")).stream().mapToInt(m -> Integer.parseInt(m))
+								.forEach(e -> lastOpenedFavoriteIndex.add(e));
+						;
+					} else if (key.equals("FavoritesTitlesLocations")) {
+						FavoritesLocations.getTitle().addAll(Arrays.asList(value.split(";")));
+					} else if (key.equals("FavoritesLeftLocations")) {
+						FavoritesLocations.getLeftLoc().addAll(Arrays.asList(value.split(";")).stream().map(s -> {
+							return Paths.get(URI.create(s));
+						}).collect(Collectors.toList()));
+					} else if (key.equals("FavoritesRightLocations")) {
+						FavoritesLocations.getRightLoc().addAll(Arrays.asList(value.split(";")).stream().map(s -> {
 							return Paths.get(URI.create(s));
 						}).collect(Collectors.toList()));
 					}
@@ -483,11 +512,11 @@ public class Setting {
 		return VLCPath;
 	}
 
-	public static ArrayList<Path> getFavoritesLocations() {
+	public static FavoriteViewList getFavoritesLocations() {
 		return FavoritesLocations;
 	}
 
-	public static void setFavoritesLocations(ArrayList<Path> favoritesLocations) {
+	public static void setFavoritesLocations(FavoriteViewList favoritesLocations) {
 		FavoritesLocations = favoritesLocations;
 	}
 
@@ -536,5 +565,21 @@ public class Setting {
 
 	public static void setMaxDepthFilesRecursive(int maxDepthFilesRecursive) {
 		MaxDepthFilesRecursive = maxDepthFilesRecursive;
+	}
+
+	public static boolean isRestoreLastOpenedFavorite() {
+		return restoreLastOpenedFavorite;
+	}
+
+	public static void setRestoreLastOpenedFavorite(boolean restoreLastOpenedFavorite) {
+		Setting.restoreLastOpenedFavorite = restoreLastOpenedFavorite;
+	}
+
+	public static ArrayList<Integer> getLastOpenedFavoriteIndex() {
+		return lastOpenedFavoriteIndex;
+	}
+
+	public static void setLastOpenedFavoriteIndex(ArrayList<Integer> lastOpenedFavoriteIndex) {
+		Setting.lastOpenedFavoriteIndex = lastOpenedFavoriteIndex;
 	}
 }

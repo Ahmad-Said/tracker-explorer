@@ -41,8 +41,8 @@ import application.VLC;
 import application.WatchServiceHelper;
 import application.WindowsExplorerComparator;
 import application.WindowsShortcut;
-import application.model.MediaCutData;
-import application.model.Setting;
+import application.datatype.MediaCutData;
+import application.datatype.Setting;
 import application.model.TableViewModel;
 import javafx.application.Platform;
 import javafx.collections.ListChangeListener;
@@ -103,7 +103,8 @@ public class SplitViewController {
 	static final KeyCombination SHORTCUT_GO_UP = new KeyCodeCombination(KeyCode.UP, KeyCombination.ALT_DOWN);
 	static final KeyCombination SHORTCUT_RECURSIVE = new KeyCodeCombination(KeyCode.R, KeyCombination.CONTROL_DOWN);
 	static final KeyCombination SHORTCUT_SEARCH = new KeyCodeCombination(KeyCode.F, KeyCombination.CONTROL_DOWN);
-	static final KeyCombination TOGGLE_FAVORITE = new KeyCodeCombination(KeyCode.F, KeyCombination.SHIFT_DOWN);
+	static final KeyCombination TOGGLE_FAVORITE = new KeyCodeCombination(KeyCode.F, KeyCombination.CONTROL_DOWN,
+			KeyCombination.SHIFT_DOWN);
 
 	private Button BackButton;
 	private Button NextButton;
@@ -795,7 +796,7 @@ public class SplitViewController {
 			} else if (SHORTCUT_GO_UP.match(e)) {
 				goUpParent();
 			} else if (TOGGLE_FAVORITE.match(e)) {
-				parentWelcome.ToogleFavorite(getDirectoryPath());
+				parentWelcome.ToogleFavorite();
 			} else if (SHORTCUT_GO_BACK.match(e)) {
 				BackButton.fire();
 			} else if (SHORTCUT_GO_NEXT.match(e)) {
@@ -1067,7 +1068,6 @@ public class SplitViewController {
 			List<File> toBeRemoved = new ArrayList<File>();
 			for (File s : list) {
 				try {
-					// if (FileHelper.rename(s.toPath(), this, true) != null)
 					if (FileHelper.rename(s.toPath(), true) != null) {
 						doRefresh = true;
 					}
@@ -1108,6 +1108,23 @@ public class SplitViewController {
 
 	private LinkedList<File> BackQueue = new LinkedList<File>();
 	private LinkedList<File> NextQueue = new LinkedList<File>();
+
+	public void setBackQueue(LinkedList<File> BackQueue) {
+		this.BackQueue = BackQueue;
+	}
+
+	public void setNextQueue(LinkedList<File> NextQueue) {
+		this.NextQueue = NextQueue;
+	}
+
+	public void RemoveLastFalseQueue() {
+		if (!BackQueue.isEmpty()) {
+			BackQueue.removeLast();
+		}
+		if (BackQueue.isEmpty()) {
+			BackButton.setDisable(true);
+		}
+	}
 
 	private void AddToQueue(File file) {
 		// prevent redundant successive items
@@ -1606,17 +1623,36 @@ public class SplitViewController {
 		}
 	};
 
-	// Needed to redo last modification rename
+	// Needed to Undo last modification rename
 	private static LinkedList<HashMap<Path, Path>> NewToOldRename = new LinkedList<>();
 
 	private void initializeToolsMenu() {
 		MenuItem copyBaseNames = new MenuItem("Copy Base Names");
 		MenuItem pasteBaseNames = new MenuItem("Paste Base Names");
-		MenuItem redoLastPasteNames = new MenuItem("Redo Last Paste Names");
+		MenuItem undoLastPasteNames = new MenuItem("Undo Last Paste Names");
+		MenuItem renameAction = new MenuItem("Rename Selected");
+		MenuItem newFileAction = new MenuItem("Create New File");
+		MenuItem newFolderAction = new MenuItem("Create New Folder");
 		ToolsMenu.getItems().add(copyBaseNames);
 		ToolsMenu.getItems().add(pasteBaseNames);
-		ToolsMenu.getItems().add(redoLastPasteNames);
-		redoLastPasteNames.setDisable(true);
+		ToolsMenu.getItems().add(undoLastPasteNames);
+		ToolsMenu.getItems().add(renameAction);
+		ToolsMenu.getItems().add(newFileAction);
+		ToolsMenu.getItems().add(newFolderAction);
+
+		renameAction.setOnAction(e -> {
+			requestFocus();
+			parentWelcome.rename();
+		});
+		newFileAction.setOnAction(e -> {
+			requestFocus();
+			parentWelcome.createFile();
+		});
+		newFolderAction.setOnAction(e -> {
+			requestFocus();
+			parentWelcome.createDirectory();
+		});
+		undoLastPasteNames.setDisable(true);
 
 		copyBaseNames.setOnAction(new EventHandler<ActionEvent>() {
 
@@ -1725,7 +1761,7 @@ public class SplitViewController {
 							}
 						}
 						NewToOldRename.add(currentNewToOldRename);
-						redoLastPasteNames.setDisable(false);
+						undoLastPasteNames.setDisable(false);
 						if (!renameError.isEmpty()) {
 							DialogHelper.showExpandableAlert(AlertType.ERROR, "Paste Base Names",
 									"Some Content were not renamed Successfully!",
@@ -1746,7 +1782,7 @@ public class SplitViewController {
 
 			}
 		});
-		redoLastPasteNames.setOnAction(new EventHandler<ActionEvent>() {
+		undoLastPasteNames.setOnAction(new EventHandler<ActionEvent>() {
 
 			@Override
 			public void handle(ActionEvent event) {
@@ -1804,7 +1840,7 @@ public class SplitViewController {
 					}
 					NewToOldRename.removeLast();
 					if (NewToOldRename.size() == 0) {
-						redoLastPasteNames.setDisable(true);
+						undoLastPasteNames.setDisable(true);
 					}
 					if (!renameError.isEmpty()) {
 						DialogHelper.showExpandableAlert(AlertType.ERROR, title,
@@ -1877,7 +1913,8 @@ public class SplitViewController {
 			isDirectory = true;
 		} else {
 			try {
-				if (VLC.isInstalled() && VLC.isVLCMediaExt(filePath.toFile().getName())) {
+				if (VLC.isInstalled() && VLC.isVLCMediaExt(filePath.toFile().getName())
+						&& Table.getSelectionModel().getSelectedItems().size() != 1) {
 					String files = " --playlist-enqueue --loop";
 					for (TableViewModel t : Table.getSelectionModel().getSelectedItems()) {
 						if (VLC.isVLCMediaExt(t.getName())) {

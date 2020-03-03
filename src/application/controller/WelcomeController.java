@@ -34,7 +34,8 @@ import application.Main;
 import application.RecursiveFileWalker;
 import application.StringHelper;
 import application.VLC;
-import application.model.Setting;
+import application.datatype.Setting;
+import application.fxGraphics.DraggableTab;
 import application.model.TableViewModel;
 import javafx.application.Platform;
 import javafx.collections.FXCollections;
@@ -52,6 +53,8 @@ import javafx.scene.control.Menu;
 import javafx.scene.control.MenuButton;
 import javafx.scene.control.MenuItem;
 import javafx.scene.control.RadioMenuItem;
+import javafx.scene.control.Tab;
+import javafx.scene.control.TabPane;
 import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
 import javafx.scene.control.TextField;
@@ -64,6 +67,9 @@ import javafx.stage.FileChooser;
 import javafx.util.Duration;
 
 public class WelcomeController implements Initializable {
+
+	@FXML
+	private TabPane tabPane;
 
 	@FXML
 	private MenuItem aboutMenuItem;
@@ -226,14 +232,9 @@ public class WelcomeController implements Initializable {
 	@FXML
 	private Button SwapButton;
 
-	@FXML
-	private MenuItem toogleAutoBackSync;
 	ToggleGroup toogleActiveUserGroup;
 	@FXML
 	private Menu TrackerMenu;
-
-	@FXML
-	private MenuItem trackLeftRecusivlyMenuItem;
 
 	ObservableList<TableViewModel> leftDataTable = FXCollections.observableArrayList();
 	ObservableList<TableViewModel> rightDataTable = FXCollections.observableArrayList();
@@ -297,22 +298,137 @@ public class WelcomeController implements Initializable {
 			initializeRootsMenu();
 		});
 		initializeFavorites();
+		initializeTabs();
+	}
+
+	private void initializeTabs() {
+		// initialize tabs
+		tabPane.getTabs().clear();
+		DraggableTab defaultTab = new DraggableTab("Default", Setting.getLeftLastKnowLocation(),
+				Setting.getRightLastKnowLocation());
+		defaultTab.setClosable(false);
+		defaultTab.flipisEnteringAction();
+		tabPane.getTabs().add(defaultTab);
+		activeActionTab(defaultTab);
+
+		if (Setting.isRestoreLastOpenedFavorite()) {
+			int sizeFavo = Setting.getFavoritesLocations().getTitle().size();
+			for (int i : Setting.getLastOpenedFavoriteIndex()) {
+				if (i >= 0 && i < sizeFavo) {
+					addTabOnly(Setting.getFavoritesLocations().getTitle().get(i),
+							Setting.getFavoritesLocations().getLeftLoc().get(i),
+							Setting.getFavoritesLocations().getRightLoc().get(i));
+				}
+			}
+		}
 	}
 
 	private void initializeFavorites() {
-		for (int i = Setting.getFavoritesLocations().size() - 1; i >= 0; i--) {
-			AddandPriorizethisMenu(Setting.getFavoritesLocations().get(i));
-		}
+		reloadFavorites();
 		FavoriteCheckBox.setOnAction(new EventHandler<ActionEvent>() {
 			@Override
 			public void handle(ActionEvent event) {
 				if (FavoriteCheckBox.isSelected()) {
-					AddandPriorizethisMenu(leftView.getDirectoryPath());
+					// ask for title here
+					String hint = leftView.getDirectoryPath().toFile().getName().toString();
+					if (Setting.getFavoritesLocations().getLastRemoved() != null && Setting.getFavoritesLocations()
+							.getLastRemoved().getValue().equals(leftView.getDirectoryPath())) {
+						hint = Setting.getFavoritesLocations().getLastRemoved().getKey();
+					}
+					String title = DialogHelper.showTextInputDialog("Favorite Title",
+							"Please Enter the name of this Favorite View", "", hint);
+					title = title.replaceAll(";", "_");
+					if (title == null || title.trim().equals("")) {
+						return;
+					}
+					AddandPriorizethisMenu(title, leftView.getDirectoryPath(), rightView.getDirectoryPath());
 				} else {
 					removeFavorite(leftView.getDirectoryPath());
 				}
 			}
 		});
+	}
+
+	private void reloadFavorites() {
+		FavoritesLocations.getItems().clear();
+		allMenuFavoriteLocation.clear();
+		for (int i = Setting.getFavoritesLocations().size() - 1; i >= 0; i--) {
+			AddandPriorizethisMenu(Setting.getFavoritesLocations().getTitle().get(i),
+					Setting.getFavoritesLocations().getLeftLoc().get(i),
+					Setting.getFavoritesLocations().getRightLoc().get(i));
+		}
+	}
+
+	private void activeActionTab(DraggableTab dragTab) {
+		dragTab.setOnSelectionChanged(e -> {
+			if (dragTab.isEnteringAction()) {
+				// change queue for the corresponding tab
+				leftView.setBackQueue(dragTab.getLeftBackQueue());
+				leftView.setNextQueue(dragTab.getLeftNextQueue());
+				rightView.setBackQueue(dragTab.getRightBackQueue());
+				rightView.setNextQueue(dragTab.getRightNextQueue());
+				// change Directory to last know location of tabs
+				rightView.setmDirectoryThenRefresh(dragTab.getRightPath().toFile());
+				leftView.setmDirectoryThenRefresh(dragTab.getLeftPath().toFile());
+				// clear false change between tabs
+				rightView.RemoveLastFalseQueue();
+				leftView.RemoveLastFalseQueue();
+			} else {
+				dragTab.setRightPath(rightView.getmDirectory().toPath());
+				dragTab.setLeftPath(leftView.getmDirectory().toPath());
+			}
+			dragTab.flipisEnteringAction();
+		});
+	}
+
+	@FXML
+	public void plusTab() {
+		addTabAndSwitch("New Tab", leftView.getDirectoryPath(), rightView.getDirectoryPath());
+	}
+
+	public void close_Current_Tab() {
+		if (tabPane.getSelectionModel().getSelectedItem().isClosable()) {
+			tabPane.getTabs().remove(tabPane.getSelectionModel().getSelectedItem());
+		} else {
+			if (tabPane.getTabs().size() == 1) {
+				Platform.exit();
+			}
+		}
+	}
+
+	public void open_New_Tab() {
+		plusTab();
+	}
+
+	public void switch_Next_Tabs() {
+		tabPane.getSelectionModel()
+				.select((tabPane.getSelectionModel().getSelectedIndex() + 1) % tabPane.getTabs().size());
+	}
+
+	public void switch_Previous_Tab() {
+		tabPane.getSelectionModel()
+				.select((tabPane.getSelectionModel().getSelectedIndex() - 1 + tabPane.getTabs().size())
+						% tabPane.getTabs().size());
+
+	}
+
+	private DraggableTab addTabAndSwitch(String title, Path leftPath, Path rightPath) {
+		DraggableTab tempTab = addTabOnly(title, leftPath, rightPath);
+		tabPane.getSelectionModel().select(tempTab);
+		return tempTab;
+	}
+
+	private DraggableTab addTabOnly(String title, Path leftPath, Path rightPath) {
+		DraggableTab tempTab = new DraggableTab(title, leftPath, rightPath);
+		activeActionTab(tempTab);
+		tabPane.getTabs().add(tempTab);
+		return tempTab;
+	}
+
+	public void changeInSetting() {
+		initializeMenuBar();
+		reloadFavorites();
+		refreshBothViews(null);
 	}
 
 	private void initializeMenuBar() {
@@ -336,12 +452,40 @@ public class WelcomeController implements Initializable {
 		 */
 		// check http://tutorials.jenkov.com/javafx/menubar.html
 		// Menus :
+		TrackerMenu.getItems().clear();
+
+		MenuItem settingController = new MenuItem("Setting preference");
+		TrackerMenu.getItems().add(settingController);
+
+		MenuItem trackLeftRecusivlyMenuItem = new MenuItem("Track left view Recursivly");
+		trackLeftRecusivlyMenuItem.setOnAction(e -> leftTrackRecusivly());
+		TrackerMenu.getItems().add(trackLeftRecusivlyMenuItem);
+
 		MenuItem clearFavorite = new MenuItem("Clear Favorites	(!-!)");
+		TrackerMenu.getItems().add(clearFavorite);
+
+		MenuItem CleanRecursively = new MenuItem("Clean Recursively");
+		TrackerMenu.getItems().add(CleanRecursively);
+
+		MenuItem addTocontextMenu = new MenuItem("Add Tracker To Context Menu");
+		addTocontextMenu.setOnAction(e -> AddToContextMenu());
+		TrackerMenu.getItems().add(addTocontextMenu);
+
+		MenuItem removeTocontextMenu = new MenuItem("Remove Tracker From Context Menu");
+		removeTocontextMenu.setOnAction(e -> RemoveFromContextMenu());
+		TrackerMenu.getItems().add(removeTocontextMenu);
+
 		MenuItem NewUser = new MenuItem("Add A new User");
 		subMenuActiveUser = new Menu("Set Active User");
 		toogleActiveUserGroup = new ToggleGroup();
 		subMenuRemoveUser = new Menu("Remove User");
-		MenuItem ChangeLimitFilesRecursive = new MenuItem("Change Limit Files Count In recursive");
+		TrackerMenu.getItems().addAll(NewUser, subMenuActiveUser, subMenuRemoveUser);
+
+		MenuItem experimentalFeatures = new MenuItem("---------** Experimental Features **---------");
+		TrackerMenu.getItems().add(experimentalFeatures);
+
+		// Setting preference Menu Item
+		settingController.setOnAction(e -> new SettingController(this));
 
 		// -!Clear Favorites!- Menu Item
 		clearFavorite.setOnAction(new EventHandler<ActionEvent>() {
@@ -359,7 +503,6 @@ public class WelcomeController implements Initializable {
 				}
 			}
 		});
-		TrackerMenu.getItems().add(0, clearFavorite);
 
 		// Add A new User Menu Item
 		NewUser.setOnAction(new EventHandler<ActionEvent>() {
@@ -402,31 +545,17 @@ public class WelcomeController implements Initializable {
 				refreshBothViews(null);
 			}
 		});
-		int where = 4;
-		TrackerMenu.getItems().add(where++, NewUser);
 		// Select Active User Menu
 		for (String user : Setting.getUserNames()) {
 			AddActiveUser(user);
 		}
-		TrackerMenu.getItems().add(where++, subMenuActiveUser);
 
 		// Remove User
 		for (String user : Setting.getUserNames()) {
 			AddRemoveUser(user);
 		}
-		TrackerMenu.getItems().add(where++, subMenuRemoveUser);
-
-		TrackerMenu.getItems().add(where++, ChangeLimitFilesRecursive);
-		ChangeLimitFilesRecursive.setOnAction(new EventHandler<ActionEvent>() {
-
-			@Override
-			public void handle(ActionEvent event) {
-				ChangeLimitFilesRecursiveAction();
-			}
-		});
 
 		// Clean Recursively
-		MenuItem CleanRecursively = new MenuItem("Clean Recursively");
 		CleanRecursively.setOnAction(new EventHandler<ActionEvent>() {
 
 			@Override
@@ -475,7 +604,7 @@ public class WelcomeController implements Initializable {
 				cleanerThread.start();
 			}
 		});
-		TrackerMenu.getItems().add(2, CleanRecursively);
+
 		MenuItem showConflict = new MenuItem("Show Conflict Log");
 		showConflict.setOnAction(new EventHandler<ActionEvent>() {
 
@@ -489,11 +618,11 @@ public class WelcomeController implements Initializable {
 		 * Set up helpMenu
 		 */
 		aboutMenuItem.setOnAction(e -> DialogHelper.showAlert(Alert.AlertType.INFORMATION, "About", null,
-				"Tracker Explorer v3.0\n\n" + "Copyright © 2019 by Ahmad Said"));
+				"Tracker Explorer v4.0\n\n" + "Copyright © 2020 by Ahmad Said"));
 	}
 
 	ArrayList<RadioMenuItem> allActiveUser = new ArrayList<>();
-	private Map<Path, MenuItem> allMenuFavoriteLocation = new HashMap<Path, MenuItem>();
+	private Map<String, MenuItem> allMenuFavoriteLocation = new HashMap<String, MenuItem>();
 	ArrayList<MenuItem> allRemoveUser = new ArrayList<>();
 
 	public void initializeRootsMenu() {
@@ -506,6 +635,7 @@ public class WelcomeController implements Initializable {
 
 				@Override
 				public void handle(ActionEvent event) {
+					// addTabAndSwitch(temp.toString(), temp.toPath(), temp.toPath());
 					changeDirInLastestView(temp);
 				}
 			});
@@ -531,29 +661,24 @@ public class WelcomeController implements Initializable {
 		subMenuActiveUser.getItems().add(mn);
 	}
 
-	private void AddandPriorizethisMenu(Path path) {
-		if (allMenuFavoriteLocation.containsKey(path)) {
-			removeFavorite(path);
+	private void AddandPriorizethisMenu(String title, Path leftPath, Path rightPath) {
+		if (allMenuFavoriteLocation.containsKey(title)) {
+			removeFavorite(title);
 		}
-		String text;
-		try {
-			// this try catch resolve if folder was a root
-			text = path.getFileName().toString();
-		} catch (Exception e) {
-			text = path.toString();
-		}
-		MenuItem mx = new MenuItem(text);
-		File temp = path.toFile();
+		MenuItem mx = new MenuItem(title);
 		mx.setOnAction(new EventHandler<ActionEvent>() {
 
 			@Override
 			public void handle(ActionEvent event) {
-				changeDirInLastestView(temp);
+				DraggableTab newTab = new DraggableTab(title, leftPath, rightPath);
+				activeActionTab(newTab);
+				tabPane.getTabs().add(newTab);
+				tabPane.getSelectionModel().select(newTab);
 			}
 		});
-		allMenuFavoriteLocation.put(path, mx);
-		if (!Setting.getFavoritesLocations().contains(path)) {
-			Setting.getFavoritesLocations().add(0, path);
+		allMenuFavoriteLocation.put(title, mx);
+		if (!Setting.getFavoritesLocations().contains(title)) {
+			Setting.getFavoritesLocations().add(0, title, leftPath, rightPath);
 		}
 		FavoritesLocations.getItems().add(0, mx);
 		// auto clean menu if more than 10
@@ -615,24 +740,6 @@ public class WelcomeController implements Initializable {
 		view.setmDirectoryThenRefresh(temp);
 		view.requestFocus();
 		return view;
-	}
-
-	protected void ChangeLimitFilesRecursiveAction() {
-		String answer = DialogHelper.showTextInputDialog("Change Limit Files Count In recursive",
-				"Max files count To consider",
-				"Enter max files count \r\n" + "Note: The more You high this number\n\t ---> The more You wait",
-				"" + Setting.getMaxLimitFilesRecursive());
-		if (answer == null) {
-			return;
-		}
-		Integer Maxi;
-		try {
-			Maxi = Integer.parseInt(answer);
-		} catch (NumberFormatException e1) {
-			Maxi = Setting.getMaxLimitFilesRecursive();
-			// e1.printStackTrace();
-		}
-		Setting.setMaxLimitFilesRecursive(Maxi);
 	}
 
 	// the current problem in conflict log is this case:
@@ -887,14 +994,22 @@ public class WelcomeController implements Initializable {
 		} else {
 			leftView.focusTable();
 		}
+		switcher = !switcher;
 	}
+
+	private boolean switcher = true;
 
 	public void focus_VIEW() {
 		SplitViewController focusedPane = getFocusedPane();
 		if (focusedPane != null) {
 			focusedPane.focusTable();
 		} else {
-			leftView.focusTable();
+			if (switcher) {
+				leftView.focusTable();
+			} else {
+				rightView.focusTable();
+			}
+			switcher = !switcher;
 		}
 	}
 
@@ -1035,19 +1150,20 @@ public class WelcomeController implements Initializable {
 	void KeyBoardShortcut(ActionEvent event) {
 		String ky = "Navigation:" + "\n - Tab                   = Focus Table View"
 				+ "\n - Ctrl + F              = Focus on search Field"
-				+ "\n - Escape                = Clear Search Field"
-				+ "\n - Ctrl + Tab || F3      = Switch Focus between Tables"
-				+ "\n - Alt + Up || BackSpace = Go To parent Directory"
+				+ "\n - Escape                = Clear Search Field" + "\n - F3      = Switch Focus between Tables"
+				+ "\n - Ctrl + Tab      = Switch To Next Tab" + "\n - Ctrl + Shift + Tab      = Switch To PreviousTab"
+				+ "\n - Ctrl + W      = Close Current Tab" + "\n - Ctrl + T   = Open New Tab"
+				+ "\n - F3      = Switch Focus between Tables" + "\n - Alt + Up || BackSpace = Go To parent Directory"
 				+ "\n - Alt + Left Arrow      = Go Back To Previous Folder" + "\n - Alt + Right Arrow     = Go Next"
-				+ "\n - Alt + Shift + R      = Reveal in Windows Explorer"
+				+ "\n - Alt + Shift + R       = Reveal in Windows Explorer"
 				+ "\n - Shift + D             = Focus On Path Field"
-				+ "\n - Shift + F             = Mark Folder As Favorite"
+				+ "\n - Ctrl + Shift + F      = Mark Folder As Favorite"
+				+ "\n - Shift + F             = Open Favorite Menu"
 				+ "\n\nFile Operations: (Applied on the focused Table)" + "\n - Space            = Toogle MarkSeen"
 				+ "\n - Ctrl + N         = New File" + "\n - Ctrl + Shift + N = New Directory"
 				+ "\n - Ctrl + C         = Copy to the other Table" + "\n - Ctrl + X         = Move to the other Table"
 				+ "\n - Ctrl + X         = Delete Selected Files" + "\n - F2               = Rename Seleted File"
-				+ "\n\n - Within Table View:" + "\n - F            = Focus Search Field"
-				+ "\n - S            = Clear Search Field" + "\n - Up / Left    = Navigate Selected with Shift support"
+				+ "\n\n - Within Table View:" + "\n - Up / Left    = Navigate Selected with Shift support"
 				+ "\n - Left / Right = Dominate Other Table View"
 				+ "\n - Trick        = Scroll up/down with mouse on clear button to toggle seen/unseen";
 		DialogHelper.showAlert(AlertType.INFORMATION, "KeyBoard Shortcuts", "KeyBoard Shortcuts", ky);
@@ -1177,11 +1293,15 @@ public class WelcomeController implements Initializable {
 		}
 	}
 
-	private void removeFavorite(Path path) {
-		if (Setting.getFavoritesLocations().contains(path)) {
-			Setting.getFavoritesLocations().remove(path);
-			FavoritesLocations.getItems().remove(allMenuFavoriteLocation.get(path));
-			allMenuFavoriteLocation.remove(path);
+	private void removeFavorite(Path FavoLeftPath) {
+		removeFavorite(Setting.getFavoritesLocations().getTitleByLeft(FavoLeftPath));
+	}
+
+	private void removeFavorite(String FavoTitle) {
+		if (Setting.getFavoritesLocations().contains(FavoTitle)) {
+			Setting.getFavoritesLocations().remove(FavoTitle);
+			FavoritesLocations.getItems().remove(allMenuFavoriteLocation.get(FavoTitle));
+			allMenuFavoriteLocation.remove(FavoTitle);
 		}
 	}
 
@@ -1217,7 +1337,6 @@ public class WelcomeController implements Initializable {
 							TimeUnit.MILLISECONDS.sleep(100);
 							Platform.runLater(() -> focusedPane.ScrollToName(target.getFileName().toString()));
 						} catch (InterruptedException e) {
-							// TODO Auto-generated catch block
 							e.printStackTrace();
 						}
 					}
@@ -1288,6 +1407,16 @@ public class WelcomeController implements Initializable {
 		Setting.setRightLastKnowLocation(getRightLastKnowLocation());
 		Setting.setShowLeftNotesColumn(leftNote.isVisible());
 		Setting.setShowRightNotesColumn(rightNote.isVisible());
+		if (Setting.isRestoreLastOpenedFavorite()) {
+			ArrayList<Integer> lastOpenedFavoritesIndex = new ArrayList<Integer>();
+			for (Tab tab : tabPane.getTabs()) {
+				int index = Setting.getFavoritesLocations().getIndexByTitle(tab.getTooltip().getText());
+				if (index >= 0) {
+					lastOpenedFavoritesIndex.add(index);
+				}
+			}
+			Setting.setLastOpenedFavoriteIndex(lastOpenedFavoritesIndex);
+		}
 	}
 
 	@FXML
@@ -1329,22 +1458,8 @@ public class WelcomeController implements Initializable {
 		Setting.setAutoExpand(!Setting.isAutoExpand());
 	}
 
-	@FXML
-	void toogleAutoBackSync(ActionEvent event) {
-		Setting.setBackSync(!Setting.getBackSync());
-		DialogHelper.showAlert(AlertType.INFORMATION, "Auto Back Sync",
-				"Auto Back Sync Set To " + Setting.getBackSync(),
-				"This will make left view move automatically to parent directory of right view."
-						+ "\nSo Both views become always Synced together");
-	}
-
-	public void ToogleFavorite(Path path) {
-		if (Setting.getFavoritesLocations().contains(path)) {
-			removeFavorite(path);
-		} else {
-			AddandPriorizethisMenu(path);
-		}
-		updateFavoriteCheckBox(false);
+	public void ToogleFavorite() {
+		FavoriteCheckBox.fire();
 	}
 
 	@FXML

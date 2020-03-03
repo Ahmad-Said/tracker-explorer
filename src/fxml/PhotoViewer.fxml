@@ -6,7 +6,9 @@
 <?import javafx.scene.control.Button?>
 <?import javafx.scene.control.CheckBox?>
 <?import javafx.scene.control.Label?>
+<?import javafx.scene.control.MenuItem?>
 <?import javafx.scene.control.Slider?>
+<?import javafx.scene.control.SplitMenuButton?>
 <?import javafx.scene.control.TextField?>
 <?import javafx.scene.control.ToggleButton?>
 <?import javafx.scene.image.ImageView?>
@@ -17,7 +19,7 @@
 
 <BorderPane fx:id="borderPane" prefHeight="547.0" prefWidth="881.0" xmlns="http://javafx.com/javafx/8.0.171" xmlns:fx="http://javafx.com/fxml/1">
    <bottom>
-      <VBox prefHeight="131.0" prefWidth="654.0" BorderPane.alignment="CENTER">
+      <VBox fx:id="bottomVbox" prefHeight="131.0" prefWidth="654.0" BorderPane.alignment="CENTER">
          <children>
             <HBox alignment="CENTER" prefHeight="100.0" prefWidth="200.0">
                <children>
@@ -39,12 +41,12 @@
                         <Insets right="5.0" />
                      </HBox.margin>
                   </CheckBox>
-                  <CheckBox fx:id="continousCheckBox" mnemonicParsing="false" text="Continous">
+                  <CheckBox fx:id="maintainPosCheckBox" mnemonicParsing="false" selected="true" text="Maitain Pos">
                      <HBox.margin>
                         <Insets right="5.0" />
                      </HBox.margin>
                   </CheckBox>
-                  <Label text="Zoom Level">
+                  <Label text="|| Zoom Level">
                      <HBox.margin>
                         <Insets right="10.0" />
                      </HBox.margin>
@@ -150,7 +152,7 @@
       </HBox>
    </right>
    <top>
-      <VBox prefHeight="56.0" prefWidth="654.0" BorderPane.alignment="CENTER">
+      <VBox fx:id="topVbox" prefHeight="56.0" prefWidth="654.0" BorderPane.alignment="CENTER">
          <children>
             <HBox prefHeight="100.0" prefWidth="200.0">
                <children>
@@ -168,11 +170,33 @@
                      <HBox.margin>
                         <Insets left="10.0" right="10.0" />
                      </HBox.margin></TextField>
-                  <Button mnemonicParsing="false" onAction="#deleteIMG" styleClass="danger" text="Delete - D" />
-                  <Button fx:id="revealLocation" mnemonicParsing="false" onAction="#revealInExplorer" text="Reveal - R">
+                  <SplitMenuButton fx:id="cropMenuButton" mnemonicParsing="false" onAction="#cropPhotoMode" style="-fx-font-weight: bold;" text="Crop">
+                    <items>
+                        <MenuItem fx:id="restoreCropped" mnemonicParsing="false" onAction="#restoreCropped" text="Restore Previous" />
+                        <MenuItem mnemonicParsing="false" onAction="#selectAllImage" text="Select All" />
+                      <MenuItem mnemonicParsing="false" onAction="#saveAsCrop" text="Save As" />
+                        <MenuItem mnemonicParsing="false" onAction="#saveToClipBoard" text="Copy To ClipBoard" />
+                        <MenuItem mnemonicParsing="false" onAction="#cancelCrop" text="Cancel" />
+                    </items>
+                  </SplitMenuButton>
+                  <Button layoutX="706.0" layoutY="10.0" mnemonicParsing="false" onAction="#rotateRightIMG" style="-fx-font-weight: bold;" text="Rotate ⟳">
+                     <styleClass>
+                        <String fx:value="info" />
+                        <String fx:value="middle" />
+                     </styleClass></Button>
+                  <Button mnemonicParsing="false" onAction="#deleteIMG" style="-fx-font-weight: bold;" text="Delete - D">
+                     <styleClass>
+                        <String fx:value="danger" />
+                        <String fx:value="middle" />
+                     </styleClass></Button>
+                  <Button fx:id="revealLocation" mnemonicParsing="false" onAction="#revealInExplorer" style="-fx-font-weight: bold;" text="Explorer - E">
                      <HBox.margin>
                         <Insets right="10.0" />
                      </HBox.margin>
+                     <styleClass>
+                        <String fx:value="last" />
+                        <String fx:value="warning" />
+                     </styleClass>
                   </Button>
                </children>
                <VBox.margin>
@@ -188,18 +212,21 @@
       </VBox>
    </top>
    <left>
-      <HBox prefHeight="263.0" prefWidth="57.0" BorderPane.alignment="CENTER">
+      <HBox prefHeight="360.0" prefWidth="72.0" BorderPane.alignment="CENTER">
          <children>
-            <Button fx:id="previousButton" maxHeight="1.7976931348623157E308" maxWidth="1.7976931348623157E308" mnemonicParsing="false" onAction="#previousImage" prefHeight="255.0" prefWidth="52.0" text="&lt;A">
-               <HBox.margin>
-                  <Insets bottom="10.0" top="10.0" />
-               </HBox.margin>
-            </Button>
+            <VBox prefHeight="200.0" prefWidth="100.0">
+               <children>
+                  <Button fx:id="hideShowButTop" layoutX="10.0" layoutY="10.0" maxHeight="1.7976931348623157E308" maxWidth="1.7976931348623157E308" mnemonicParsing="false" onAction="#showHideTop" prefHeight="38.0" prefWidth="57.0" styleClass="last" text="Hide ↑" VBox.vgrow="NEVER" />
+                  <Button fx:id="previousButton" maxHeight="1.7976931348623157E308" maxWidth="1.7976931348623157E308" mnemonicParsing="false" onAction="#previousImage" prefHeight="255.0" prefWidth="52.0" text="&lt;A" VBox.vgrow="ALWAYS" />
+                  <Button fx:id="fullScreenBut" maxHeight="1.7976931348623157E308" maxWidth="1.7976931348623157E308" mnemonicParsing="false" onAction="#switchFullScreen" prefHeight="38.0" prefWidth="57.0" styleClass="last" text="Full ⤮" />
+                  <Button fx:id="hideShowButBot" layoutX="10.0" layoutY="10.0" maxHeight="1.7976931348623157E308" maxWidth="1.7976931348623157E308" mnemonicParsing="false" onAction="#showHideBottom" prefHeight="38.0" prefWidth="57.0" styleClass="last" text="Hide ↓" />
+               </children>
+            </VBox>
          </children>
       </HBox>
    </left>
    <center>
-      <Pane fx:id="imagePane" maxHeight="1.7976931348623157E308" maxWidth="1.7976931348623157E308" BorderPane.alignment="CENTER">
+      <Pane fx:id="imagePane" maxHeight="1.7976931348623157E308" maxWidth="1.7976931348623157E308" prefHeight="360.0" prefWidth="718.0" BorderPane.alignment="CENTER">
          <children>
             <ImageView fx:id="imageView" fitHeight="156.0" fitWidth="320.0" pickOnBounds="true" preserveRatio="true" />
          </children>

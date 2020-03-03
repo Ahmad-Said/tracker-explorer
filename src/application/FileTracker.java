@@ -21,7 +21,7 @@ import java.util.Map;
 import java.util.Set;
 
 import application.controller.SplitViewController;
-import application.model.Setting;
+import application.datatype.Setting;
 import application.model.TableViewModel;
 
 public class FileTracker {

@@ -1,4 +1,4 @@
-package application.model;
+package application.datatype;
 
 public class MediaCutData {
 	private int Start;

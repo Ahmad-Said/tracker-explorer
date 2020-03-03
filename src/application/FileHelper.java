@@ -20,7 +20,7 @@ import org.apache.commons.lang3.exception.ExceptionUtils;
 
 import application.controller.SplitViewController;
 import application.controller.WelcomeController;
-import application.model.Setting;
+import application.datatype.Setting;
 import javafx.application.Platform;
 import javafx.beans.value.ChangeListener;
 import javafx.beans.value.ObservableValue;
@@ -244,7 +244,6 @@ public class FileHelper {
 											ParentTochildren.remove(srcPathParent);
 											// to ensure no that src path field don't get deleted we stack them
 											// in reverse order
-											// Files.list(srcPathParent).forEach(p2e -> System.out.println(p2e));
 											try {
 												Files.delete(srcPathParent);
 											} catch (Exception e) {
@@ -290,7 +289,6 @@ public class FileHelper {
 							return true;
 						}
 						if (SourceList.size() == 0) {
-							// System.out.println("i;m here");
 							// all operation have done
 							if (unModifiable.size() > 0) {
 								String content = "";
@@ -570,7 +568,7 @@ public class FileHelper {
 		if (operationsThread != null && operationsThread.isAlive()) {
 			return;
 		}
-		// System.out.println("i enter as new runing machine queeue ");
+		// System.out.println("i enter as new running machine queue ");
 		operationsThread = new Thread() {
 			@Override
 			public void run() {
@@ -592,39 +590,8 @@ public class FileHelper {
 				}
 			}
 		};
-		// while (count != 0) {
-		// count--;
-		// System.out.println("Size in loop is " + OperationsList.size());
-		// System.out.println("My int is " + count);
-		// Operation opItem = OperationsList.peek();
-		// operationsThread = opItem.getThread();
-		// operationsThread.start();
-		// // try {
-		// // thItem.join();
-		// // } catch (InterruptedException e) {
-		// // e.printStackTrace();
-		// // }
-		// OperationsList.pop();
-		// }
-
 		operationsThread.start();
 	}
-
-	// // Create a New Task
-	// private static Task taskCreator(int seconds) {
-	// return new Task() {
-	//
-	// @Override
-	// protected Object call() throws Exception {
-	// for (int i = 0; i < seconds; i++) {
-	// Thread.sleep(1000);
-	// updateProgress(i + 1, seconds);
-	//
-	// }
-	// return true;
-	// }
-	// };
-	// }
 
 	public static void copy(List<Path> source, Path targetDirectory) {
 		OperationsList.add(new Operation("Copy", targetDirectory, source));
@@ -635,66 +602,6 @@ public class FileHelper {
 		OperationsList.add(new Operation("Move", targetDirectory, source));
 		DoThreadOperationsAllList();
 	}
-	// public static void copy(List<Path> source, Path targetDirectory) {
-	//
-	// for (Path path : source) {
-	// // target String resolve printing if targetdir was a root folder like D:\
-	// String target = targetDirectory.getRoot().equals(targetDirectory) ?
-	// targetDirectory.toString()
-	// : targetDirectory.getFileName().toString();
-	// Main.ProcessTitle("Please Wait..Copying " + path.getFileName().toString() + "
-	// To " + target);
-	// try {
-	// File sourceFile = path.toFile();
-	// if (sourceFile.isDirectory()) {
-	// FileUtils.copyDirectoryToDirectory(sourceFile, targetDirectory.toFile());
-	// } else {
-	// FileUtils.copyFileToDirectory(sourceFile, targetDirectory.toFile());
-	// }
-	// } catch (Exception e) {
-	// uncopiable.add(path);
-	// }
-	// }
-	// if (uncopiable.size() > 0) {
-	// String sourceDirectory = uncopiable.get(0).getParent().toString();
-	// String content = "";
-	// for (Path path : uncopiable) {
-	// content += path.toString() + System.lineSeparator();
-	// }
-	// String message = "Some files were not copied properly";
-	// DialogHelper.showAlert(Alert.AlertType.INFORMATION, sourceDirectory, message,
-	// content);
-	// }
-	// Main.ResetTitle();
-	// }
-
-	// public static void move(List<Path> source, Path targetDirectory) {
-	// List<Path> unmovable = new ArrayList<>();
-	// for (Path path : source) {
-	// String target = targetDirectory.getRoot().equals(targetDirectory) ?
-	// targetDirectory.toString()
-	// : targetDirectory.getFileName().toString();
-	//
-	// Main.ProcessTitle("Please Wait..Moving " + path.getFileName().toString() + "
-	// To " + target);
-	// try {
-	// FileUtils.moveToDirectory(path.toFile(), targetDirectory.toFile(), false);
-	// } catch (Exception e) {
-	// unmovable.add(path);
-	// }
-	// }
-	// if (unmovable.size() > 0) {
-	// String sourceDirectory = unmovable.get(0).getParent().toString();
-	// String content = "";
-	// for (Path path : unmovable) {
-	// content += path.toString() + System.lineSeparator();
-	// }
-	// String message = "Some files were not moved properly";
-	// DialogHelper.showAlert(Alert.AlertType.INFORMATION, sourceDirectory, message,
-	// content);
-	// }
-	// Main.ResetTitle();
-	// }
 
 	public static boolean delete(List<Path> source) {
 		if (source.size() == 0) {
@@ -749,7 +656,6 @@ public class FileHelper {
 		String title = parent.toString();
 		String hint = "New Folder";
 		File temp = parent.resolve(hint).toFile();
-		System.out.println(temp);
 		int i = 2;
 		while (temp.exists()) {
 			temp = parent.resolve("New Folder (" + i++ + ")").toFile();
@@ -775,7 +681,6 @@ public class FileHelper {
 		String title = parent.toString();
 		String hint = "New File.txt";
 		File temp = parent.resolve(hint).toFile();
-		System.out.println(temp);
 		int i = 2;
 		while (temp.exists()) {
 			temp = parent.resolve("New File (" + i++ + ").txt").toFile();
@@ -869,6 +774,7 @@ public class FileHelper {
 		}
 		if (newName != null && !newName.isEmpty()) {
 			Path target = source.getParent().resolve(newName);
+			Setting.setAutoRenameUTFFile(false);
 			try {
 				// System.out.println("name is " + source.toString());
 				// System.out.println("target is "+ target);
@@ -882,10 +788,10 @@ public class FileHelper {
 				}
 				RenameHelper(source, target);
 				// Files.move(source, target);
-//				if (source.toFile().isDirectory())
-//					FileUtils.moveDirectory(source.toFile(), target.toFile());
-//				else
-//					FileUtils.moveFile(source.toFile(), target.toFile());
+				// if (source.toFile().isDirectory())
+				// FileUtils.moveDirectory(source.toFile(), target.toFile());
+				// else
+				// FileUtils.moveFile(source.toFile(), target.toFile());
 				return target;
 			} catch (Exception e) {
 				e.printStackTrace();

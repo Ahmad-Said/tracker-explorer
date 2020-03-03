@@ -1,16 +1,30 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<?import javafx.scene.effect.*?>
-<?import javafx.scene.image.*?>
-<?import javafx.scene.*?>
-<?import javafx.scene.media.*?>
-<?import javafx.geometry.*?>
-<?import javafx.scene.control.*?>
-<?import java.lang.*?>
-<?import javafx.scene.layout.*?>
+<?import java.lang.String?>
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.CheckBox?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.Menu?>
+<?import javafx.scene.control.MenuBar?>
+<?import javafx.scene.control.MenuButton?>
+<?import javafx.scene.control.MenuItem?>
+<?import javafx.scene.control.Tab?>
+<?import javafx.scene.control.TabPane?>
+<?import javafx.scene.control.TableColumn?>
+<?import javafx.scene.control.TableView?>
+<?import javafx.scene.control.TextField?>
+<?import javafx.scene.control.ToggleButton?>
+<?import javafx.scene.control.Tooltip?>
 <?import javafx.scene.layout.BorderPane?>
+<?import javafx.scene.layout.ColumnConstraints?>
+<?import javafx.scene.layout.GridPane?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.Pane?>
+<?import javafx.scene.layout.RowConstraints?>
+<?import javafx.scene.layout.VBox?>
 
-<BorderPane prefHeight="600.0" prefWidth="840.0" xmlns="http://javafx.com/javafx/8" xmlns:fx="http://javafx.com/fxml/1" fx:controller="application.controller.WelcomeController">
+<BorderPane prefHeight="650.0" prefWidth="890.0" xmlns="http://javafx.com/javafx/8.0.171" xmlns:fx="http://javafx.com/fxml/1" fx:controller="application.controller.WelcomeController">
    <top>
       <MenuBar BorderPane.alignment="CENTER">
         <menus>
@@ -28,7 +42,6 @@
                   <MenuItem mnemonicParsing="false" onAction="#AddToContextMenu" text="Add Tracker To Context Menu" />
                   <MenuItem mnemonicParsing="false" onAction="#RemoveFromContextMenu" text="Remove Tracker From Context Menu" />
                   <MenuItem mnemonicParsing="false" text="---------** Experimental Features **---------" />
-                  <MenuItem fx:id="toogleAutoBackSync" mnemonicParsing="false" onAction="#toogleAutoBackSync" text="Toggle Auto BackSync" />
             </items>
           </Menu>
           <Menu mnemonicParsing="false" text="VLC">
@@ -294,35 +307,57 @@
       </GridPane>
    </center>
    <bottom>
-      <HBox prefHeight="24.0" prefWidth="840.0" BorderPane.alignment="CENTER">
+      <VBox prefHeight="60.0" prefWidth="100.0" BorderPane.alignment="CENTER">
          <children>
-            <Label minWidth="40.0" onMouseClicked="#copy" prefWidth="60.0" text="Copy">
-               <HBox.margin>
-                  <Insets left="10.0" top="5.0" />
-               </HBox.margin>
-            </Label>
-            <Label minWidth="40.0" onMouseClicked="#move" prefWidth="60.0" text="Move">
-               <HBox.margin>
-                  <Insets left="10.0" top="5.0" />
-               </HBox.margin>
-            </Label>
-            <CheckBox fx:id="FavoriteCheckBox" mnemonicParsing="false" prefWidth="155.0" text="Favorite Folder">
-               <HBox.margin>
-                  <Insets left="20.0" />
-               </HBox.margin></CheckBox>
-            <Label fx:id="leftLabelItemsNumber" maxWidth="200.0" prefHeight="21.0" prefWidth="127.0" text="leftLabelItemsNumber" HBox.hgrow="ALWAYS" />
-            <TextField fx:id="leftPredictNavigation" layoutX="653.0" layoutY="10.0" visible="false" />
-            <Pane maxWidth="1.7976931348623157E308" prefHeight="31.0" prefWidth="70.0" HBox.hgrow="ALWAYS" />
-            <Label fx:id="rightLabelItemsNumber" maxWidth="200.0" prefHeight="21.0" prefWidth="137.0" text="rightLabelItemsNumber" HBox.hgrow="ALWAYS" />
-            <TextField fx:id="rightPredictNavigation" visible="false">
-               <HBox.margin>
-                  <Insets right="10.0" />
-               </HBox.margin>
-            </TextField>
+            <HBox prefHeight="100.0" prefWidth="200.0">
+               <children>
+                  <Button mnemonicParsing="false" onAction="#plusTab" text="+">
+                     <HBox.margin>
+                        <Insets left="10.0" />
+                     </HBox.margin>
+                  </Button>
+                  <TabPane fx:id="tabPane" maxHeight="1.7976931348623157E308" maxWidth="1.7976931348623157E308" minHeight="-Infinity" side="BOTTOM" tabClosingPolicy="ALL_TABS" HBox.hgrow="ALWAYS">
+                    <tabs>
+                      <Tab text="Default" />
+                    </tabs>
+                     <HBox.margin>
+                        <Insets right="10.0" />
+                     </HBox.margin>
+                  </TabPane>
+               </children>
+            </HBox>
+            <HBox prefHeight="100.0" prefWidth="200.0">
+               <children>
+                  <Label minWidth="40.0" onMouseClicked="#copy" prefWidth="60.0" text="Copy">
+                     <HBox.margin>
+                        <Insets left="10.0" top="5.0" />
+                     </HBox.margin>
+                  </Label>
+                  <Label minWidth="40.0" onMouseClicked="#move" prefWidth="60.0" text="Move">
+                     <HBox.margin>
+                        <Insets left="10.0" top="5.0" />
+                     </HBox.margin>
+                  </Label>
+                  <CheckBox fx:id="FavoriteCheckBox" mnemonicParsing="false" prefWidth="155.0" text="Favorite View">
+                     <HBox.margin>
+                        <Insets left="20.0" />
+                     </HBox.margin>
+                  </CheckBox>
+                  <Label fx:id="leftLabelItemsNumber" maxWidth="200.0" prefHeight="21.0" prefWidth="127.0" text="leftLabelItemsNumber" HBox.hgrow="ALWAYS" />
+                  <TextField fx:id="leftPredictNavigation" visible="false" />
+                  <Pane maxWidth="1.7976931348623157E308" prefHeight="31.0" prefWidth="70.0" HBox.hgrow="ALWAYS" />
+                  <Label fx:id="rightLabelItemsNumber" maxWidth="200.0" prefHeight="21.0" prefWidth="137.0" text="rightLabelItemsNumber" HBox.hgrow="ALWAYS" />
+                  <TextField fx:id="rightPredictNavigation" visible="false">
+                     <HBox.margin>
+                        <Insets right="10.0" />
+                     </HBox.margin>
+                  </TextField>
+               </children>
+               <VBox.margin>
+                  <Insets top="5.0" />
+               </VBox.margin>
+            </HBox>
          </children>
-         <BorderPane.margin>
-            <Insets />
-         </BorderPane.margin>
-      </HBox>
+      </VBox>
    </bottom>
 </BorderPane>

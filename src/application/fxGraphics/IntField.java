@@ -1,4 +1,4 @@
-package application;
+package application.fxGraphics;
 
 import javafx.beans.property.IntegerProperty;
 import javafx.beans.property.SimpleIntegerProperty;
@@ -110,6 +110,29 @@ public class IntField extends TextField {
 				value.set(Integer.parseInt(textProperty().get()));
 			}
 		});
+
+		setOnKeyPressed(key -> {
+			switch (key.getCode()) {
+			// leaved for navigation
+			case UP:
+				incrementByOne();
+				break;
+			case DOWN:
+				decrementByOne();
+				break;
+			default:
+				break;
+			}
+		});
+		setOnScroll(event -> {
+			double deltaY = event.getDeltaY();
+			if (deltaY > 0) {
+				incrementByOne();
+			} else {
+				decrementByOne();
+			}
+
+		});
 	}
 
 	public int getMinValue() {
@@ -118,7 +141,7 @@ public class IntField extends TextField {
 
 	public void setMinValue(int minValue) {
 		this.minValue = minValue;
-		if (this.slider != null) {
+		if (slider != null) {
 			slider.setMin(minValue);
 		}
 	}
@@ -129,7 +152,7 @@ public class IntField extends TextField {
 
 	public void setMaxValue(int maxValue) {
 		this.maxValue = maxValue;
-		if (this.slider != null) {
+		if (slider != null) {
 			slider.setMax(maxValue);
 		}
 
@@ -158,11 +181,11 @@ public class IntField extends TextField {
 	}
 
 	public void incrementByOne() {
-		this.setValue(this.getValue() + 1);
+		setValue(getValue() + 1);
 	}
 
 	public void decrementByOne() {
-		this.setValue(this.getValue() - 1);
+		setValue(getValue() - 1);
 	}
 
 }

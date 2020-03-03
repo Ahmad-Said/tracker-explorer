@@ -13,19 +13,26 @@ import javafx.geometry.Insets;
 import javafx.scene.Scene;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Alert.AlertType;
+import javafx.scene.control.Button;
 import javafx.scene.control.ButtonBar.ButtonData;
 import javafx.scene.control.ButtonType;
 import javafx.scene.control.Dialog;
 import javafx.scene.control.Label;
+import javafx.scene.control.ProgressIndicator;
 import javafx.scene.control.ScrollPane;
 import javafx.scene.control.TextArea;
 import javafx.scene.control.TextField;
 import javafx.scene.control.TextInputDialog;
 import javafx.scene.image.Image;
+import javafx.scene.image.ImageView;
+import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
+import javafx.scene.text.Font;
+import javafx.scene.text.Text;
+import javafx.scene.text.TextFlow;
 import javafx.stage.Stage;
 import javafx.util.Pair;
 
@@ -46,6 +53,19 @@ public class DialogHelper {
 
 		Optional<ButtonType> result = alert.showAndWait();
 		return result.isPresent() ? result.get() == ButtonType.OK : false;
+	}
+
+	public static void showImage(ImageView imageView) {
+		final Stage croppedImageStage = new Stage();
+		final BorderPane borderPane = new BorderPane();
+		final ScrollPane rootPane = new ScrollPane();
+		final Scene scene = new Scene(borderPane, 800, 800);
+		rootPane.setContent(imageView);
+		borderPane.setCenter(rootPane);
+		croppedImageStage.setScene(scene);
+		croppedImageStage.show();
+		croppedImageStage.setScene(scene);
+		croppedImageStage.show();
 	}
 
 	public static void showExpandableAlert(AlertType alertType, String title, String header, String content,
@@ -169,7 +189,7 @@ public class DialogHelper {
 	}
 
 	/**
-	 * 
+	 *
 	 * @param title
 	 * @param header
 	 * @param content
@@ -198,6 +218,18 @@ public class DialogHelper {
 		ScrollPane scrollPane = new ScrollPane(root);
 		Scene scene = new Scene(scrollPane);
 		scene.getStylesheets().add("/css/bootstrap3.css");
+
+		// initializing Header and content
+		Text headerText = new Text();
+		if (header != null) {
+			headerText = new Text(header + "\n-----------------\n");
+			headerText.setFont(Font.font("Verdana", 20));
+		}
+		Text contentText = new Text(content + "\n");
+		TextFlow headerFlow = new TextFlow(headerText, contentText);
+		HBox headerHbox = new HBox(headerFlow);
+		HBox.setHgrow(headerHbox, Priority.ALWAYS);
+		root.getChildren().add(headerHbox);
 
 		ArrayList<TextField> allInputs = new ArrayList<>();
 		for (int i = 0; i < labels.length; i++) {
@@ -250,4 +282,41 @@ public class DialogHelper {
 	public static void showFileOperationBar() {
 
 	}
+
+	static private Dialog<String> blockDialog;
+
+	public static void showWaitingScreen(String title, String WaitingText) {
+
+		// https://stackoverflow.com/questions/31556373/javafx-dialog-with-2-input-fields
+		// Create the custom dialog.
+		blockDialog = new Dialog<String>();
+		blockDialog.setTitle(title);
+
+		Stage stage = (Stage) blockDialog.getDialogPane().getScene().getWindow();
+		stage.getIcons().add(new Image(Main.class.getResourceAsStream("/img/icon.png")));
+
+		blockDialog.getDialogPane().getButtonTypes().addAll(ButtonType.OK);
+		final Button btOk = (Button) blockDialog.getDialogPane().lookupButton(ButtonType.OK);
+		btOk.setDisable(true);
+		blockDialog.setOnCloseRequest(e -> showWaitingScreen(title, WaitingText));
+//		dialog.getDialogPane().getButtonTypes().addAll(submitButtonOk, ButtonType.CANCEL);
+		// Set the button types.
+		GridPane gridPane = new GridPane();
+		gridPane.setHgap(10);
+		gridPane.setVgap(10);
+		gridPane.setPadding(new Insets(20, 150, 10, 10));
+		Label showLabel = new Label(WaitingText);
+		gridPane.add(showLabel, 1, 0);
+		gridPane.add(new ProgressIndicator(), 0, 0);
+		blockDialog.getDialogPane().setContent(gridPane);
+		blockDialog.show();
+//		dialog.close();
+	}
+
+	public static void closeWaitingScreen() {
+		blockDialog.setOnCloseRequest(e -> {
+		});
+		blockDialog.close();
+	}
+
 }

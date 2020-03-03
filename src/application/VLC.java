@@ -15,8 +15,8 @@ import java.util.Map;
 import java.util.Scanner;
 
 import application.controller.FilterVLCController;
-import application.model.MediaCutData;
-import application.model.Setting;
+import application.datatype.MediaCutData;
+import application.datatype.Setting;
 import javafx.scene.control.Alert.AlertType;
 import javafx.util.Duration;
 

@@ -8,7 +8,7 @@ import java.nio.file.attribute.BasicFileAttributes;
 import java.util.HashSet;
 import java.util.Set;
 
-import application.model.Setting;
+import application.datatype.Setting;
 
 public class RecursiveFileWalker implements FileVisitor<Path> {
 
@@ -32,8 +32,9 @@ public class RecursiveFileWalker implements FileVisitor<Path> {
 		// so it is useless to go further if there exist more files than to show
 		// but it is important to define all node to make bfs work correctly
 		if (filesCount > Setting.getMaxLimitFilesRecursive()) {
-			if (dir.getNameCount() > Setting.getMaxDepthFilesRecursive())
+			if (dir.getNameCount() > Setting.getMaxDepthFilesRecursive()) {
 				return FileVisitResult.SKIP_SIBLINGS;
+			}
 		}
 		return FileVisitResult.CONTINUE;
 	}
@@ -43,8 +44,9 @@ public class RecursiveFileWalker implements FileVisitor<Path> {
 		// This is where I need my logic
 		Parent.add(file.getParent());
 		// check later if it impact speed
-		if (GetFiles)
+		if (GetFiles) {
 			allFiles.add(file);
+		}
 		filesCount++;
 		return FileVisitResult.CONTINUE;
 	}

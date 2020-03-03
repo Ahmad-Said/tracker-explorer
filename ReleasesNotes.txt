@@ -1,3 +1,11 @@
+v4.0:
+New Tab bar for multi-exploring
+New Feature Image: Crop
+New Setting Control Page
+Add Missing NumberDetection in Rename Utility
+Can insert Simple Text to Rename Utility
+Fix Bug auto-renaming non UTF-8
+
 v3.0:
 New Rename multiple Files together
 New Photo Viewer Explorer

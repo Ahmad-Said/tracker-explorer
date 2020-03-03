@@ -1,16 +1,26 @@
 package application.controller;
 
-import java.awt.Color;
 import java.awt.Graphics2D;
+import java.awt.geom.AffineTransform;
+import java.awt.image.AffineTransformOp;
 import java.awt.image.BufferedImage;
+import java.awt.image.ColorModel;
+import java.awt.image.DataBuffer;
+import java.awt.image.DataBufferInt;
+import java.awt.image.DirectColorModel;
+import java.awt.image.PixelGrabber;
+import java.awt.image.Raster;
+import java.awt.image.WritableRaster;
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.IOException;
 import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Path;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.HashSet;
-import java.util.LinkedList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 import javax.imageio.ImageIO;
 
@@ -20,6 +30,8 @@ import application.FileTracker;
 import application.Main;
 import application.RunMenu;
 import application.StringHelper;
+import application.datatype.PositionImg;
+import application.fxGraphics.RubberBandSelection;
 import javafx.application.Platform;
 import javafx.beans.property.ObjectProperty;
 import javafx.beans.property.SimpleObjectProperty;
@@ -29,33 +41,72 @@ import javafx.embed.swing.SwingFXUtils;
 import javafx.event.EventHandler;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
+import javafx.geometry.Bounds;
 import javafx.geometry.Point2D;
 import javafx.geometry.Rectangle2D;
 import javafx.scene.Cursor;
+import javafx.scene.Group;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
+import javafx.scene.SnapshotParameters;
 import javafx.scene.control.Alert.AlertType;
 import javafx.scene.control.Button;
 import javafx.scene.control.CheckBox;
 import javafx.scene.control.Label;
+import javafx.scene.control.MenuItem;
 import javafx.scene.control.Slider;
+import javafx.scene.control.SplitMenuButton;
 import javafx.scene.control.TextField;
 import javafx.scene.control.ToggleButton;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
+import javafx.scene.image.WritableImage;
+import javafx.scene.input.Clipboard;
+import javafx.scene.input.ClipboardContent;
+import javafx.scene.input.DataFormat;
+import javafx.scene.input.DragEvent;
+import javafx.scene.input.Dragboard;
+import javafx.scene.input.KeyCode;
 import javafx.scene.input.MouseButton;
+import javafx.scene.input.TransferMode;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.Pane;
+import javafx.scene.layout.VBox;
+import javafx.scene.paint.Color;
+import javafx.scene.shape.Rectangle;
+import javafx.stage.FileChooser;
+import javafx.stage.FileChooser.ExtensionFilter;
 import javafx.stage.Stage;
 import javafx.stage.WindowEvent;
 
 public class PhotoViewerController {
 
 	@FXML
+	private MenuItem restoreCropped;
+
+	@FXML
+	private SplitMenuButton cropMenuButton;
+
+	@FXML
+	private Button fullScreenBut;
+
+	@FXML
+	private Button hideShowButTop;
+
+	@FXML
+	private Button hideShowButBot;
+
+	@FXML
+	private VBox topVbox;
+
+	@FXML
+	private VBox bottomVbox;
+
+	@FXML
 	private CheckBox fitWidthCheckBox;
 
 	@FXML
-	private CheckBox continousCheckBox;
+	private CheckBox maintainPosCheckBox;
 
 	@FXML
 	private BorderPane borderPane;
@@ -123,6 +174,11 @@ public class PhotoViewerController {
 	@FXML
 	private Pane imagePane;
 
+	boolean isInCropMode = false;
+	private Image lastBackUpCroppedImage;
+	private File lastBackUpCroppedFile;
+	private RubberBandSelection rubberBandSelection;
+
 	// zoom idea source : https://gist.github.com/james-d/ce5ec1fd44ce6c64e81a
 	private int MIN_PIXELS = 100;
 
@@ -131,8 +187,20 @@ public class PhotoViewerController {
 	private FileTracker mFileTracker;
 	private File mDirectory;
 	private Stage photoStage;
-	private List<File> ImgResources;
 
+	public static HashMap<File, PositionImg> ImgPositions = new HashMap<>();
+	private List<File> ImgResources;
+	private Integer rollerPhoto = 0;
+
+	/**
+	 * general notes: Remember that viewPort is a rectangle on original photo pixels
+	 * size so after setting this viewport rectangle it will be scaled to imageView
+	 * where image is being shown.
+	 *
+	 * @param imgResources
+	 * @param selectedImg
+	 * @param welcomeToRefreshCanNull
+	 */
 	public PhotoViewerController(List<File> imgResources, File selectedImg, WelcomeController welcomeToRefreshCanNull) {
 		try {
 			photoStage = new Stage();
@@ -155,6 +223,7 @@ public class PhotoViewerController {
 			imgResources = getImgFilesInDir(mDirectory);
 		}
 		ImgResources = imgResources;
+		rollerPhoto = imgResources.indexOf(selectedImg);
 		initializeImageView();
 		initializeButtons();
 		initializeSliders();
@@ -163,7 +232,6 @@ public class PhotoViewerController {
 			mFileTracker.loadMap(selectedImg.toPath().getParent(), true, false);
 			mFileTracker.resolveConflict();
 		}
-		rollerPhoto = imgResources.indexOf(selectedImg);
 		photoStage.setOnCloseRequest(new EventHandler<WindowEvent>() {
 			@Override
 			public void handle(WindowEvent t) {
@@ -191,6 +259,36 @@ public class PhotoViewerController {
 		};
 		photoStage.widthProperty().addListener(stageSizeListener);
 		photoStage.heightProperty().addListener(stageSizeListener);
+		initializeImagePane();
+	}
+
+	private void initializeImagePane() {
+		imagePane.setOnDragOver(new EventHandler<DragEvent>() {
+
+			@Override
+			public void handle(DragEvent event) {
+				if (event.getDragboard().hasFiles() || event.getDragboard().hasContent(DataFormat.URL)
+						|| event.getDragboard().hasString()) {
+					event.acceptTransferModes(TransferMode.ANY);
+				}
+			}
+		});
+		// https://stackoverflow.com/questions/32534113/javafx-drag-and-drop-a-file-into-a-program
+		imagePane.setOnDragDropped(new EventHandler<DragEvent>() {
+
+			@Override
+			public void handle(DragEvent event) {
+				Dragboard db = event.getDragboard();
+				if (db.hasFiles()) {
+					db.getFiles().forEach(file3 -> {
+						if (ArrayIMGExt.contains(StringHelper.getExtention(file3.getName()))) {
+							ImgResources.add(rollerPhoto, file3);
+						}
+					});
+					changeImage(ImgResources.get(rollerPhoto));
+				}
+			}
+		});
 
 	}
 
@@ -223,6 +321,9 @@ public class PhotoViewerController {
 				break;
 			}
 		});
+		cropMenuButton.getItems().forEach(e -> e.setVisible(false));
+		restoreCropped.setVisible(true);
+		restoreCropped.setDisable(true);
 	}
 
 	private void initializeSliders() {
@@ -340,7 +441,10 @@ public class PhotoViewerController {
 				break;
 			case F2:
 			case M:
-				Platform.runLater(() -> nameImage.requestFocus());
+				Platform.runLater(() -> {
+					nameImage.requestFocus();
+					nameImage.selectRange(0, nameImage.getText().lastIndexOf('.'));
+				});
 				break;
 			case E:
 			case R:
@@ -362,6 +466,9 @@ public class PhotoViewerController {
 		});
 
 		imageView.setOnMouseDragged(e -> {
+			if (isInCropMode) {
+				return;
+			}
 			Point2D dragPoint = imageViewToImage(imageView, new Point2D(e.getX(), e.getY()));
 			shift(imageView, dragPoint.subtract(mouseDown.get()));
 			mouseDown.set(imageViewToImage(imageView, new Point2D(e.getX(), e.getY())));
@@ -471,8 +578,8 @@ public class PhotoViewerController {
 
 	private List<File> getImgFilesInDir(File parent) {
 		// https://stackoverflow.com/questions/2965747/why-do-i-get-an-unsupportedoperationexception-when-trying-to-remove-an-element-f
-		return new LinkedList<File>(
-				Arrays.asList(parent.listFiles(p -> ArrayIMGExt.contains(StringHelper.getExtention(p.getName())))));
+		return Arrays.asList(parent.listFiles(p -> ArrayIMGExt.contains(StringHelper.getExtention(p.getName()))))
+				.stream().sorted(new StringHelper.NaturalFileComparator()).collect(Collectors.toList());
 	}
 
 	// for a faster switch we don't need to define method each time
@@ -482,8 +589,13 @@ public class PhotoViewerController {
 	private double deltaW;
 	private double deltaH;
 
-	private void changeImage(File selectedImg) {
+	private File lastSelectedFile = null;
 
+	private void changeImage(File selectedImg) {
+		if (lastSelectedFile != null) {
+			ImgPositions.put(lastSelectedFile,
+					new PositionImg(zoomSlider.getValue(), xSlider.getValue(), ySlider.getValue()));
+		}
 		locationField.setText(selectedImg.getAbsolutePath());
 		nameImage.setText(selectedImg.getName());
 //		Image image = generateImage(selectedImg);
@@ -502,12 +614,11 @@ public class PhotoViewerController {
 		imageView.setImage(image);
 		photoStage.setTitle("Photo Viewer " + selectedImg.getName());
 		resetCenter(imageView, deltaW, deltaH, width, height);
-		if (fitWidthCheckBox.isSelected()) {
-			fitWidth();
-		}
 		widthPx.setText(width + " Px");
 		heightPx.setText(height + " Px");
 		sizeMb.setText(String.format("%.2f", selectedImg.length() / 1024.0 / 1024.0) + " MB");
+
+		rollerPhoto = ImgResources.indexOf(selectedImg);
 		indexOfImage.setText(rollerPhoto + 1 + " / " + ImgResources.size());
 
 		if (!mFileTracker.getWorkingDir().equals(selectedImg.toPath().getParent())) {
@@ -524,6 +635,20 @@ public class PhotoViewerController {
 			markSeen.getStyleClass().removeAll("info", "success");
 			markSeen.setText("-");
 		}
+		if (rubberBandSelection != null) {
+			rubberBandSelection.limitRectToImageView();
+		}
+		if (ImgPositions.containsKey(selectedImg) && maintainPosCheckBox.isSelected()) {
+			PositionImg temp = ImgPositions.get(selectedImg);
+			cumulativeZoom = temp.getZoomLvl();
+			zoomSlider.setValue(temp.getZoomLvl());
+			xSlider.setValue(temp.getxLvl());
+			ySlider.setValue(temp.getyLvl());
+		}
+		if (fitWidthCheckBox.isSelected()) {
+			fitWidth();
+		}
+		lastSelectedFile = selectedImg;
 	}
 
 	private double getDeltaPerfectHeight(double width, double height) {
@@ -544,63 +669,63 @@ public class PhotoViewerController {
 		return 0;
 	}
 
-	@Deprecated
-	private Image generatePerfectRatioImage(File originalImgFile) {
-		double perfectRatio = imagePane.getWidth() / imagePane.getHeight();
-		Image image = new Image(originalImgFile.toURI().toString());
-		double expectedWidth = image.getHeight() * perfectRatio;
-		BufferedImage imgb1;
-		int width = (int) image.getWidth();
-		int height = (int) image.getHeight();
-		Image finalImage = null;
-		BufferedImage imgbCenter = null;
-		try {
-			imgbCenter = ImageIO.read(originalImgFile);
-		} catch (IOException e) {
-		}
-		if (expectedWidth > image.getWidth()) {
-			// need to add width
-			int deltaW = (int) (expectedWidth - image.getWidth());
-			imgb1 = new BufferedImage(deltaW + width + 5, height, BufferedImage.TYPE_INT_ARGB);
-			Graphics2D graphics = imgb1.createGraphics();
-			// https://stackoverflow.com/questions/20826216/copy-two-bufferedimages-into-one-image-side-by-side
-			Color oldColor = graphics.getColor();
-			// fill background
-			graphics.setPaint(new Color(244, 244, 244));
-			graphics.fillRect(0, 0, imgb1.getWidth(), imgb1.getHeight());
-
-			// draw image
-			graphics.setColor(oldColor);
-			graphics.drawImage(imgbCenter, null, deltaW / 2, 0);
-			graphics.dispose();
-			// https://stackoverflow.com/questions/30970005/bufferedimage-to-javafx-image
-			finalImage = SwingFXUtils.toFXImage(imgb1, null);
-		} else {
-			// need to add height
-			double expectedHeight = image.getWidth() / perfectRatio;
-			int deltaH = (int) (expectedHeight - image.getHeight());
-			imgb1 = new BufferedImage(width, deltaH + height + 5, BufferedImage.TYPE_INT_ARGB);
-			Graphics2D graphics = imgb1.createGraphics();
-			// https://stackoverflow.com/questions/20826216/copy-two-bufferedimages-into-one-image-side-by-side
-			Color oldColor = graphics.getColor();
-			// fill background
-			graphics.setPaint(new Color(244, 244, 244));
-			graphics.fillRect(0, 0, imgb1.getWidth(), imgb1.getHeight());
-
-			// draw image
-			graphics.setColor(oldColor);
-			graphics.drawImage(imgbCenter, null, 0, deltaH / 2);
-			graphics.dispose();
-			// https://stackoverflow.com/questions/30970005/bufferedimage-to-javafx-image
-			finalImage = SwingFXUtils.toFXImage(imgb1, null);
-		}
-		return finalImage;
-	}
+//	@Deprecated
+//	private Image generatePerfectRatioImage(File originalImgFile) {
+//		double perfectRatio = imagePane.getWidth() / imagePane.getHeight();
+//		Image image = new Image(originalImgFile.toURI().toString());
+//		double expectedWidth = image.getHeight() * perfectRatio;
+//		BufferedImage imgb1;
+//		int width = (int) image.getWidth();
+//		int height = (int) image.getHeight();
+//		Image finalImage = null;
+//		BufferedImage imgbCenter = null;
+//		try {
+//			imgbCenter = ImageIO.read(originalImgFile);
+//		} catch (IOException e) {
+//		}
+//		if (expectedWidth > image.getWidth()) {
+//			// need to add width
+//			int deltaW = (int) (expectedWidth - image.getWidth());
+//			imgb1 = new BufferedImage(deltaW + width + 5, height, BufferedImage.TYPE_INT_ARGB);
+//			Graphics2D graphics = imgb1.createGraphics();
+//			// https://stackoverflow.com/questions/20826216/copy-two-bufferedimages-into-one-image-side-by-side
+//			Color oldColor = graphics.getColor();
+//			// fill background
+//			graphics.setPaint(new Color(244, 244, 244));
+//			graphics.fillRect(0, 0, imgb1.getWidth(), imgb1.getHeight());
+//
+//			// draw image
+//			graphics.setColor(oldColor);
+//			graphics.drawImage(imgbCenter, null, deltaW / 2, 0);
+//			graphics.dispose();
+//			// https://stackoverflow.com/questions/30970005/bufferedimage-to-javafx-image
+//			finalImage = SwingFXUtils.toFXImage(imgb1, null);
+//		} else {
+//			// need to add height
+//			double expectedHeight = image.getWidth() / perfectRatio;
+//			int deltaH = (int) (expectedHeight - image.getHeight());
+//			imgb1 = new BufferedImage(width, deltaH + height + 5, BufferedImage.TYPE_INT_ARGB);
+//			Graphics2D graphics = imgb1.createGraphics();
+//			// https://stackoverflow.com/questions/20826216/copy-two-bufferedimages-into-one-image-side-by-side
+//			Color oldColor = graphics.getColor();
+//			// fill background
+//			graphics.setPaint(new Color(244, 244, 244));
+//			graphics.fillRect(0, 0, imgb1.getWidth(), imgb1.getHeight());
+//
+//			// draw image
+//			graphics.setColor(oldColor);
+//			graphics.drawImage(imgbCenter, null, 0, deltaH / 2);
+//			graphics.dispose();
+//			// https://stackoverflow.com/questions/30970005/bufferedimage-to-javafx-image
+//			finalImage = SwingFXUtils.toFXImage(imgb1, null);
+//		}
+//		return finalImage;
+//	}
 
 	// reset to the top left:
-	private void reset(ImageView imageView, double width, double height) {
-		imageView.setViewport(new Rectangle2D(0, 0, width, height));
-	}
+//	private void reset(ImageView imageView, double width, double height) {
+//		imageView.setViewport(new Rectangle2D(0, 0, width, height));
+//	}
 
 	// reset to center position
 	private void resetCenter(ImageView imageView, double deltaW, double deltaH, double width, double height) {
@@ -615,19 +740,19 @@ public class PhotoViewerController {
 	private void shift(ImageView imageView, Point2D delta) {
 		Rectangle2D viewport = imageView.getViewport();
 		// if delta.getY() > 0 then it's scroll up
-		if (continousCheckBox.isSelected()) {
-			if (delta.getY() > 0 && (ySlider.getValue() == 0 || ySlider.getValue() == 0.5)) {
-				if (rollerPhoto == 0) {
-					return;
-				}
-				previousImage();
-				ySlider.setValue(1);
-				return;
-			} else if (delta.getY() < 0 && (ySlider.getValue() == 1 || ySlider.getValue() == 0.5)) {
-				nextImage();
-				return;
-			}
-		}
+//		if (continousCheckBox.isSelected()) {
+//			if (delta.getY() > 0 && (ySlider.getValue() == 0 || ySlider.getValue() == 0.5)) {
+//				if (rollerPhoto == 0) {
+//					return;
+//				}
+//				previousImage();
+//				ySlider.setValue(1);
+//				return;
+//			} else if (delta.getY() < 0 && (ySlider.getValue() == 1 || ySlider.getValue() == 0.5)) {
+//				nextImage();
+//				return;
+//			}
+//		}
 
 		double maxX = width + deltaW - viewport.getWidth();
 		double maxY = height + deltaH - viewport.getHeight();
@@ -707,8 +832,6 @@ public class PhotoViewerController {
 		return new Point2D(viewport.getMinX() + xProportion * viewport.getWidth(),
 				viewport.getMinY() + yProportion * viewport.getHeight());
 	}
-
-	private Integer rollerPhoto = 0;
 
 	@FXML
 	private void nextImage() {
@@ -881,6 +1004,9 @@ public class PhotoViewerController {
 			nameImage.clear();
 			noteInput.clear();
 			ImgResources.remove(img);
+			if (ImgResources.size() == 0) {
+				photoStage.close();
+			}
 			if (ImgResources.size() != 0) {
 				if (rollerPhoto < ImgResources.size() - 1) {
 					nextImage();
@@ -891,4 +1017,338 @@ public class PhotoViewerController {
 		}
 	}
 
+	public BufferedImage getRotatedImage(BufferedImage image, int angle) {
+		// https://blog.idrsolutions.com/2019/05/image-rotation-in-java/
+		final double rads = Math.toRadians(angle);
+		final double sin = Math.abs(Math.sin(rads));
+		final double cos = Math.abs(Math.cos(rads));
+		final int w = (int) Math.floor(image.getWidth() * cos + image.getHeight() * sin);
+		final int h = (int) Math.floor(image.getHeight() * cos + image.getWidth() * sin);
+		final BufferedImage rotatedImage = new BufferedImage(w, h, image.getType());
+		final AffineTransform at = new AffineTransform();
+		at.translate(w / 2, h / 2);
+		at.rotate(rads, 0, 0);
+		at.translate(-image.getWidth() / 2, -image.getHeight() / 2);
+		final AffineTransformOp rotateOp = new AffineTransformOp(at, AffineTransformOp.TYPE_BILINEAR);
+		rotateOp.filter(image, rotatedImage);
+		return rotatedImage;
+	}
+
+	@FXML
+	private void rotateRightIMG() {
+//		imageView.setRotate(imageView.getRotate() + 90);
+
+		Runnable runnable = () -> {
+			try {
+				Platform.runLater(() -> DialogHelper.showWaitingScreen("Please Wait.. Processing", "Rotating Image.."));
+				BufferedImage buffImg = null;
+				buffImg = ImageIO.read(ImgResources.get(rollerPhoto));
+				buffImg = getRotatedImage(buffImg, 90); // or other angle if needed be
+				File newImageFile = ImgResources.get(rollerPhoto);
+				ImageIO.write(buffImg, StringHelper.getExtention(ImgResources.get(rollerPhoto).getName()),
+						newImageFile);
+				Platform.runLater(() -> {
+//					imageView.setRotate(imageView.getRotate() - 90);
+					changeImage(ImgResources.get(rollerPhoto));
+				});
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+			Platform.runLater(() -> DialogHelper.closeWaitingScreen());
+		};
+		Thread th = new Thread(runnable);
+		th.start();
+	}
+
+	@FXML
+	private void showHideBottom() {
+		if (borderPane.getBottom() == null) {
+			borderPane.setBottom(bottomVbox);
+			hideShowButBot.setText("Hide ↓");
+		} else {
+			hideShowButBot.setText("Show ↑");
+			borderPane.setBottom(null);
+		}
+	}
+
+	@FXML
+	private void showHideTop() {
+		if (borderPane.getTop() == null) {
+			borderPane.setTop(topVbox);
+			hideShowButTop.setText("Hide ↑");
+		} else {
+			hideShowButTop.setText("Show ↓");
+			borderPane.setTop(null);
+		}
+	}
+
+	@FXML
+	private void switchFullScreen() {
+		photoStage.setFullScreen(!photoStage.isFullScreen());
+	}
+
+	@FXML
+	private void cropPhotoMode() {
+		if (!cropMenuButton.getText().equals("Save")) {
+
+			// Open Crop mode
+			cropMenuButton.setText("Save");
+			cropMenuButton.getItems().forEach(e -> e.setVisible(true));
+			if (StringHelper.getExtention(ImgResources.get(rollerPhoto).getName()).equals("GIF")) {
+				cropMenuButton.setOnAction(e -> {
+					saveAsCrop();
+					cropMenuButton.setOnAction(e2 -> cropPhotoMode());
+				});
+			}
+			// image layer: a group of images
+			Group imageLayer = new Group();
+
+			imageView.setOnKeyReleased(e -> {
+				if (e.getCode().equals(KeyCode.ENTER)) {
+					Boolean ans = DialogHelper.showAlert(AlertType.CONFIRMATION, "Crop Image",
+							"Are you sure you want to crop this image?", "");
+					if (ans == null || !ans) {
+						return;
+					}
+					outCropMode();
+					crop(rubberBandSelection.getBounds(), ImgResources.get(rollerPhoto));
+				}
+			});
+			// add image to layer
+			imageLayer.getChildren().add(imageView);
+			// Replace layer with imageView
+			imagePane.getChildren().remove(imageView);
+			imagePane.getChildren().add(imageLayer);
+
+			// RubberBand selection
+			rubberBandSelection = new RubberBandSelection(imageLayer, imageView);
+			isInCropMode = true;
+			imageView.requestFocus();
+		} else {
+			outCropMode();
+			// perform crop based on rubberBandSelectioin
+			// crop the image on bounds rubber
+			crop(rubberBandSelection.getBounds(), ImgResources.get(rollerPhoto));
+		}
+	}
+
+	private void outCropMode() {
+		isInCropMode = false;
+		cropMenuButton.setText("Crop");
+		cropMenuButton.getItems().forEach(e -> e.setVisible(false));
+		restoreCropped.setVisible(true);
+		imageView.setOnKeyReleased(e -> {
+		});
+		imagePane.getChildren().clear();
+		imagePane.getChildren().add(imageView);
+	}
+
+	@FXML
+	private void selectAllImage() {
+		rubberBandSelection.selectFullImage();
+	}
+
+	@FXML
+	private void saveAsCrop() {
+		outCropMode();
+		crop(rubberBandSelection.getBounds(), null);
+	}
+
+	@FXML
+	private void cancelCrop() {
+		outCropMode();
+	}
+
+	@FXML
+	private void saveToClipBoard() {
+		outCropMode();
+		WritableImage croppedImage = cropImage(rubberBandSelection.getBounds(), null);
+		Clipboard clipboard = Clipboard.getSystemClipboard();
+		ClipboardContent content = new ClipboardContent();
+		content.putImage(croppedImage);
+		clipboard.setContent(content);
+		DialogHelper.showAlert(AlertType.INFORMATION, "Copy To ClipBoard", "Image Succefully Copeid",
+				"Use Ctrl+V To pase it anywhere");
+	}
+
+	private void crop(Bounds bounds, File outFile) {
+		int width = (int) bounds.getWidth();
+		int height = (int) bounds.getHeight();
+
+		if (width <= 1 || height <= 1) {
+			return;
+		}
+
+		if (outFile == null) {
+			FileChooser fileChooser = new FileChooser();
+			File originalFile = ImgResources.get(rollerPhoto);
+			fileChooser.setInitialDirectory(originalFile.getParentFile());
+			String ext = StringHelper.getExtention(originalFile.getName());
+			if (ext.equals("GIF")) {
+				ext = "png";
+			}
+			fileChooser.setInitialFileName(StringHelper.getBaseName(originalFile.getName()) + "_Cropped." + ext);
+			fileChooser.setSelectedExtensionFilter(new ExtensionFilter("Output Format", "jpg"));
+			fileChooser.setTitle("Save Image");
+			outFile = fileChooser.showSaveDialog(photoStage);
+		}
+
+		if (outFile == null) {
+			return;
+		}
+
+		cropImage(bounds, outFile);
+	}
+
+	private WritableImage cropImage(Bounds bounds, File outFile) {
+		// converting bounds to real photo bounds
+		// convert rectangle of rubberBandSelection from imageView to image:
+		Point2D ptStartBounds = new Point2D(bounds.getMinX(), bounds.getMinY());
+		Point2D ptEndBounds = new Point2D(bounds.getMaxX(), bounds.getMaxY());
+		Point2D realStartPoint = imageViewToImage(imageView, ptStartBounds);
+		Point2D realEndPoint = imageViewToImage(imageView, ptEndBounds);
+		Rectangle rectOnOriginalImage = new Rectangle(realStartPoint.getX(), realStartPoint.getY(),
+				realEndPoint.subtract(realStartPoint).getX(), realEndPoint.subtract(realStartPoint).getY());
+		// more check on bound of image
+		if (rectOnOriginalImage.getX() < 0) {
+			rectOnOriginalImage.setX(0);
+		}
+		if (rectOnOriginalImage.getY() < 0) {
+			rectOnOriginalImage.setY(0);
+		}
+		if (rectOnOriginalImage.getWidth() > imageView.getImage().getWidth()) {
+			rectOnOriginalImage.setWidth(imageView.getImage().getWidth());
+		}
+		if (rectOnOriginalImage.getHeight() > imageView.getImage().getHeight()) {
+			rectOnOriginalImage.setHeight(imageView.getImage().getHeight());
+		}
+
+		int width = (int) rectOnOriginalImage.getWidth();
+		int height = (int) rectOnOriginalImage.getHeight();
+		SnapshotParameters parameters = new SnapshotParameters();
+		parameters.setFill(Color.TRANSPARENT);
+		parameters.setViewport(new Rectangle2D(rectOnOriginalImage.getX(), rectOnOriginalImage.getY(),
+				rectOnOriginalImage.getWidth(), rectOnOriginalImage.getHeight()));
+
+		WritableImage wi = new WritableImage(width, height);
+
+		// putting image in a big image view without zooming to take a clear snapshot:
+		ImageView mainImageView = new ImageView();
+		lastBackUpCroppedFile = ImgResources.get(rollerPhoto);
+		lastBackUpCroppedImage = convertFileToImage(ImgResources.get(rollerPhoto));
+		restoreCropped.setDisable(false);
+		mainImageView.setImage(lastBackUpCroppedImage);
+		WritableImage croppedImage = mainImageView.snapshot(parameters, wi);
+		if (outFile != null) {
+			saveCroppedImage(wi, outFile);
+		}
+		return croppedImage;
+	}
+
+	@FXML
+	private void restoreCropped() {
+		// convert last backup cropped image to last cropped file
+
+		Runnable runnable = () -> {
+			Platform.runLater(() -> {
+				DialogHelper.showWaitingScreen("Restoring Your Image...", "Please Wait...");
+
+			});
+			convertImageToFile(lastBackUpCroppedImage, lastBackUpCroppedFile);
+			Platform.runLater(() -> {
+				if (!ImgResources.contains(lastBackUpCroppedFile)) {
+					ImgResources.add(rollerPhoto, lastBackUpCroppedFile);
+				}
+				changeImage(lastBackUpCroppedFile);
+				restoreCropped.setDisable(true);
+				DialogHelper.closeWaitingScreen();
+			});
+		};
+		Thread th = new Thread(runnable);
+		th.start();
+	}
+
+	private Image convertFileToImage(File imageFile) {
+		Image image = null;
+		try (FileInputStream fileInputStream = new FileInputStream(imageFile)) {
+			image = new Image(fileInputStream);
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		return image;
+	}
+
+	private File convertImageToFile(Image image, File outputFile) {
+		BufferedImage bImage = SwingFXUtils.fromFXImage(image, null);
+		try {
+			ImageIO.write(bImage, StringHelper.getExtention(outputFile.getName()), outputFile);
+		} catch (IOException e) {
+			throw new RuntimeException(e);
+		}
+		return outputFile;
+	}
+
+	private static final int[] RGB_MASKS = { 0xFF0000, 0xFF00, 0xFF };
+	private static final ColorModel RGB_OPAQUE = new DirectColorModel(32, RGB_MASKS[0], RGB_MASKS[1], RGB_MASKS[2]);
+
+	private void saveCroppedImage(WritableImage wi, File outFile) {
+
+		if (outFile == null) {
+			return;
+		}
+		String ext = StringHelper.getExtention(outFile.getName());
+		if (!ArrayIMGExt.contains(ext) || ext.equals("GIF")) {
+			// renaming no valid extension type to PNG
+			outFile = outFile.toPath().getParent().resolve(outFile.getName() + ".png").toFile();
+		}
+		final File nOutFile = outFile;
+		convertImageToFile(wi, outFile);
+		Runnable runnable = () -> {
+			Platform.runLater(() -> DialogHelper.showWaitingScreen("Croping Image.. Processing", "Cropping Image..."));
+			Graphics2D graphics = null;
+
+			try {
+				String extention = StringHelper.getExtention(nOutFile.getName()).toLowerCase();
+				BufferedImage bufImageARGB = SwingFXUtils.fromFXImage(wi, null);
+				if (!extention.equals("png")) {
+					// https://stackoverflow.com/questions/4386446/issue-using-imageio-write-jpg-file-pink-background
+					PixelGrabber pg = new PixelGrabber(bufImageARGB, 0, 0, -1, -1, true);
+					pg.grabPixels();
+					int width = pg.getWidth(), height = pg.getHeight();
+
+					DataBuffer buffer = new DataBufferInt((int[]) pg.getPixels(), pg.getWidth() * pg.getHeight());
+					WritableRaster raster = Raster.createPackedRaster(buffer, width, height, width, RGB_MASKS, null);
+					BufferedImage bi = new BufferedImage(RGB_OPAQUE, raster, false, null);
+					ImageIO.write(bi, extention, nOutFile);
+				} else {
+					BufferedImage bufImageRGB = new BufferedImage(bufImageARGB.getWidth(), bufImageARGB.getHeight(),
+							BufferedImage.BITMASK);
+
+					graphics = bufImageRGB.createGraphics();
+					graphics.drawImage(bufImageARGB, 0, 0, null);
+					// writing image and forcing PNG format
+					ImageIO.write(bufImageRGB, extention, nOutFile);
+				}
+			} catch (Exception e) {
+				e.printStackTrace();
+			} finally {
+				Platform.runLater(() -> {
+					if (mFileTracker.isTracked()) {
+						mFileTracker.resolveConflict();
+					}
+					if (!ImgResources.contains(nOutFile)) {
+						ImgResources.add(rollerPhoto + 1, nOutFile);
+					}
+					changeImage(nOutFile);
+					cumulativeZoom = 1.0;
+					zoomSlider.setValue(1);
+				});
+//				graphics.dispose();
+//				System.gc();
+			}
+			Platform.runLater(() -> DialogHelper.closeWaitingScreen());
+		};
+		Thread thread = new Thread(runnable);
+		thread.start();
+	}
 }

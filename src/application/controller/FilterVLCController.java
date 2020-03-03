@@ -11,8 +11,8 @@ import application.DialogHelper;
 import application.FileTracker;
 import application.Main;
 import application.VLC;
+import application.datatype.MediaCutData;
 import application.model.FilterVLCViewModel;
-import application.model.MediaCutData;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.event.ActionEvent;
@@ -172,7 +172,6 @@ public class FilterVLCController {
 			filterStage.setScene(scene);
 
 			filterStage.getIcons().add(new Image(Main.class.getResourceAsStream("/img/filter_vlc.png")));
-			System.out.println(StartTimeColumn);
 
 			StartTimeColumn.setCellValueFactory(new PropertyValueFactory<FilterVLCViewModel, String>("ShowStart"));
 			EndTimeColumn.setCellValueFactory(new PropertyValueFactory<FilterVLCViewModel, String>("ShowEnd"));
@@ -185,7 +184,7 @@ public class FilterVLCController {
 			initisalizeTable();
 
 		} catch (IOException e) {
-			// e.printStackTrace();
+			e.printStackTrace();
 		}
 	}
 

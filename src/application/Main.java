@@ -9,7 +9,7 @@ import java.nio.file.Path;
 import java.util.List;
 
 import application.controller.WelcomeController;
-import application.model.Setting;
+import application.datatype.Setting;
 import javafx.application.Application;
 import javafx.application.Platform;
 import javafx.event.EventHandler;
@@ -27,7 +27,7 @@ import javafx.stage.WindowEvent;
 public class Main extends Application {
 	static final KeyCombination SHORTCUT_COPY = new KeyCodeCombination(KeyCode.C, KeyCombination.CONTROL_DOWN);
 	static final KeyCombination SHORTCUT_MOVE = new KeyCodeCombination(KeyCode.X, KeyCombination.CONTROL_DOWN);
-	static final KeyCombination SHORTCUT_OPEN_FAVORITE = new KeyCodeCombination(KeyCode.O, KeyCombination.CONTROL_DOWN);
+	static final KeyCombination SHORTCUT_OPEN_FAVORITE = new KeyCodeCombination(KeyCode.F, KeyCombination.SHIFT_DOWN);
 	public static final KeyCombination SHORTCUT_DELETE = new KeyCodeCombination(KeyCode.DELETE);
 	public static final KeyCombination SHORTCUT_NEW_FILE = new KeyCodeCombination(KeyCode.N,
 			KeyCombination.SHORTCUT_DOWN);
@@ -37,8 +37,13 @@ public class Main extends Application {
 	static final KeyCombination SHORTCUT_SWITCH_RECURSIVE = new KeyCodeCombination(KeyCode.R,
 			KeyCombination.CONTROL_DOWN);
 	public static final KeyCombination SHORTCUT_RENAME = new KeyCodeCombination(KeyCode.F2);
-	static final KeyCombination SHORTCUT_FOCUS_SWITCH_VIEW = new KeyCodeCombination(KeyCode.TAB,
+	static final KeyCombination SHORTCUT_SWITCH_NEXT_TABS = new KeyCodeCombination(KeyCode.TAB,
 			KeyCombination.CONTROL_ANY);
+	static final KeyCombination SHORTCUT_SWITCH_PREVIOUS_TABS = new KeyCodeCombination(KeyCode.TAB,
+			KeyCombination.CONTROL_DOWN, KeyCombination.SHIFT_DOWN);
+	static final KeyCombination SHORTCUT_CLOSE_CURRENT_TAB = new KeyCodeCombination(KeyCode.W,
+			KeyCombination.CONTROL_ANY);
+	static final KeyCombination SHORTCUT_OPEN_NEW_TAB = new KeyCodeCombination(KeyCode.T, KeyCombination.CONTROL_DOWN);
 	static final KeyCombination SHORTCUT_EASY_FOCUS_SWITCH_VIEW = new KeyCodeCombination(KeyCode.F3);
 	static final KeyCombination SHORTCUT_SEARCH = new KeyCodeCombination(KeyCode.F, KeyCombination.CONTROL_DOWN);
 	static final KeyCombination SHORTCUT_Clear_Search = new KeyCodeCombination(KeyCode.ESCAPE,
@@ -95,8 +100,16 @@ public class Main extends Application {
 				mWelcomeController.getToggleFavorite().requestFocus();
 			} else if (SHORTCUT_FOCUS_VIEW.match(e)) {
 				mWelcomeController.focus_VIEW();
-			} else if (SHORTCUT_FOCUS_SWITCH_VIEW.match(e) || SHORTCUT_EASY_FOCUS_SWITCH_VIEW.match(e)) {
+			} else if (SHORTCUT_EASY_FOCUS_SWITCH_VIEW.match(e)) {
 				mWelcomeController.focus_Switch_VIEW();
+			} else if (SHORTCUT_SWITCH_NEXT_TABS.match(e)) {
+				mWelcomeController.switch_Next_Tabs();
+			} else if (SHORTCUT_CLOSE_CURRENT_TAB.match(e)) {
+				mWelcomeController.close_Current_Tab();
+			} else if (SHORTCUT_OPEN_NEW_TAB.match(e)) {
+				mWelcomeController.open_New_Tab();
+			} else if (SHORTCUT_SWITCH_PREVIOUS_TABS.match(e)) {
+				mWelcomeController.switch_Previous_Tab();
 			} else if (SHORTCUT_SEARCH.match(e)) {
 				mWelcomeController.focusSearchField();
 			} else if (SHORTCUT_SWITCH_RECURSIVE.match(e)) {

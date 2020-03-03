@@ -4,24 +4,30 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Optional;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 import org.apache.commons.io.FilenameUtils;
 
 import application.DialogHelper;
 import application.FileHelper;
-import application.IntField;
 import application.Main;
 import application.StringHelper;
-import application.WindowsExplorerComparator;
+import application.fxGraphics.IntField;
 import application.model.RenameUtilityViewModel;
 import javafx.collections.FXCollections;
 import javafx.collections.ListChangeListener;
 import javafx.collections.ObservableList;
+import javafx.collections.transformation.FilteredList;
+import javafx.event.EventHandler;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
@@ -32,13 +38,20 @@ import javafx.scene.control.CheckBox;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.SelectionMode;
 import javafx.scene.control.Slider;
+import javafx.scene.control.SplitMenuButton;
 import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
 import javafx.scene.control.TextField;
 import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
-import javafx.scene.input.ScrollEvent;
+import javafx.scene.input.Clipboard;
+import javafx.scene.input.ClipboardContent;
+import javafx.scene.input.DataFormat;
+import javafx.scene.input.DragEvent;
+import javafx.scene.input.Dragboard;
+import javafx.scene.input.KeyCode;
+import javafx.scene.input.TransferMode;
 import javafx.scene.paint.Color;
 import javafx.scene.text.Text;
 import javafx.scene.text.TextFlow;
@@ -51,10 +64,16 @@ public class RenameUtilityController {
 	}
 
 	@FXML
+	private SplitMenuButton DropDownActionBut;
+
+	@FXML
 	private ComboBox<MoveRemovedAction> MoveRemoved;
 
 	@FXML
-	private Button redoLastRename;
+	private Button undoLastRename;
+	@FXML
+	private TextField searchField;
+
 	@FXML
 	private TextField InsertAtText;
 
@@ -113,7 +132,7 @@ public class RenameUtilityController {
 	@FXML
 	private TableColumn<RenameUtilityViewModel, CheckBox> CheckedItemColumn;
 	@FXML
-	private TableColumn<RenameUtilityViewModel, String> OriginalNameColumn;
+	private TableColumn<RenameUtilityViewModel, TextFlow> OriginalNameColumn;
 	@FXML
 	private TableColumn<RenameUtilityViewModel, TextFlow> NewNameColumn;
 	@FXML
@@ -122,7 +141,9 @@ public class RenameUtilityController {
 	private TableView<RenameUtilityViewModel> tableRename;
 
 	private ObservableList<RenameUtilityViewModel> DataTable = FXCollections.observableArrayList();
-
+	private FilteredList<RenameUtilityViewModel> filteredData;
+	// used as boolean to trigger or not text listener
+	private boolean isTurnOnGenerateNewNames = true;
 	private Stage renameStage;
 	private static Color PREFIX_COLOR = Color.rgb(255, 0, 0);
 	private static Color SUFFIX_COLOR = Color.rgb(0, 127, 255);
@@ -150,10 +171,10 @@ public class RenameUtilityController {
 			renameStage.setScene(scene);
 			CheckedItemColumn.setCellValueFactory(
 					new PropertyValueFactory<RenameUtilityViewModel, CheckBox>("ConsiderCheckBox"));
-			OriginalNameColumn.setCellValueFactory(new PropertyValueFactory<RenameUtilityViewModel, String>("OldName"));
+			OriginalNameColumn
+					.setCellValueFactory(new PropertyValueFactory<RenameUtilityViewModel, TextFlow>("OldName"));
 			NewNameColumn.setCellValueFactory(new PropertyValueFactory<RenameUtilityViewModel, TextFlow>("NewName"));
 			IconColumn.setCellValueFactory(new PropertyValueFactory<RenameUtilityViewModel, ImageView>("imgIcon"));
-			tableRename.setItems(DataTable);
 
 			renameStage.getIcons().add(new Image(Main.class.getResourceAsStream("/img/rename-512.png")));
 
@@ -176,24 +197,37 @@ public class RenameUtilityController {
 				}
 			});
 
-			scene.addEventFilter(ScrollEvent.SCROLL, (ScrollEvent event) -> {
-				if (!tableRename.isHover() && scene.focusOwnerProperty().get() instanceof IntField) {
-					IntField focusedTextField = (IntField) scene.focusOwnerProperty().get();
-					double deltaY = event.getDeltaY();
-					if (deltaY > 0) {
-						focusedTextField.incrementByOne();
-					} else {
-						focusedTextField.decrementByOne();
-					}
-				}
-			});
 			sourceFiles.forEach(p -> DataTable.add(new RenameUtilityViewModel(p)));
 			initializeButtons();
+			initializeSearchField();
 			initializeTable();
 			renameStage.show();
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
+
+	}
+
+	private void initializeSearchField() {
+		filteredData = new FilteredList<>(DataTable, p -> true);
+		tableRename.setItems(filteredData);
+		searchField.textProperty().addListener((observable, oldValue, newValue) -> {
+			filteredData.setPredicate(model -> {
+				if (searchField.getText().isEmpty()) {
+					return true;
+				}
+				if (model.getOldName().toLowerCase().contains(searchField.getText().toLowerCase())) {
+					return true;
+				} else {
+					return false;
+				}
+			});
+		});
+		searchField.setOnKeyPressed(e -> {
+			if (e.getCode().equals(KeyCode.ESCAPE)) {
+				searchField.setText("");
+			}
+		});
 
 	}
 
@@ -252,14 +286,37 @@ public class RenameUtilityController {
 				break;
 			}
 		});
-		NewNameColumn.setComparator(new Comparator<TextFlow>() {
+		tableRename.setOnDragOver(new EventHandler<DragEvent>() {
 
 			@Override
-			public int compare(TextFlow o1, TextFlow o2) {
-				return new WindowsExplorerComparator().compare(o1.toString(), o2.toString());
+			public void handle(DragEvent event) {
+				if (event.getDragboard().hasFiles() || event.getDragboard().hasContent(DataFormat.URL)
+						|| event.getDragboard().hasString()) {
+					event.acceptTransferModes(TransferMode.ANY);
+				}
 			}
 		});
-		OriginalNameColumn.setComparator(new WindowsExplorerComparator());
+		// https://stackoverflow.com/questions/32534113/javafx-drag-and-drop-a-file-into-a-program
+		tableRename.setOnDragDropped(new EventHandler<DragEvent>() {
+
+			@Override
+			public void handle(DragEvent event) {
+				Dragboard db = event.getDragboard();
+				if (db.hasFiles()) {
+					db.getFiles().forEach(file3 -> {
+						DataTable.add(new RenameUtilityViewModel(file3.toPath()));
+					});
+				} else if (db.hasContent(DataFormat.URL)) {
+					// handle url create shortcuts
+					DataTable.add(new RenameUtilityViewModel(db.getUrl()));
+				} else if (db.hasContent(DataFormat.PLAIN_TEXT)) {
+					Arrays.asList(db.getContent(DataFormat.PLAIN_TEXT).toString().split("\n")).forEach(e -> {
+						e = e.replace("\n", "");
+						DataTable.add(new RenameUtilityViewModel(e));
+					});
+				}
+			}
+		});
 	}
 
 	private void initializeButtons() {
@@ -268,7 +325,7 @@ public class RenameUtilityController {
 
 		// Prefix addition
 		AddPrefix.textProperty().addListener((observable, oldValue, newValue) -> {
-			if (!isValid(AddPrefix, oldValue, newValue)) {
+			if (!isTurnOnGenerateNewNames || !isValid(AddPrefix, oldValue, newValue)) {
 				return;
 			}
 			generateNewNames();
@@ -276,7 +333,7 @@ public class RenameUtilityController {
 
 		// Suffix Addition
 		AddSuffix.textProperty().addListener((observable, oldValue, newValue) -> {
-			if (!isValid(AddSuffix, oldValue, newValue)) {
+			if (!isTurnOnGenerateNewNames || !isValid(AddSuffix, oldValue, newValue)) {
 				return;
 			}
 			generateNewNames();
@@ -284,7 +341,7 @@ public class RenameUtilityController {
 
 		// Insert Addition
 		InsertAtText.textProperty().addListener((observable, oldValue, newValue) -> {
-			if (!isValid(InsertAtText, oldValue, newValue)) {
+			if (!isTurnOnGenerateNewNames || !isValid(InsertAtText, oldValue, newValue)) {
 				return;
 			}
 			if (InsertAtIndex.getText().isEmpty()) {
@@ -296,10 +353,16 @@ public class RenameUtilityController {
 		// Removed / Move Addition
 		MoveRemoved.setItems(FXCollections.observableArrayList(MoveRemovedAction.values()));
 		MoveRemovedAt.textProperty().addListener((observable, oldValue, newValue) -> {
+			if (!isTurnOnGenerateNewNames) {
+				return;
+			}
 			generateNewNames();
 		});
 		MoveRemovedAt.setVisible(false);
 		MoveRemoved.setOnAction(p -> {
+			if (!isTurnOnGenerateNewNames) {
+				return;
+			}
 			generateNewNames();
 			if (MoveRemoved.getValue() == MoveRemovedAction.At) {
 				MoveRemovedAt.setVisible(true);
@@ -308,13 +371,18 @@ public class RenameUtilityController {
 			}
 		});
 
-		addGestureIncrement(InsertAtIndex);
 		InsertAtIndex.textProperty().addListener((observable, oldValue, newValue) -> {
+			if (!isTurnOnGenerateNewNames) {
+				return;
+			}
 			generateNewNames();
 		});
 
 		// Force Extension
 		AddForceExtension.textProperty().addListener((observable, oldValue, newValue) -> {
+			if (!isTurnOnGenerateNewNames) {
+				return;
+			}
 			if (!isValid(AddForceExtension, oldValue, newValue)) {
 				return;
 			}
@@ -325,8 +393,10 @@ public class RenameUtilityController {
 		// Remove First n character
 		RemoveFirst.setSlider(RemoveFirstSlider);
 		RemoveFirst.setMaxValue(MinLimitLength);
-		addGestureIncrement(RemoveFirst);
 		RemoveFirst.valueProperty().addListener((observable, oldValue, newValue) -> {
+			if (!isTurnOnGenerateNewNames) {
+				return;
+			}
 			forceLimitLength(RemoveFirst);
 			generateNewNames();
 		});
@@ -334,15 +404,19 @@ public class RenameUtilityController {
 		// Remove Last n character
 		RemoveLast.setSlider(RemoveLastSlider);
 		RemoveLast.setMaxValue(MinLimitLength);
-		addGestureIncrement(RemoveLast);
 		RemoveLast.textProperty().addListener((observable, oldValue, newValue) -> {
+			if (!isTurnOnGenerateNewNames) {
+				return;
+			}
 			forceLimitLength(RemoveLast);
 			generateNewNames();
 		});
 		// 1) Remove from i character
-		addGestureIncrement(RemoveFromIndex);
 		RemoveFromIndex.setText("");
 		RemoveFromIndex.textProperty().addListener((observable, oldValue, newValue) -> {
+			if (!isTurnOnGenerateNewNames) {
+				return;
+			}
 			if (RemoveToIndex.getValue() <= RemoveFromIndex.getValue()) {
 				RemoveToIndex.setValue(RemoveFromIndex.getValue());
 			}
@@ -350,23 +424,24 @@ public class RenameUtilityController {
 
 		});
 		// 2) to j character
-		addGestureIncrement(RemoveToIndex);
 		RemoveToIndex.setText("");
 		RemoveToIndex.textProperty().addListener((observable, oldValue, newValue) -> {
+			if (!isTurnOnGenerateNewNames) {
+				return;
+			}
 			generateNewNames();
 		});
 
 		// clear all except first n
 //		ClearKeepFirst.setMaxValue(MinLimitLength);
-		addGestureIncrement(ClearKeepFirst);
 		ClearKeepFirst.textProperty().addListener((observable, oldValue, newValue) -> {
+			if (!isTurnOnGenerateNewNames) {
+				return;
+			}
 			generateNewNames();
 		});
 
 		// Add numbering
-		addGestureIncrement(AddNumberStart);
-		addGestureIncrement(AddNumberInc);
-		addGestureIncrement(AddNumberPad);
 		ApplyNumber.setOnAction(e -> generateNewNames());
 		AddNumberPad.textProperty().addListener((observable, oldValue, newValue) -> {
 			generateNewNames();
@@ -380,6 +455,9 @@ public class RenameUtilityController {
 
 		// Replace
 		ReplacedText.textProperty().addListener((observable, oldValue, newValue) -> {
+			if (!isTurnOnGenerateNewNames) {
+				return;
+			}
 			if (!isValid(ReplacedText, oldValue, newValue)) {
 				return;
 			}
@@ -387,6 +465,9 @@ public class RenameUtilityController {
 		});
 
 		ReplacedWith.textProperty().addListener((observable, oldValue, newValue) -> {
+			if (!isTurnOnGenerateNewNames) {
+				return;
+			}
 			if (!isValid(ReplacedWith, oldValue, newValue)) {
 				return;
 			}
@@ -394,23 +475,6 @@ public class RenameUtilityController {
 		});
 
 		// move Removed
-		addGestureIncrement(MoveRemovedAt);
-	}
-
-	private void addGestureIncrement(IntField textFieldInteger) {
-		textFieldInteger.setOnKeyPressed(key -> {
-			switch (key.getCode()) {
-			// leaved for navigation
-			case UP:
-				textFieldInteger.incrementByOne();
-				break;
-			case DOWN:
-				textFieldInteger.decrementByOne();
-				break;
-			default:
-				break;
-			}
-		});
 	}
 
 	/**
@@ -419,7 +483,8 @@ public class RenameUtilityController {
 	 * @see #recalculateLimitLength
 	 */
 	private void forceLimitLength(IntField changed) {
-		// at least file name must be 1 length
+		// at least file name must be 0 length
+		// and notify later if 1 is reached when renaming
 		int remainder = MinLimitLength - 1;
 
 		// supposing that other input is correct
@@ -494,7 +559,7 @@ public class RenameUtilityController {
 						restOld = restOld.substring(find + ReplacedText.getLength());
 					}
 				}
-				if (ClearKeepFirst.getValue() != 1) {
+				if (!ClearKeepFirst.getText().isEmpty() && ClearKeepFirst.getValue() != 0) {
 					int clearTill = ClearKeepFirst.getValue();
 					if (clearTill < restOld.length() - 1) {
 						removedString += restOld.substring(clearTill);
@@ -603,12 +668,18 @@ public class RenameUtilityController {
 					}
 				}
 
-				if (!AddForceExtension.getText().trim().isEmpty()) {
+				String requestedExtention = AddForceExtension.getText();
+				if (!requestedExtention.trim().isEmpty()) {
 					Text addExt = new Text("." + AddForceExtension.getText().trim());
 					addExt.setFill(EXTENSION_COLOR);
 					allText.add(addExt);
 				} else {
-					String extension = FilenameUtils.getExtension(t.getOldName());
+					String extension = "";
+					if (requestedExtention.length() > 0 && requestedExtention.trim().isEmpty()) {
+						extension = "";
+					} else {
+						extension = FilenameUtils.getExtension(t.getOldName());
+					}
 					if (!extension.isEmpty()) {
 						allText.add(new Text("." + extension));
 					}
@@ -640,6 +711,7 @@ public class RenameUtilityController {
 	}
 
 	private void resetAllField() {
+		isTurnOnGenerateNewNames = false;
 		AddForceExtension.clear();
 		ReplacedText.clear();
 		ReplacedWith.clear();
@@ -654,6 +726,7 @@ public class RenameUtilityController {
 		RemoveFromIndex.clear();
 		RemoveToIndex.clear();
 		ApplyNumber.setSelected(false);
+		isTurnOnGenerateNewNames = true;
 		generateNewNames();
 	}
 
@@ -669,21 +742,30 @@ public class RenameUtilityController {
 			String renameError = "";
 			HashMap<Path, Path> currentNewToOldRename = new HashMap<>();
 			boolean renameOccur = false;
+			boolean isThereRealFile = false;
 			for (RenameUtilityViewModel t : DataTable) {
 				if (t.getConsiderCheckBox().isSelected()) {
 					renameOccur = true;
-					try {
-						Path oldFile = t.getPathFile();
-						Path newFile = t.getPathFile().resolveSibling(StringHelper.textFlowToString(t.getNewName()));
-						FileHelper.RenameHelper(oldFile, newFile);
-						t.setPathFile(newFile);
-						t.setOldName(newFile.getFileName().toString());
-						currentNewToOldRename.put(newFile, oldFile);
-					} catch (IOException e) {
-						renameError += t.getPathFile().getFileName() + " --> "
-								+ StringHelper.textFlowToString(t.getNewName()) + "\n";
-						warningAlert += e.getClass() + ": " + e.getMessage() + "\n";
-						e.printStackTrace();
+					if (t.getPathFile() == null) {
+						// this is a text type item
+						t.setOldName(t.getNewNameAsString());
+					} else {
+						// this is a real file
+						try {
+							Path oldFile = t.getPathFile();
+							Path newFile = t.getPathFile()
+									.resolveSibling(StringHelper.textFlowToString(t.getNewName()));
+							FileHelper.RenameHelper(oldFile, newFile);
+							t.setPathFile(newFile);
+							t.setOldName(newFile.getFileName().toString());
+							isThereRealFile = true;
+							currentNewToOldRename.put(newFile, oldFile);
+						} catch (IOException e) {
+							renameError += t.getPathFile().getFileName() + " --> "
+									+ StringHelper.textFlowToString(t.getNewName()) + "\n";
+							warningAlert += e.getClass() + ": " + e.getMessage() + "\n";
+							e.printStackTrace();
+						}
 					}
 				}
 			}
@@ -695,8 +777,12 @@ public class RenameUtilityController {
 			recalculateLimitLength(
 					DataTable.stream().filter(p -> p.getConsiderCheckBox().isSelected()).findFirst().get(), false);
 
+			if (!isThereRealFile) {
+				return;
+			}
+			// specific to real file only
 			NewToOldRename.add(currentNewToOldRename);
-			redoLastRename.setDisable(false);
+			undoLastRename.setDisable(false);
 			if (!renameError.isEmpty()) {
 				DialogHelper.showExpandableAlert(AlertType.ERROR, "Confirm Rename",
 						"Some Content were not renamed Successfully!",
@@ -708,7 +794,147 @@ public class RenameUtilityController {
 	}
 
 	@FXML
-	public void redoRename() {
+	public void copyNewRenamedCol() {
+		String myString = "";
+		int i = 0;
+		for (RenameUtilityViewModel t : DataTable) {
+			if (t.getConsiderCheckBox().isSelected()) {
+				String item = StringHelper.textFlowToString(t.getNewName()) + "\n";
+				myString += item;
+				i++;
+			}
+		}
+		Clipboard clipboard = Clipboard.getSystemClipboard();
+		ClipboardContent content = new ClipboardContent();
+		content.putString(myString);
+		clipboard.setContent(content);
+		DialogHelper.showExpandableAlert(AlertType.INFORMATION, "Copy New Names",
+				"Content Copied Successfully to Clipboard\n-----   " + i + " ----- Items Added", "", myString);
+	}
+
+	@FXML
+	public void getMissingSequence() {
+		String myString = "";
+		Pattern p = Pattern.compile("-?\\d+");
+		Matcher m;
+		HashSet<Integer> allSeq = new HashSet<>();
+		HashMap<String, String> interval = DialogHelper.showMultiTextInputDialog("Detect Missing Sequence #NB",
+				"Enter start and end of your Sequence",
+				"you will get a list of missing number from new renamed names\n"
+						+ "[Removing every integer found in name].",
+				new String[] { "Start", "End" }, new String[] { "1", "45" }, 1);
+		if (interval == null) {
+			return;
+		}
+		int min = 0;
+		int max = 0;
+		try {
+			min = Integer.parseInt(interval.get("Start"));
+			max = Integer.parseInt(interval.get("End"));
+			if (min >= max) {
+				DialogHelper.showAlert(AlertType.ERROR, "Detect Missing Sequence #NV", "Invalid Interval",
+						"The Start must be bigger than end!");
+				getMissingSequence();
+				return;
+			}
+		} catch (Exception e) {
+			DialogHelper.showAlert(AlertType.ERROR, "Detect Missing Sequence #NV", "Invalid Number Format",
+					"The input Fields must be integers Values");
+			getMissingSequence();
+			return;
+		}
+		for (int i = min; i <= max; i++) {
+			allSeq.add(i);
+		}
+		// do count useful items that can fill intervals later use
+		int allCurNBItems = 0;
+		HashMap<Integer, Integer> couldNotBePrecised = new HashMap<>();
+		for (RenameUtilityViewModel t : DataTable) {
+			if (t.getConsiderCheckBox().isSelected()) {
+				m = p.matcher(StringHelper.textFlowToString(t.getNewName()));
+
+				boolean counted = false;
+				Integer firstCounted = null;
+				ArrayList<Integer> recentFoundAlreadyRemoved = new ArrayList<>();
+				while (m.find()) {
+					int nbTemp = Math.abs(Integer.parseInt(m.group()));
+					if (allSeq.remove(nbTemp)) {
+						if (firstCounted == null) {
+							firstCounted = nbTemp;
+						} else {
+							// contain more than one sequence number
+							Integer countfirst = couldNotBePrecised.get(firstCounted);
+							Integer countTemp = couldNotBePrecised.get(nbTemp);
+							couldNotBePrecised.put(firstCounted, countfirst == null ? 1 : countfirst + 1);
+							couldNotBePrecised.put(nbTemp, countTemp == null ? 1 : countTemp + 1);
+						}
+						if (!counted) {
+							allCurNBItems++;
+							counted = true;
+						}
+					} else if (nbTemp >= min && nbTemp <= max) {
+						// mean item contain number in interval but it is already removed
+						if (!counted) {
+							allCurNBItems++;
+							counted = true;
+						}
+						recentFoundAlreadyRemoved.add(nbTemp);
+					}
+				}
+				for (Integer integer : recentFoundAlreadyRemoved) {
+					Integer count = couldNotBePrecised.get(integer);
+					couldNotBePrecised.put(integer, count == null ? 1 : count + 1);
+				}
+				recentFoundAlreadyRemoved.clear();
+			}
+		}
+		if (allSeq.size() != 0) {
+			myString += "Missing Items:\n";
+		}
+		for (Integer integer : allSeq) {
+			myString += integer + "\n";
+		}
+		// missDetection occur when a name contain 2 or more valid numbers within
+		// intervals
+		// like hello12fe43.mp4 will cover 12 and 43 while being 1 file!
+		// in other word all number should equal to
+		// max - min + 1 = remaining + all name number found
+		int missDetection = max - min + 1 - allSeq.size() - allCurNBItems;
+		// if missDetection is negative mean that we have more items fitting in
+		// intervals than expected
+		String warning = "";
+		if (missDetection < 0) {
+			warning += "Where there are -----   " + -missDetection + " -----   Excceded items.\n"
+					+ "You Are Selecting too much files Man :) !!";
+			missDetection = 0;
+		}
+		if (missDetection > 0) {
+			warning = "Where -----   " + missDetection + "  ----- Item(s) could not be Precised.\n"
+					+ " Human check is indeed, or Do more Filtering of Names.";
+			myString += " ----" + missDetection + "---- item of " + couldNotBePrecised.size()
+					+ " are missing from the list Need Human Check:\n";
+			myString += "Number \t | Times Found\n";
+			int i = 0;
+			for (Integer miss : couldNotBePrecised.keySet().stream()
+					.sorted((k1, k2) -> -couldNotBePrecised.get(k1) + couldNotBePrecised.get(k2))
+					.collect(Collectors.toList())) {
+				myString += miss + "\t\t | \t" + couldNotBePrecised.get(miss) + "\n";
+				i++;
+				if (i == missDetection) {
+					myString += "--------Losers--------\n";
+				}
+			}
+		}
+		int totalMissing = allSeq.size() + missDetection;
+		DialogHelper.showExpandableAlert(
+				AlertType.INFORMATION, "Detect Missing Sequence #NB", "There Are \n-----   " + totalMissing
+						+ " ----- Missing items ----" + allCurNBItems + "---- can be Matched\n" + warning,
+				"", myString);
+
+	}
+
+	@FXML
+	public void undoRename() {
 		String summary = "This action is used when wrongly renamed."
 				+ "\nIn that case a report of redo will be displayed for to be confirmed.";
 		String title = "Redo Last Paste Names";
@@ -777,7 +1003,7 @@ public class RenameUtilityController {
 			tableRename.refresh();
 			resetAllField();
 			if (NewToOldRename.size() == 0) {
-				redoLastRename.setDisable(true);
+				undoLastRename.setDisable(true);
 			}
 			if (!renameError.isEmpty()) {
 				DialogHelper.showExpandableAlert(AlertType.ERROR, title, "Some Content were not renamed Successfully!",
@@ -788,4 +1014,22 @@ public class RenameUtilityController {
 		}
 
 	}
+
+	@FXML
+	private void addTextFromClipBoard() {
+		String myString = Clipboard.getSystemClipboard().getString();
+		Arrays.asList(myString.split("\n")).forEach(e -> {
+			DataTable.add(new RenameUtilityViewModel(e));
+		});
+	}
+
+	@FXML
+	private void selectAllItems() {
+		if (filteredData.size() != 0 && filteredData.get(0).getConsiderCheckBox().isSelected()) {
+			filteredData.forEach(e -> e.getConsiderCheckBox().setSelected(false));
+		} else {
+			filteredData.forEach(e -> e.getConsiderCheckBox().setSelected(true));
+		}
+	}
+
 }

@@ -54,6 +54,10 @@ Photo Explorer
   * Copy/Move/Paste between views
   * Create/Rename file or directory
   * Reveal in Windows Explorer
+* Photo Viewer
+  * Zoom/Move options
+  * Crop/Rotate tools
+* Multiple Tab view
 * Quick Search Field
 * Support Resizing and Auto Scaling
 * Navigation Button (Up/Back/Next)
@@ -116,7 +120,7 @@ Example showing all vlc media that contain name word and not excel:
 |Ctrl + C | Copy to the other Table|
 |Ctrl + X | Move to the other Table|
 |Del | Delete Selected Files|
-|F2| Rename Selected File|
+|F2| Rename Selected Files|
 |||
 |Within Table View| |
 |F| Focus Search Field|

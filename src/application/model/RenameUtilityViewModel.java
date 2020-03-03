@@ -2,8 +2,8 @@ package application.model;
 
 import java.nio.file.Path;
 
+import application.StringHelper;
 import application.SystemIconsHelper;
-import javafx.beans.property.SimpleStringProperty;
 import javafx.scene.control.CheckBox;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
@@ -14,7 +14,7 @@ import javafx.scene.text.TextFlow;
 public class RenameUtilityViewModel {
 	private CheckBox ConsiderCheckBox;
 	private ImageView imgIcon;
-	private SimpleStringProperty OldName;
+	private TextFlow OldName;
 	// https://docs.oracle.com/javase/8/javafx/api/javafx/scene/text/TextFlow.html
 	private TextFlow NewName;
 
@@ -22,15 +22,10 @@ public class RenameUtilityViewModel {
 	private static int TextFlowHeigh = 35;
 
 	public RenameUtilityViewModel(Path path) {
-		OldName = new SimpleStringProperty(path.getFileName().toString());
+		String name = path.getFileName().toString();
 
-		Text temp = new Text(OldName.get());
-		temp.setFont(Font.font(15));
-		setNewName(new TextFlow(temp));
-
-		NewName.setMaxHeight(TextFlowHeigh);
-		NewName.setMinHeight(TextFlowHeigh);
-		NewName.setPrefHeight(TextFlowHeigh);
+		setOldName(name);
+		setNewName(name);
 		setPathFile(path);
 		ConsiderCheckBox = new CheckBox();
 		ConsiderCheckBox.setSelected(true);
@@ -38,19 +33,27 @@ public class RenameUtilityViewModel {
 		imgIcon = new ImageView(fxImage);
 	}
 
+	public RenameUtilityViewModel(String name) {
+
+		setOldName(name);
+		setNewName(name);
+		setPathFile(null);
+		ConsiderCheckBox = new CheckBox();
+		ConsiderCheckBox.setSelected(true);
+//		Image fxImage = new Image(Main.class.getResourceAsStream("/img/Text.png"));
+		Image fxImage = SystemIconsHelper.getFileIcon("test.SomethingNotAnextention");
+		imgIcon = new ImageView(fxImage);
+	}
+
 	public void resetNewName() {
 		NewName.getChildren().clear();
-		Text temp = new Text(OldName.get());
+		Text temp = new Text(getOldName());
 		temp.setFont(Font.font(15));
 		NewName.getChildren().add(temp);
 	}
 
 	public String getOldName() {
-		return OldName.get();
-	}
-
-	public void setOldName(String oldName) {
-		OldName.set(oldName);
+		return StringHelper.textFlowToString(OldName);
 	}
 
 	public CheckBox getConsiderCheckBox() {
@@ -76,7 +79,7 @@ public class RenameUtilityViewModel {
 	}
 
 	public TableViewModel toTableViewModel() {
-		return new TableViewModel(OldName.get(), PathFile);
+		return new TableViewModel(getOldName(), PathFile);
 	}
 
 	/**
@@ -84,6 +87,31 @@ public class RenameUtilityViewModel {
 	 */
 	public TextFlow getNewName() {
 		return NewName;
+	}
+
+	public String getNewNameAsString() {
+		return StringHelper.textFlowToString(NewName);
+	}
+
+	public void setOldName(String oldName) {
+		Text temp = new Text(oldName);
+		temp.setFont(Font.font(15));
+		OldName = new TextFlow(temp);
+		OldName.setMaxHeight(TextFlowHeigh);
+		OldName.setMinHeight(TextFlowHeigh);
+		OldName.setPrefHeight(TextFlowHeigh);
+	}
+
+	/**
+	 * @param newName the newName to set
+	 */
+	public void setNewName(String newName) {
+		Text temp = new Text(newName);
+		temp.setFont(Font.font(15));
+		NewName = new TextFlow(temp);
+		NewName.setMaxHeight(TextFlowHeigh);
+		NewName.setMinHeight(TextFlowHeigh);
+		NewName.setPrefHeight(TextFlowHeigh);
 	}
 
 	/**

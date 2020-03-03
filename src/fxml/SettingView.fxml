@@ -1,0 +1,310 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import application.fxGraphics.IntField?>
+<?import java.lang.String?>
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.CheckBox?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.ListView?>
+<?import javafx.scene.control.ScrollPane?>
+<?import javafx.scene.control.Tab?>
+<?import javafx.scene.control.TabPane?>
+<?import javafx.scene.control.TextField?>
+<?import javafx.scene.control.TitledPane?>
+<?import javafx.scene.layout.AnchorPane?>
+<?import javafx.scene.layout.BorderPane?>
+<?import javafx.scene.layout.ColumnConstraints?>
+<?import javafx.scene.layout.GridPane?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.RowConstraints?>
+<?import javafx.scene.layout.VBox?>
+<?import javafx.scene.text.Text?>
+
+<BorderPane prefHeight="463.0" prefWidth="674.0" xmlns="http://javafx.com/javafx/8.0.171" xmlns:fx="http://javafx.com/fxml/1">
+   <bottom>
+      <GridPane BorderPane.alignment="CENTER">
+        <columnConstraints>
+          <ColumnConstraints hgrow="SOMETIMES" minWidth="10.0" prefWidth="100.0" />
+          <ColumnConstraints halignment="RIGHT" hgrow="SOMETIMES" minWidth="10.0" prefWidth="100.0" />
+        </columnConstraints>
+        <rowConstraints>
+          <RowConstraints minHeight="10.0" prefHeight="30.0" vgrow="SOMETIMES" />
+        </rowConstraints>
+         <children>
+            <Button mnemonicParsing="false" onAction="#cancel" style="-fx-font-weight: bold;" text="Cancel" GridPane.columnIndex="1">
+               <styleClass>
+                  <String fx:value="warning" />
+                  <String fx:value="first" />
+               </styleClass>
+               <GridPane.margin>
+                  <Insets right="109.0" />
+               </GridPane.margin></Button>
+            <Button defaultButton="true" mnemonicParsing="false" onAction="#saveSetting" style="-fx-font-weight: bold;" text="Save Setting" GridPane.columnIndex="1" GridPane.halignment="RIGHT">
+               <GridPane.margin>
+                  <Insets />
+               </GridPane.margin>
+               <styleClass>
+                  <String fx:value="primary" />
+                  <String fx:value="last" />
+               </styleClass></Button>
+            <Button mnemonicParsing="false" onAction="#resetFormToDefault" style="-fx-font-weight: bold;" styleClass="secondary" text="Restore changes" GridPane.halignment="RIGHT">
+               <GridPane.margin>
+                  <Insets right="162.0" />
+               </GridPane.margin></Button>
+         </children>
+         <BorderPane.margin>
+            <Insets bottom="10.0" left="10.0" right="10.0" />
+         </BorderPane.margin>
+      </GridPane>
+   </bottom>
+   <center>
+      <TabPane prefHeight="200.0" prefWidth="200.0" tabClosingPolicy="UNAVAILABLE" BorderPane.alignment="CENTER">
+        <tabs>
+          <Tab text="General Setting">
+               <content>
+                  <ScrollPane fitToHeight="true" fitToWidth="true" prefHeight="200.0" prefWidth="200.0">
+                     <content>
+                        <VBox maxWidth="1.7976931348623157E308">
+                           <children>
+                              <TitledPane expanded="false" prefHeight="108.0" prefWidth="634.0" text="Auto Rename Files To UTF" wrapText="true">
+                                 <content>
+                                    <AnchorPane prefHeight="200.0" prefWidth="200.0">
+                                       <children>
+                                          <Label layoutX="14.0" layoutY="14.0" text="Description" />
+                                          <Text layoutX="14.0" layoutY="57.0" strokeType="OUTSIDE" strokeWidth="0.0" text="When Renaming Files, or exploring files, all non UTF characters will be removed." />
+                                          <CheckBox fx:id="autoRenameCheckBox" layoutX="436.0" layoutY="74.0" mnemonicParsing="false" text="Auto-Rename To UTF" />
+                                       </children>
+                                    </AnchorPane>
+                                 </content>
+                              </TitledPane>
+                              <TitledPane expanded="false" layoutX="10.0" layoutY="10.0" prefHeight="108.0" prefWidth="634.0" text="Auto Back Sync" wrapText="true">
+                                 <content>
+                                    <AnchorPane prefHeight="200.0" prefWidth="200.0">
+                                       <children>
+                                          <Label layoutX="14.0" layoutY="14.0" text="Description" />
+                                          <Text layoutX="14.0" layoutY="57.0" strokeType="OUTSIDE" strokeWidth="0.0" text="When opening a folder in left view, the right view will automatically open it's parent folder." />
+                                          <CheckBox fx:id="autoBackSyncCheckBox" layoutX="436.0" layoutY="74.0" mnemonicParsing="false" text="Auto Back Sync" />
+                                       </children>
+                                    </AnchorPane>
+                                 </content>
+                              </TitledPane>
+                              <TitledPane expanded="false" layoutX="10.0" layoutY="10.0" prefHeight="108.0" prefWidth="634.0" text="Limit Files Recursive" wrapText="true">
+                                 <content>
+                                    <AnchorPane prefHeight="200.0" prefWidth="200.0">
+                                       <children>
+                                          <Label layoutX="14.0" layoutY="14.0" text="Description" />
+                                          <Text layoutX="14.0" layoutY="51.0" strokeType="OUTSIDE" strokeWidth="0.0" text="When doing recursive action, exploring files in deep folder stop after reaching a limit.(10000 is the default value)   Note: The more You high this number ---&gt; The more You wait" wrappingWidth="387.2490234375" />
+                                          <IntField fx:id="limitFilesRercursive" layoutX="426.0" layoutY="51.0" />
+                                          <Label layoutX="468.0" layoutY="25.0" text="Current Limit" />
+                                       </children>
+                                    </AnchorPane>
+                                 </content>
+                              </TitledPane>
+                              <TitledPane expanded="false" layoutX="10.0" layoutY="226.0" prefHeight="108.0" prefWidth="634.0" text="On Startup Open Recent Favorites Tabs" wrapText="true">
+                                 <content>
+                                    <AnchorPane prefHeight="200.0" prefWidth="200.0">
+                                       <children>
+                                          <Label layoutX="14.0" layoutY="14.0" text="Description" />
+                                          <Text layoutX="14.0" layoutY="51.0" strokeType="OUTSIDE" strokeWidth="0.0" text="When lunching the Program, last favorites tabs opened will remain opened." wrappingWidth="387.2490234375" />
+                                          <CheckBox fx:id="openRecentFavorites" layoutX="441.0" layoutY="59.0" mnemonicParsing="false" text="Open Recent Favorites" />
+                                       </children>
+                                    </AnchorPane>
+                                 </content>
+                              </TitledPane>
+                           </children>
+                        </VBox>
+                     </content>
+                     <padding>
+                        <Insets bottom="10.0" left="10.0" right="10.0" top="10.0" />
+                     </padding>
+                  </ScrollPane>
+               </content>
+          </Tab>
+ <Tab text="User Manager">
+               <content>
+                  <ScrollPane fitToHeight="true" fitToWidth="true" prefHeight="200.0" prefWidth="200.0">
+                     <content>
+                        <VBox maxWidth="1.7976931348623157E308">
+                           <children>
+                              <AnchorPane prefHeight="52.0" prefWidth="627.0">
+                                 <children>
+                                    <Text layoutX="20.0" layoutY="28.0" strokeType="OUTSIDE" strokeWidth="0.0" text="- Creating a new user will allow to use program in multiuser Mode so each User have it's own tracker Data!" wrappingWidth="590.822265625" />
+                                    <Label layoutX="3.0" layoutY="-10.0" text="Description" />
+                                 </children>
+                              </AnchorPane>
+                              <Label style="-fx-font-weight: bold;" text="Users">
+                                 <VBox.margin>
+                                    <Insets top="5.0" />
+                                 </VBox.margin></Label>
+                              <Label text="(double click to activate user)" />
+                              <HBox prefHeight="100.0" prefWidth="200.0" VBox.vgrow="ALWAYS">
+                                 <children>
+                                    <ListView fx:id="userListView" prefHeight="100.0" prefWidth="435.0" HBox.hgrow="ALWAYS" />
+                                    <Button mnemonicParsing="false" onAction="#removeSelectedUser" style="-fx-font-weight: bold;" styleClass="danger" text="Remove Selected User">
+                                       <HBox.margin>
+                                          <Insets left="10.0" top="30.0" />
+                                       </HBox.margin>
+                                    </Button>
+                                 </children>
+                              </HBox>
+                              <HBox layoutX="20.0" layoutY="241.0" prefHeight="54.0" prefWidth="627.0">
+                                 <children>
+                                    <Label text="Add New User">
+                                       <padding>
+                                          <Insets right="20.0" top="5.0" />
+                                       </padding>
+                                    </Label>
+                                    <TextField fx:id="inputNewUser" />
+                                    <Button mnemonicParsing="false" onAction="#addNewUser" style="-fx-font-weight: bold;" text="Add">
+                                       <styleClass>
+                                          <String fx:value="last" />
+                                          <String fx:value="success" />
+                                       </styleClass>
+                                    </Button>
+                                    <Label fx:id="inputNewUserError" style="-fx-font-weight: bold;" text="Error Text" textFill="RED">
+                                       <HBox.margin>
+                                          <Insets left="10.0" top="5.0" />
+                                       </HBox.margin>
+                                    </Label>
+                                 </children>
+                                 <padding>
+                                    <Insets bottom="10.0" left="10.0" right="10.0" top="10.0" />
+                                 </padding>
+                              </HBox>
+                              <HBox prefHeight="53.0" prefWidth="627.0">
+                                 <children>
+                                    <Text strokeType="OUTSIDE" strokeWidth="0.0" text="- The name Should not exceed 10 character length,                                                                      - And not contain any of the following character: /\\:*\&quot;&lt;&gt;|" wrappingWidth="625.697265625" />
+                                 </children>
+                              </HBox>
+                              <HBox prefHeight="30.0" prefWidth="627.0">
+                                 <children>
+                                    <Label text="Current Active User:">
+                                       <padding>
+                                          <Insets right="20.0" top="5.0" />
+                                       </padding>
+                                    </Label>
+                                    <Label fx:id="currentActiveUser" style="-fx-font-weight: bold;" text="default">
+                                       <HBox.margin>
+                                          <Insets top="5.0" />
+                                       </HBox.margin>
+                                    </Label>
+                                 </children>
+                                 <padding>
+                                    <Insets left="10.0" right="10.0" />
+                                 </padding>
+                              </HBox>
+                           </children>
+                           <padding>
+                              <Insets bottom="10.0" left="10.0" right="10.0" top="10.0" />
+                           </padding>
+                        </VBox>
+                     </content>
+                     <padding>
+                        <Insets bottom="10.0" left="10.0" right="10.0" top="10.0" />
+                     </padding>
+                  </ScrollPane>
+               </content>
+          </Tab>
+          <Tab text="Favorite Manger">
+               <content>
+                  <ScrollPane fitToHeight="true" fitToWidth="true" prefHeight="200.0" prefWidth="200.0">
+                     <content>
+                        <VBox maxWidth="1.7976931348623157E308">
+                           <children>
+                              <AnchorPane prefHeight="52.0" prefWidth="627.0">
+                                 <children>
+                                    <Text layoutX="20.0" layoutY="28.0" strokeType="OUTSIDE" strokeWidth="0.0" text="- Favorites views are essentiel to save times, so you quick open your favorites folders where ever they are. Soon you will be addicted to use them." wrappingWidth="590.822265625" />
+                                    <Label layoutX="3.0" layoutY="-10.0" text="Description" />
+                                 </children>
+                              </AnchorPane>
+                              <Label style="-fx-font-weight: bold;" text="Favorites Location">
+                                 <VBox.margin>
+                                    <Insets top="5.0" />
+                                 </VBox.margin></Label>
+                              <Label text="(Make a selection then sort Favorites as you like)" />
+                              <HBox prefHeight="50.0" prefWidth="611.0" VBox.vgrow="ALWAYS">
+                                 <children>
+                                    <ListView fx:id="favoritesListView" prefHeight="194.0" prefWidth="443.0" HBox.hgrow="ALWAYS">
+                                       <HBox.margin>
+                                          <Insets right="20.0" />
+                                       </HBox.margin></ListView>
+                                    <VBox prefHeight="233.0" prefWidth="197.0" spacing="5.0">
+                                       <children>
+                                          <Label text="Actions">
+                                             <VBox.margin>
+                                                <Insets top="10.0" />
+                                             </VBox.margin></Label>
+                                          <Button mnemonicParsing="false" onAction="#upSelectedFavorites" style="-fx-font-weight: bold;" text="↑ Move Up ↑">
+                                             <VBox.margin>
+                                                <Insets right="10.0" />
+                                             </VBox.margin>
+                                          </Button>
+                                          <Button mnemonicParsing="false" onAction="#downSelectedFavorites" style="-fx-font-weight: bold;" text="↓ Move Down ↓">
+                                             <VBox.margin>
+                                                <Insets right="10.0" />
+                                             </VBox.margin>
+                                          </Button>
+                                          <Button mnemonicParsing="false" onAction="#removeSelectedFavorites" style="-fx-font-weight: bold;" styleClass="danger" text="X Remove Selected X" />
+                                       </children>
+                                       <HBox.margin>
+                                          <Insets />
+                                       </HBox.margin>
+                                       <padding>
+                                          <Insets bottom="5.0" />
+                                       </padding>
+                                    </VBox>
+                                 </children>
+                              </HBox>
+                              <HBox prefHeight="44.0" prefWidth="634.0">
+                                 <children>
+                                    <Label layoutX="20.0" layoutY="20.0" text="Target:">
+                                       <padding>
+                                          <Insets right="20.0" top="5.0" />
+                                       </padding>
+                                    </Label>
+                                    <Label fx:id="targetFavoriteName" layoutX="20.0" layoutY="20.0" style="-fx-font-weight: bold;" text="oldName">
+                                       <padding>
+                                          <Insets right="20.0" top="5.0" />
+                                       </padding>
+                                    </Label>
+                                 </children>
+                                 <padding>
+                                    <Insets bottom="10.0" left="10.0" right="10.0" top="10.0" />
+                                 </padding>
+                              </HBox>
+                              <HBox layoutX="20.0" layoutY="303.0" prefHeight="48.0" prefWidth="634.0">
+                                 <padding>
+                                    <Insets bottom="10.0" left="10.0" right="10.0" top="10.0" />
+                                 </padding>
+                                 <children>
+                                    <Label text="New Name">
+                                       <padding>
+                                          <Insets right="20.0" top="5.0" />
+                                       </padding>
+                                    </Label>
+                                    <TextField fx:id="inputFavoriteName" />
+                                    <Button mnemonicParsing="false" onAction="#renameFavorite" style="-fx-font-weight: bold;" styleClass="last" text="Apply ✓" />
+                                    <Label fx:id="inputFavoriteNameError" style="-fx-font-weight: bold;" text="Error Text" textFill="RED">
+                                       <HBox.margin>
+                                          <Insets left="10.0" top="5.0" />
+                                       </HBox.margin>
+                                    </Label>
+                                 </children>
+                              </HBox>
+                           </children>
+                           <padding>
+                              <Insets bottom="10.0" left="10.0" right="10.0" top="10.0" />
+                           </padding>
+                        </VBox>
+                     </content>
+                     <padding>
+                        <Insets bottom="10.0" left="10.0" right="10.0" top="10.0" />
+                     </padding>
+                  </ScrollPane>
+               </content>
+          </Tab>
+        </tabs>
+      </TabPane>
+   </center>
+</BorderPane>
