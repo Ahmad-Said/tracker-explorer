@@ -16,6 +16,7 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -86,6 +87,9 @@ public class PhotoViewerController {
 
 	@FXML
 	private SplitMenuButton cropMenuButton;
+
+	@FXML
+	private Button dragThisPhoto;
 
 	@FXML
 	private Button fullScreenBut;
@@ -280,19 +284,33 @@ public class PhotoViewerController {
 			public void handle(DragEvent event) {
 				Dragboard db = event.getDragboard();
 				if (db.hasFiles()) {
-					db.getFiles().forEach(file3 -> {
-						if (ArrayIMGExt.contains(StringHelper.getExtention(file3.getName()))) {
-							ImgResources.add(rollerPhoto, file3);
-						}
-					});
+					if (db.getFiles().size() == 1 && ImgResources.contains(db.getFiles().get(0))) {
+						changeImage(db.getFiles().get(0));
+					} else {
+						db.getFiles().forEach(file3 -> {
+							if (ArrayIMGExt.contains(StringHelper.getExtention(file3.getName()))
+									&& !ImgResources.contains(file3)) {
+								ImgResources.add(rollerPhoto, file3);
+							}
+						});
+					}
 					changeImage(ImgResources.get(rollerPhoto));
 				}
 			}
 		});
-
 	}
 
 	private void initializeButtons() {
+		// on drag put current image in drag
+		dragThisPhoto.setOnDragDetected(e -> {
+			Dragboard db = imageView.startDragAndDrop(TransferMode.ANY);
+			ClipboardContent cb = new ClipboardContent();
+			List<File> selectedFiles = new ArrayList<>();
+			selectedFiles.add(ImgResources.get(rollerPhoto));
+			cb.putFiles(selectedFiles);
+			db.setContent(cb);
+		});
+
 		fitWidthCheckBox.setOnAction(p -> {
 			if (fitWidthCheckBox.isSelected()) {
 				fitWidth();
@@ -405,7 +423,6 @@ public class PhotoViewerController {
 		imageView.fitWidthProperty().bind(imagePane.widthProperty());
 		imageView.fitHeightProperty().bind(imagePane.heightProperty());
 		imageView.setPreserveRatio(false); // done manually due to zoom constraints
-
 		ObjectProperty<Point2D> mouseDown = new SimpleObjectProperty<>();
 		imageView.setFocusTraversable(true);
 		imageView.requestFocus();
@@ -573,7 +590,7 @@ public class PhotoViewerController {
 		cumulativeZoom = (width + deltaW) / width;
 		zoomSlider.setValue(cumulativeZoom);
 		imageView.setViewport(new Rectangle2D(0, 0, width, maxHeight));
-		updateWHSlider();
+		// TODO save current y value
 	}
 
 	private List<File> getImgFilesInDir(File parent) {
@@ -595,6 +612,11 @@ public class PhotoViewerController {
 		if (lastSelectedFile != null) {
 			ImgPositions.put(lastSelectedFile,
 					new PositionImg(zoomSlider.getValue(), xSlider.getValue(), ySlider.getValue()));
+		}
+		if (!selectedImg.exists()) {
+			deleteAndRemoveImage(selectedImg);
+			previousImage();
+			return;
 		}
 		locationField.setText(selectedImg.getAbsolutePath());
 		nameImage.setText(selectedImg.getName());
@@ -620,6 +642,7 @@ public class PhotoViewerController {
 
 		rollerPhoto = ImgResources.indexOf(selectedImg);
 		indexOfImage.setText(rollerPhoto + 1 + " / " + ImgResources.size());
+		indexOfImage.setOnMouseClicked(e -> goToPhoto());
 
 		if (!mFileTracker.getWorkingDir().equals(selectedImg.toPath().getParent())) {
 			mFileTracker.setWorkingDir(selectedImg.toPath().getParent());
@@ -889,6 +912,7 @@ public class PhotoViewerController {
 						newPath = FileHelper.RenameHelper(oldPath, nameImage.getText());
 					} catch (IOException e1) {
 						nameImage.setText(curImage.getName());
+						e.printStackTrace();
 						DialogHelper.showException(e);
 					}
 				} else {
@@ -897,6 +921,7 @@ public class PhotoViewerController {
 
 			} catch (IOException e) {
 				nameImage.setText(curImage.getName());
+				e.printStackTrace();
 				DialogHelper.showException(e);
 			}
 		}
@@ -998,21 +1023,28 @@ public class PhotoViewerController {
 		boolean ans = DialogHelper.showConfirmationDialog("Delete " + img.getName(),
 				"Are you Sure you want to delete" + img.getName() + " ?", "");
 		if (ans) {
+			deleteAndRemoveImage(img);
+		}
+	}
+
+	private void deleteAndRemoveImage(File img) {
+		if (img.exists()) {
 			img.delete();
-			imageView.setImage(null);
-			locationField.clear();
-			nameImage.clear();
-			noteInput.clear();
-			ImgResources.remove(img);
-			if (ImgResources.size() == 0) {
-				photoStage.close();
-			}
-			if (ImgResources.size() != 0) {
-				if (rollerPhoto < ImgResources.size() - 1) {
-					nextImage();
-				} else if (rollerPhoto > 0) {
-					previousImage();
-				}
+		}
+		imageView.setImage(null);
+		locationField.clear();
+		nameImage.clear();
+		noteInput.clear();
+		ImgResources.remove(img);
+		if (ImgResources.size() == 0) {
+			photoStage.close();
+		} else {
+			// if last photo was removed go previous image
+			if (rollerPhoto == ImgResources.size()) {
+				previousImage();
+			} else {
+				// reload the new photo at current index
+				changeImage(ImgResources.get(rollerPhoto));
 			}
 		}
 	}
@@ -1106,7 +1138,7 @@ public class PhotoViewerController {
 			imageView.setOnKeyReleased(e -> {
 				if (e.getCode().equals(KeyCode.ENTER)) {
 					Boolean ans = DialogHelper.showAlert(AlertType.CONFIRMATION, "Crop Image",
-							"Are you sure you want to crop this image?", "");
+							"Are you sure you want to crop this image?", "", photoStage);
 					if (ans == null || !ans) {
 						return;
 					}
@@ -1350,5 +1382,15 @@ public class PhotoViewerController {
 		};
 		Thread thread = new Thread(runnable);
 		thread.start();
+	}
+
+	@FXML
+	private void goToPhoto() {
+		Integer indexMinus = DialogHelper.showIntegerInputDialog("Go To Photo", "Enter Photo Index", "Index", 1,
+				ImgResources.size(), rollerPhoto + 1);
+		if (indexMinus == null) {
+			return;
+		}
+		changeImage(ImgResources.get(indexMinus - 1));
 	}
 }

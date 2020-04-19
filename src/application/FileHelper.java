@@ -141,7 +141,6 @@ public class FileHelper {
 					}
 				});
 			} catch (IOException e) {
-				// TODO Auto-generated catch block
 				e.printStackTrace();
 			}
 
@@ -247,7 +246,6 @@ public class FileHelper {
 											try {
 												Files.delete(srcPathParent);
 											} catch (Exception e) {
-												// TODO Auto-generated catch block
 												Setting.printStackTrace(e);
 												toDeleteLater.push(srcPathParent);
 											}
@@ -316,14 +314,7 @@ public class FileHelper {
 			Platform.runLater(() -> {
 				if (doDeleteLastElement) {
 					if (LastCreatedFile != null && LastCreatedFile.exists()) {
-						// try {
 						LastCreatedFile.deleteOnExit();
-						// Files.delete(LastCreatedFile.toPath());
-						// FileUtils.forceDelete(LastCreatedFile);
-						// } catch (IOException e1) {
-						// TODO Auto-generated catch block
-						// e1.printStackTrace();
-						// }
 					}
 				} else {
 					if (!btnCancel.getStyleClass().contains("danger")) {
@@ -345,7 +336,9 @@ public class FileHelper {
 				});
 				setDisableControl(false);
 				updateViews();
-
+				if (Setting.isAutoCloseClearDoneFileOperation()) {
+					btnControl.fire();
+				}
 			});
 		}
 
@@ -497,7 +490,6 @@ public class FileHelper {
 								try {
 									currentThread.join();
 								} catch (InterruptedException e) {
-									// TODO Auto-generated catch block
 									e.printStackTrace();
 								}
 								finalizeThis(false);
@@ -593,9 +585,27 @@ public class FileHelper {
 		operationsThread.start();
 	}
 
+	public static void copyWithTeraCopy(List<Path> source, Path targetDirectory) {
+		try {
+			TeraCopy.copy(source, targetDirectory);
+		} catch (IOException e) {
+			e.printStackTrace();
+			DialogHelper.showException(e);
+		}
+	}
+
 	public static void copy(List<Path> source, Path targetDirectory) {
 		OperationsList.add(new Operation("Copy", targetDirectory, source));
 		DoThreadOperationsAllList();
+	}
+
+	public static void moveWithTeraCopy(List<Path> source, Path targetDirectory) {
+		try {
+			TeraCopy.move(source, targetDirectory);
+		} catch (IOException e) {
+			e.printStackTrace();
+			DialogHelper.showException(e);
+		}
 	}
 
 	public static void move(List<Path> source, Path targetDirectory) {
@@ -617,6 +627,7 @@ public class FileHelper {
 				"Do you really want to delete selected files?", filesToDelete);
 
 		if (isConfirmed) {
+
 			new Thread() {
 				@Override
 				public void run() {
@@ -647,9 +658,9 @@ public class FileHelper {
 					Platform.runLater(() -> Main.ResetTitle());
 				}
 			}.start();
-
 		}
 		return isConfirmed;
+
 	}
 
 	public static void createDirectory(Path parent, SplitViewController focusedPane) {
@@ -697,6 +708,57 @@ public class FileHelper {
 				DialogHelper.showAlert(Alert.AlertType.ERROR, title, "File was not created", path.toString());
 			}
 		}
+	}
+
+	public static File getCopyFileName(File sourceFile) {
+		File copiedFile = sourceFile;
+		Path parentFile = sourceFile.getParentFile().toPath();
+		String ext = StringHelper.getExtention(copiedFile.getName()).toLowerCase();
+		String baseName = StringHelper.getBaseName(copiedFile.getName());
+		if (!ext.isEmpty()) {
+			ext = "." + ext;
+		}
+		copiedFile = parentFile.resolve(baseName + " - Copy" + ext).toFile();
+		int i = 2;
+		while (copiedFile.exists()) {
+			copiedFile = parentFile.resolve(baseName + " - Copy (" + i++ + ")" + ext).toFile();
+		}
+		return copiedFile;
+	}
+
+	/**
+	 * Made to deal with look for another application path
+	 * <p>
+	 * Example if VLC was in <br>
+	 * ----------> C:\Program Files (x86)\VideoLAN\VLC\vlc.exe
+	 * <p>
+	 * it will try to return:<br>
+	 * ----------> C:\Program Files (x86)\VideoLAN\VLC\
+	 * <p>
+	 * if any of them not found it return defaultLoc parameter if it wasn't null or
+	 * <br>
+	 * ----------> System.getenv("ProgramFiles")
+	 *
+	 * @param originalFile
+	 * @param defaultLoc   can be null
+	 * @return no null Existing File
+	 */
+	public static File getParentExeFile(Path originalFile, File defaultLoc) {
+		File finRescue = new File(System.getenv("ProgramFiles"));
+		if (defaultLoc != null && defaultLoc.exists()) {
+			finRescue = defaultLoc;
+		}
+		if (!finRescue.exists()) {
+			finRescue = File.listRoots()[0];
+		}
+		if (originalFile == null) {
+			return finRescue;
+		}
+		File parentTry = originalFile.toFile().getParentFile();
+		if (parentTry == null || !parentTry.exists()) {
+			return finRescue;
+		}
+		return parentTry;
 	}
 
 	public static Path RenameHelper(Path source, String newName) throws IOException {
@@ -774,7 +836,6 @@ public class FileHelper {
 		}
 		if (newName != null && !newName.isEmpty()) {
 			Path target = source.getParent().resolve(newName);
-			Setting.setAutoRenameUTFFile(false);
 			try {
 				// System.out.println("name is " + source.toString());
 				// System.out.println("target is "+ target);
@@ -795,11 +856,35 @@ public class FileHelper {
 				return target;
 			} catch (Exception e) {
 				e.printStackTrace();
+				DialogHelper.showException(e);
 				// if (!silentFix)
-				DialogHelper.showAlert(Alert.AlertType.INFORMATION, source.getParent().toString(),
-						"File was not renamed", source.toString());
+//				DialogHelper.showAlert(Alert.AlertType.INFORMATION, source.getParent().toString(),
+//						"File was not renamed", source.toString());
 			}
 		}
 		return null;
+	}
+
+	public static void copyFiles(List<File> sourceFiles, List<File> targetFiles) {
+		Runnable runnable = () -> {
+			try {
+				Platform.runLater(() -> DialogHelper.showWaitingScreen("Please Wait.. Copying files",
+						"Copying your files...\nIn case of bunch files use your system explorer.This just on the go copy."));
+				for (int i = 0; i < sourceFiles.size(); i++) {
+					File srcFile = sourceFiles.get(i);
+					File destFile = targetFiles.get(i);
+					if (srcFile.isFile()) {
+						FileUtils.copyFile(srcFile, destFile);
+					} else {
+						FileUtils.copyDirectory(srcFile, destFile);
+					}
+				}
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+			Platform.runLater(() -> DialogHelper.closeWaitingScreen());
+		};
+		Thread th = new Thread(runnable);
+		th.start();
 	}
 }

@@ -1,3 +1,22 @@
+v5.0:
+NEW: Create Cortana shortcut voice command
+NEW: Integration of TeraCopy for Files operations (Copy/Move)
+NEW: Support for opening Network location WebDav (Beta Feature) 
+				(Use windows explorer to let system generate format
+				by pasting http url server in navigation path)
+				\\192.168.0.104@8080\DavWWWRoot
+				\\<ip>@<port>\<location\path>
+NEW: Make a copy here context menu function on drag and drop
+
+IMPROVE: Tabs navigation (auto-switch on drag)
+
+Fix: auto Close File operation
+Fix: CPU problem when dealing with bunch of files
+		by postponing consecutive refresh to 2 seconds
+FIX: VLC freezing when running VLC Play list by releasing process resources
+FIX: 'Configure VLC Path' option for no default location
+						Happy Exploring
+
 v4.0:
 New Tab bar for multi-exploring
 New Feature Image: Crop

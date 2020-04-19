@@ -12,6 +12,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.FileVisitOption;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.EnumSet;
@@ -33,9 +34,12 @@ import application.FileTracker;
 import application.Main;
 import application.RecursiveFileWalker;
 import application.StringHelper;
+import application.TrackerPlayer;
 import application.VLC;
 import application.datatype.Setting;
 import application.fxGraphics.DraggableTab;
+import application.fxGraphics.MenuItemFactory;
+import application.model.SplitViewState;
 import application.model.TableViewModel;
 import javafx.application.Platform;
 import javafx.collections.FXCollections;
@@ -48,6 +52,7 @@ import javafx.scene.control.Alert;
 import javafx.scene.control.Alert.AlertType;
 import javafx.scene.control.Button;
 import javafx.scene.control.CheckBox;
+import javafx.scene.control.ContextMenu;
 import javafx.scene.control.Label;
 import javafx.scene.control.Menu;
 import javafx.scene.control.MenuButton;
@@ -62,6 +67,10 @@ import javafx.scene.control.ToggleButton;
 import javafx.scene.control.ToggleGroup;
 import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.image.ImageView;
+import javafx.scene.input.DataFormat;
+import javafx.scene.input.DragEvent;
+import javafx.scene.input.MouseButton;
+import javafx.scene.input.TransferMode;
 import javafx.scene.layout.HBox;
 import javafx.stage.FileChooser;
 import javafx.util.Duration;
@@ -236,6 +245,9 @@ public class WelcomeController implements Initializable {
 	@FXML
 	private Menu TrackerMenu;
 
+	@FXML
+	private Menu cortanaMenu;
+
 	ObservableList<TableViewModel> leftDataTable = FXCollections.observableArrayList();
 	ObservableList<TableViewModel> rightDataTable = FXCollections.observableArrayList();
 	private SplitViewController leftView;
@@ -280,6 +292,7 @@ public class WelcomeController implements Initializable {
 			rightNote.setVisible(Setting.getShowRightNotesColumn());
 			leftNote.setVisible(Setting.getShowLeftNotesColumn());
 		} catch (Exception e1) {
+			e1.printStackTrace();
 			DialogHelper.showException(e1);
 		}
 	}
@@ -304,10 +317,12 @@ public class WelcomeController implements Initializable {
 	private void initializeTabs() {
 		// initialize tabs
 		tabPane.getTabs().clear();
-		DraggableTab defaultTab = new DraggableTab("Default", Setting.getLeftLastKnowLocation(),
-				Setting.getRightLastKnowLocation());
+		DraggableTab defaultTab = new DraggableTab("Default", StringHelper.InitialLeftPath.toFile(),
+				StringHelper.InitialRightPath.toFile());
 		defaultTab.setClosable(false);
 		defaultTab.flipisEnteringAction();
+		leftView.restoreSplitViewState(defaultTab.getLeftSplitViewState());
+		rightView.restoreSplitViewState(defaultTab.getRightSplitViewState());
 		tabPane.getTabs().add(defaultTab);
 		activeActionTab(defaultTab);
 
@@ -337,10 +352,11 @@ public class WelcomeController implements Initializable {
 					}
 					String title = DialogHelper.showTextInputDialog("Favorite Title",
 							"Please Enter the name of this Favorite View", "", hint);
-					title = title.replaceAll(";", "_");
 					if (title == null || title.trim().equals("")) {
+						FavoriteCheckBox.setSelected(false);
 						return;
 					}
+					title = title.replaceAll(";", "_");
 					AddandPriorizethisMenu(title, leftView.getDirectoryPath(), rightView.getDirectoryPath());
 				} else {
 					removeFavorite(leftView.getDirectoryPath());
@@ -361,24 +377,55 @@ public class WelcomeController implements Initializable {
 
 	private void activeActionTab(DraggableTab dragTab) {
 		dragTab.setOnSelectionChanged(e -> {
+			// not in every switch from tab to another
+			// 2 tabs will trigger this action the entering tab which we will restore from
+			// it's state
+			// and the leaving tab which will save it's state
+
+			SplitViewState left = dragTab.getLeftSplitViewState();
+			SplitViewState right = dragTab.getRightSplitViewState();
+
 			if (dragTab.isEnteringAction()) {
+				// the new tab switched to
 				// change queue for the corresponding tab
-				leftView.setBackQueue(dragTab.getLeftBackQueue());
-				leftView.setNextQueue(dragTab.getLeftNextQueue());
-				rightView.setBackQueue(dragTab.getRightBackQueue());
-				rightView.setNextQueue(dragTab.getRightNextQueue());
-				// change Directory to last know location of tabs
-				rightView.setmDirectoryThenRefresh(dragTab.getRightPath().toFile());
-				leftView.setmDirectoryThenRefresh(dragTab.getLeftPath().toFile());
-				// clear false change between tabs
-				rightView.RemoveLastFalseQueue();
-				leftView.RemoveLastFalseQueue();
+				leftView.restoreSplitViewState(left);
+				rightView.restoreSplitViewState(right);
 			} else {
-				dragTab.setRightPath(rightView.getmDirectory().toPath());
-				dragTab.setLeftPath(leftView.getmDirectory().toPath());
+				// the tab that is switched from
+				// will trigger code first
+				leftView.saveStateToSplitState(left);
+				rightView.saveStateToSplitState(right);
 			}
 			dragTab.flipisEnteringAction();
 		});
+		dragTab.getGraphic().setOnDragOver(new EventHandler<DragEvent>() {
+			@Override
+			public void handle(DragEvent event) {
+				if (event.getDragboard().hasFiles() || event.getDragboard().hasContent(DataFormat.URL)
+						|| event.getDragboard().hasString()) {
+					event.acceptTransferModes(TransferMode.ANY);
+				}
+				tabPane.getSelectionModel().select(dragTab);
+			}
+		});
+		dragTab.getGraphic().setOnMouseClicked(e -> {
+			if (e.getButton().equals(MouseButton.SECONDARY)) {
+				ContextMenu mn = new ContextMenu();
+				MenuItem mnRenameTitle = new MenuItem("Rename");
+				mn.getItems().addAll(mnRenameTitle);
+				mn.show(Main.getPrimaryStage(), e.getScreenX(), e.getScreenY());
+				mnRenameTitle.setOnAction(eR -> {
+					String title = DialogHelper.showTextInputDialog("Rename Tab", "Enter New Name", "",
+							dragTab.getLabelText());
+					if (title == null || title.isEmpty()) {
+						return;
+					}
+					title = title.replaceAll(";", "_");
+					dragTab.setLabelText(title);
+				});
+			}
+		});
+
 	}
 
 	@FXML
@@ -419,7 +466,7 @@ public class WelcomeController implements Initializable {
 	}
 
 	private DraggableTab addTabOnly(String title, Path leftPath, Path rightPath) {
-		DraggableTab tempTab = new DraggableTab(title, leftPath, rightPath);
+		DraggableTab tempTab = new DraggableTab(title, leftPath.toFile(), rightPath.toFile());
 		activeActionTab(tempTab);
 		tabPane.getTabs().add(tempTab);
 		return tempTab;
@@ -485,7 +532,14 @@ public class WelcomeController implements Initializable {
 		TrackerMenu.getItems().add(experimentalFeatures);
 
 		// Setting preference Menu Item
-		settingController.setOnAction(e -> new SettingController(this));
+		settingController.setOnAction(e -> {
+			try {
+				new SettingController(this);
+			} catch (Exception e2) {
+				e2.printStackTrace();
+				DialogHelper.showException(e2);
+			}
+		});
 
 		// -!Clear Favorites!- Menu Item
 		clearFavorite.setOnAction(new EventHandler<ActionEvent>() {
@@ -614,11 +668,32 @@ public class WelcomeController implements Initializable {
 			}
 		});
 		TrackerMenu.getItems().add(showConflict);
+
+		MenuItemFactory.registerMenu(cortanaMenu);
+		cortanaMenu.setOnShowing(e -> {
+			cortanaMenu.getItems().remove(1, cortanaMenu.getItems().size());
+			TrackerPlayer.getAllShortcutTracker().forEach((shortcut, realFile) -> {
+				MenuItemFactory.getMenuItem(cortanaMenu, StringHelper.getBaseName(shortcut.getName()), true)
+						.setOnAction(e2 -> {
+							try {
+								TrackerPlayer.openPlaylistInLnk(realFile);
+							} catch (IOException | ParseException e1) {
+								e1.printStackTrace();
+								DialogHelper.showException(e1);
+							}
+						});
+			});
+		});
 		/**
 		 * Set up helpMenu
 		 */
 		aboutMenuItem.setOnAction(e -> DialogHelper.showAlert(Alert.AlertType.INFORMATION, "About", null,
-				"Tracker Explorer v4.0\n\n" + "Copyright © 2020 by Ahmad Said"));
+				"Tracker Explorer v5.0\n\n" + "Copyright © 2020 by Ahmad Said"));
+	}
+
+	@FXML
+	public void openSettingTrackerPlayer() {
+		TrackerPlayer.openTrackerSettingGUI();
 	}
 
 	ArrayList<RadioMenuItem> allActiveUser = new ArrayList<>();
@@ -670,7 +745,7 @@ public class WelcomeController implements Initializable {
 
 			@Override
 			public void handle(ActionEvent event) {
-				DraggableTab newTab = new DraggableTab(title, leftPath, rightPath);
+				DraggableTab newTab = new DraggableTab(title, leftPath.toFile(), rightPath.toFile());
 				activeActionTab(newTab);
 				tabPane.getTabs().add(newTab);
 				tabPane.getSelectionModel().select(newTab);
@@ -780,27 +855,16 @@ public class WelcomeController implements Initializable {
 		// https://docs.oracle.com/javafx/2/ui_controls/file-chooser.htm
 		FileChooser fileChooser = new FileChooser();
 		fileChooser.setTitle("Navigate to where VLC is installed");
-		File initfile = VLC.getPath_Setup().toFile().getParentFile();
-		if (initfile.exists()) {
-			fileChooser.setInitialDirectory(initfile);
-		} else {
-			// try another time to auto detect path:
-			// that's in case vlc is installed while already opening the program
-			VLC.initializeDefaultVLCPath();
-			initfile = VLC.getPath_Setup().toFile().getParentFile();
-			if (initfile.exists()) {
-				fileChooser.setInitialDirectory(initfile);
-			} else {
-				fileChooser.setInitialDirectory(new File(System.getenv("ProgramFiles")));
-			}
-		}
+		File initfile = FileHelper.getParentExeFile(VLC.getPath_Setup(), null);
+		fileChooser.setInitialDirectory(initfile);
 		fileChooser.getExtensionFilters().addAll(new FileChooser.ExtensionFilter("Path To ", "vlc.exe"));
+
 		File vlcfile = fileChooser.showOpenDialog(Main.getPrimaryStage());
 		if (vlcfile == null) {
 			return;
 		}
 		if (vlcfile.getName().equals("vlc.exe")) {
-			Setting.setVLCPath(vlcfile.toURI().toString());
+			VLC.setPath_Setup(vlcfile.toPath());
 			DialogHelper.showAlert(AlertType.INFORMATION, "Configure VLC Path", "VLC well configured",
 					"Path: " + VLC.getPath_Setup());
 		} else {
@@ -885,21 +949,15 @@ public class WelcomeController implements Initializable {
 
 	@FXML
 	public void copy() {
-		// WatchServiceHelper.setRuning(false);
 		if (leftView.isFocusedTable()) {
 			List<Path> source = leftView.getSelection();
 			Path target = rightView.getDirectoryPath();
 			FileHelper.copy(source, target);
-			// rightView.getMfileTracker().OperationUpdate(source,
-			// leftView.getMfileTracker(), "copy");
 		} else if (rightView.isFocusedTable()) {
 			List<Path> source = rightView.getSelection();
 			Path target = leftView.getDirectoryPath();
 			FileHelper.copy(source, target);
-			// leftView.getMfileTracker().OperationUpdate(source,
-			// rightView.getMfileTracker(), "copy");
 		}
-		// WatchServiceHelper.setRuning(true);
 	}
 
 	// private void removeLastFavorite() {
@@ -916,9 +974,9 @@ public class WelcomeController implements Initializable {
 						.collect(Collectors.groupingBy(Function.identity(), TreeMap::new, Collectors.counting()))
 						.entrySet().stream().sorted(Map.Entry.<String, Long>comparingByValue().reversed())
 						.forEach(printWriter::println);
-				// Desktop.getDesktop().open(resultPath.toFile());
-				StringHelper.open(resultPath.toUri().toString());
+				StringHelper.openFile(resultPath.toFile());
 			} catch (IOException e) {
+				e.printStackTrace();
 				DialogHelper.showException(e);
 			}
 		}

@@ -1,5 +1,6 @@
 package application;
 
+import java.awt.Desktop;
 import java.io.BufferedReader;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
@@ -16,15 +17,16 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 import org.apache.commons.io.FilenameUtils;
+import org.jetbrains.annotations.Nullable;
 
 import application.controller.SplitViewController;
-import javafx.application.Application;
 import javafx.scene.Node;
 import javafx.scene.text.Text;
 import javafx.scene.text.TextFlow;
-import javafx.stage.Stage;
+import javafx.stage.FileChooser;
 
 public class StringHelper {
 
@@ -72,6 +74,37 @@ public class StringHelper {
 		return false;
 	}
 
+	/**
+	 * Parse Arguments in form --name=value return null if not found
+	 *
+	 * @param args_cmd the argument string
+	 * @param name_key the name
+	 * @return the value if found, null otherwise
+	 */
+	public static String getValueFromCMDArgs(String args_cmd, String name_key) {
+		int valueStart = args_cmd.indexOf(name_key);
+		if (valueStart == -1) {
+			return null;
+		}
+		valueStart += name_key.length() + 1;
+		int valueEnd = -1;
+		if (args_cmd.charAt(valueStart) == '"') {
+			valueStart++;
+			valueEnd = args_cmd.indexOf('"', valueStart);
+		} else {
+			valueEnd = args_cmd.indexOf(' ', valueStart);
+		}
+		if (valueEnd == -1) {
+			valueEnd = args_cmd.length();
+		}
+		return args_cmd.substring(valueStart, valueEnd);
+	}
+
+	public static FileChooser.ExtensionFilter getExtensionFilter(String description, List<String> extensions) {
+		return new FileChooser.ExtensionFilter(description,
+				extensions.stream().map(p -> "*" + p).collect(Collectors.toList()));
+	}
+
 	public static String getExtention(String fileName) {
 		return FilenameUtils.getExtension(fileName).toUpperCase();
 	}
@@ -82,6 +115,18 @@ public class StringHelper {
 
 	public static String[] getWords(String text) {
 		return text.toLowerCase().split("\\W+");
+	}
+
+	/**
+	 * Replace any occurrence of these characters /\\:*\"<>| with specified
+	 * character
+	 *
+	 * @param OriginalName
+	 * @param toReplaceWith
+	 * @return
+	 */
+	public static String getValidName(String OriginalName, String toReplaceWith) {
+		return OriginalName.replaceAll("[/\\\\:*\\\"<>|]", toReplaceWith);
 	}
 
 	public static String FixNameEncoding(String original) {
@@ -193,18 +238,13 @@ public class StringHelper {
 		return timeElapsed;
 	}
 
-	// https://stackoverflow.com/questions/21686352/non-static-method-gethostservices-cannot-be-referenced-from-a-static-context
-	public static void open(String resources) {
-		Application a = new Application() {
-			@Override
-			public void start(Stage primaryStage) throws Exception {
-			}
-		};
-		a.getHostServices().showDocument(resources);
-	}
-
 	public static void openFile(File resources) {
-		open(resources.toURI().toString());
+		try {
+			Desktop.getDesktop().open(resources);
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
 	}
 
 	/**
@@ -220,22 +260,17 @@ public class StringHelper {
 
 			@Override
 			public void run() {
-				Application a = new Application() {
-					@Override
-					public void start(Stage primaryStage) throws Exception {
-					}
-				};
-				resources.stream().map(r -> r.toURI().toString()).forEach(r -> {
-					a.getHostServices().showDocument(r);
+				resources.stream().forEach(r -> {
 					try {
+						Desktop.getDesktop().open(r);
 						// wait 500 MILLISECONDS between each file to not over the computer
 						TimeUnit.MILLISECONDS.sleep(500);
-					} catch (InterruptedException e) {
+					} catch (InterruptedException | IOException e) {
 						// TODO Auto-generated catch block
 						e.printStackTrace();
 					}
 				});
-				open(resources.get(0).toURI().toString());
+				openFile(resources.get(0));
 			}
 		};
 		multiFileStarter.start();
@@ -254,11 +289,13 @@ public class StringHelper {
 		return fullText;
 	}
 
-	public static Path StringUriToPath(String uri) {
-		return Paths.get(URI.create(uri));
+	@Nullable
+	public static Path parseUriToPath(String uri) {
+		try {
+			return Paths.get(URI.create(uri));
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		return null;
 	}
-
-	// public boolean isLowerCase(String test) {
-	//
-	// }
 }

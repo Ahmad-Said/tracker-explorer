@@ -56,6 +56,12 @@
                   <MenuItem mnemonicParsing="false" onAction="#GetBulkRenameUtility" text="Get Bulk Rename Utility" />
             </items>
           </Menu>
+            <Menu fx:id="cortanaMenu" mnemonicParsing="false" text="Cortana Shortcuts">
+               <items>
+                  <MenuItem mnemonicParsing="false" onAction="#openSettingTrackerPlayer" text="Setting" />
+                  <MenuItem mnemonicParsing="false" text="otherShortcut" />
+               </items>
+            </Menu>
             <Menu fx:id="helpMenu" mnemonicParsing="false" text="Help">
                <items>
                   <MenuItem mnemonicParsing="false" onAction="#KeyBoardShortcut" text="Keyboard Shortcut" />

@@ -4,7 +4,9 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.List;
 
+import application.StringHelper;
 import javafx.util.Pair;
 
 public class FavoriteViewList implements Cloneable {
@@ -17,6 +19,36 @@ public class FavoriteViewList implements Cloneable {
 		setLeftLoc(new ArrayList<>());
 		setRightLoc(new ArrayList<Path>());
 		setTitle(new ArrayList<String>());
+	}
+
+	/**
+	 * Take 3 list of string data in order, and skip bad URI format
+	 *
+	 * @param favoritesTitles    List of String title
+	 * @param favoritesLeftLocs  List of URI String to be parsed
+	 * @param favoritesRightLocs List of URI String to be parsed
+	 */
+	public void initializeFavoriteViewList(List<String> favoritesTitles, List<String> favoritesLeftLocs,
+			List<String> favoritesRightLocs) {
+		if (favoritesTitles == null || favoritesLeftLocs == null || favoritesRightLocs == null) {
+			return;
+		}
+		int size = Math.min(Math.min(favoritesTitles.size(), favoritesLeftLocs.size()), favoritesRightLocs.size());
+		String title = "";
+		Path left = null, right = null;
+
+		for (int i = 0; i < size; i++) {
+			title = favoritesTitles.get(i);
+			if (title == null || title.isEmpty()) {
+				continue;
+			}
+			left = StringHelper.parseUriToPath(favoritesLeftLocs.get(i));
+			right = StringHelper.parseUriToPath(favoritesRightLocs.get(i));
+			if (left == null || right == null) {
+				continue;
+			}
+			addNewFovorite(title, left, right);
+		}
 	}
 
 	@Override

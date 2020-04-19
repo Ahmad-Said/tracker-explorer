@@ -21,7 +21,9 @@
 In this application you will track yourself, it is a simple file explorer with 2 main views that can interact between each other, And for each file, we have a status Seen or Unseen and filtering Media ...And so much more!
 
 This application is not intended to be a replacement to windows explorer but it integrates with it to master Exploring Files.
-So Happy Exploring! [Download here](https://github.com/Ahmad-Said/tracker-explorer/releases/latest)
+So Happy Exploring!
+
+## [->> Download here <<-](https://github.com/Ahmad-Said/tracker-explorer/releases/latest)
 
 ***
 

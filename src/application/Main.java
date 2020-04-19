@@ -6,7 +6,9 @@ package application;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Path;
+import java.text.ParseException;
 import java.util.List;
+import java.util.Map;
 
 import application.controller.WelcomeController;
 import application.datatype.Setting;
@@ -16,6 +18,8 @@ import javafx.event.EventHandler;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
+import javafx.scene.control.Alert.AlertType;
+import javafx.scene.control.Label;
 import javafx.scene.image.Image;
 import javafx.scene.input.KeyCode;
 import javafx.scene.input.KeyCodeCombination;
@@ -38,11 +42,11 @@ public class Main extends Application {
 			KeyCombination.CONTROL_DOWN);
 	public static final KeyCombination SHORTCUT_RENAME = new KeyCodeCombination(KeyCode.F2);
 	static final KeyCombination SHORTCUT_SWITCH_NEXT_TABS = new KeyCodeCombination(KeyCode.TAB,
-			KeyCombination.CONTROL_ANY);
+			KeyCombination.CONTROL_DOWN);
 	static final KeyCombination SHORTCUT_SWITCH_PREVIOUS_TABS = new KeyCodeCombination(KeyCode.TAB,
 			KeyCombination.CONTROL_DOWN, KeyCombination.SHIFT_DOWN);
 	static final KeyCombination SHORTCUT_CLOSE_CURRENT_TAB = new KeyCodeCombination(KeyCode.W,
-			KeyCombination.CONTROL_ANY);
+			KeyCombination.CONTROL_DOWN);
 	static final KeyCombination SHORTCUT_OPEN_NEW_TAB = new KeyCodeCombination(KeyCode.T, KeyCombination.CONTROL_DOWN);
 	static final KeyCombination SHORTCUT_EASY_FOCUS_SWITCH_VIEW = new KeyCodeCombination(KeyCode.F3);
 	static final KeyCombination SHORTCUT_SEARCH = new KeyCodeCombination(KeyCode.F, KeyCombination.CONTROL_DOWN);
@@ -54,21 +58,75 @@ public class Main extends Application {
 	private static WelcomeController mWelcomeController;
 	private static Stage PrimaryStage;
 
+	public static enum ArgsType {
+		player, silent
+	}
+
 	@Override
 	public void start(Stage primaryStage) throws IOException {
 		PrimaryStage = primaryStage;
-		// the old way but now i need the controller of the scene to call it here and
-		// bind some action
-		// FXMLLoader.load(getClass().getResource("/fxml/bootstrap3.fxml"));
-		// Parent root = FXMLLoader.load(getClass().getResource("/fxml/Welcome.fxml"));
-		// so i get my loader in another variable to get controller from it :)
-		// if asking what controller does to this scene as it say with it i can control
-		// all the content of the scene
-		// Setting.loadSetting();
+		Setting.loadSetting();
+		Parameters parameters = getParameters();
 
-		// deploy configuration:
-		// this.getFrame().setIconImage(Toolkit.getDefaultToolkit().getImage(getClass()
-		// .getClassLoader().getResource("MyProject/resources/myIcon.png")));
+		// argument in the form argument
+		List<String> unnamed = parameters.getUnnamed();
+
+		// argument in the form --name=value
+		Map<String, String> named = parameters.getNamed();
+
+		// ---------- Tracker Player action --player=playlistPath -----------------
+		boolean isSilentWithShutdown = true;
+		primaryStage.setScene(new Scene(new Label()));
+		primaryStage.centerOnScreen();
+		if (named.containsKey(ArgsType.player.toString())) {
+			File playlist = new File(named.get(ArgsType.player.toString()));
+			// initialize simple Primary stage so Dialog helper can be shown
+			if (playlist.exists()) {
+				try {
+					TrackerPlayer.openPlaylistInLnk(playlist);
+				} catch (ParseException e1) {
+					e1.printStackTrace();
+					DialogHelper.showException(e1);
+				}
+			} else {
+				DialogHelper.showAlert(AlertType.ERROR, "Tracker Player", "Playlist File is Missing!\n",
+						"\t\tNOT FOUND !\n  ----  " + playlist + "  ----  \n\nPlease change it's location in setting.");
+				TrackerPlayer.openTrackerSettingGUI();
+				isSilentWithShutdown = false;
+			}
+		}
+
+		// ---------- Silent Action --silent=1 -----------------
+		if (named.containsKey(ArgsType.silent.toString())) {
+			if (isSilentWithShutdown) {
+				Platform.exit();
+				System.exit(0);
+				return;
+			}
+			if (named.get(ArgsType.silent.toString()).equals("1")) {
+				return;
+			}
+		}
+
+		// ---------- Argument Path Action 'initialPath' -----------------
+		if (unnamed.size() == 0) {
+			initializePath();
+		} else {
+			// I get windows argument here
+			// to resolve opening root dir
+			String path = unnamed.get(0);
+			path = path.replace("\"", "");
+			File temp = new File(path);
+			if (temp.exists()) {
+				StringHelper.InitialLeftPath = temp.toPath();
+				StringHelper.InitialRightPath = temp.toPath();
+			} else {
+				initializePath();
+			}
+		}
+
+		FileTracker.updateUserFileName(Setting.getActiveUser());
+
 		FXMLLoader loader = new FXMLLoader();
 		// loader.setLocation(getClass().getResource("/fxml/bootstrap3.fxml"));
 		loader.setLocation(getClass().getResource("/fxml/Welcome.fxml"));
@@ -82,6 +140,10 @@ public class Main extends Application {
 //		new JMetro(JMetro.Style.LIGHT).applyTheme(root);
 		scene.getStylesheets().add("/css/bootstrap3.css");
 
+		PrimaryStage.setScene(scene);
+		PrimaryStage.getIcons().add(new Image(Main.class.getResourceAsStream("/img/icon.png")));
+
+		PrimaryStage.show();
 		scene.addEventFilter(KeyEvent.KEY_RELEASED, e -> {
 			if (SHORTCUT_DELETE.match(e)) {
 				mWelcomeController.delete();
@@ -120,11 +182,7 @@ public class Main extends Application {
 				mWelcomeController.RevealINExplorer();
 			}
 		});
-		PrimaryStage.setScene(scene);
-		// PrimaryStage.getIcons().add(new
-		// Image(Main.class.getResourceAsStream("/img/welcome.png")));
-		PrimaryStage.getIcons().add(new Image(Main.class.getResourceAsStream("/img/icon.png")));
-		PrimaryStage.show();
+
 		PrimaryStage.setOnCloseRequest(new EventHandler<WindowEvent>() {
 			@Override
 			public void handle(WindowEvent t) {
@@ -135,55 +193,48 @@ public class Main extends Application {
 				System.exit(0);
 			}
 		});
+
 		FileHelper.initializeView();
 	}
 
 	public static void main(String[] args) {
-		Setting.loadSetting();
+		launch(args);
+	}
+
+	private static void initializePath() {
 		boolean doneLeft = false, doneRight = false;
 		// priority to argument then last know location then root 0 (C)
-		if (args.length == 0) {
-			File temp;
-			if (Setting.getLeftLastKnowLocation() != null) {
-				// check if file still exist then distribute task and switch the missing one to
-				// the other
-				temp = new File(Setting.getLeftLastKnowLocation().toString());
-				if (temp.exists()) {
-					StringHelper.InitialLeftPath = Setting.getLeftLastKnowLocation();
+		File temp;
+		if (Setting.getLeftLastKnowLocation() != null) {
+			// check if file still exist then distribute task and switch the missing one to
+			// the other
+			temp = new File(Setting.getLeftLastKnowLocation().toString());
+			if (temp.exists()) {
+				StringHelper.InitialLeftPath = Setting.getLeftLastKnowLocation();
+				doneLeft = true;
+			}
+		}
+		if (Setting.getRightLastKnowLocation() != null) {
+			temp = new File(Setting.getRightLastKnowLocation().toString());
+			if (temp.exists()) {
+				StringHelper.InitialRightPath = Setting.getRightLastKnowLocation();
+				doneRight = true;
+				if (!doneLeft) {
+					StringHelper.InitialLeftPath = StringHelper.InitialRightPath;
 					doneLeft = true;
 				}
 			}
-			if (Setting.getRightLastKnowLocation() != null) {
-				temp = new File(Setting.getRightLastKnowLocation().toString());
-				if (temp.exists()) {
-					StringHelper.InitialRightPath = Setting.getRightLastKnowLocation();
-					doneRight = true;
-					if (!doneLeft) {
-						StringHelper.InitialLeftPath = StringHelper.InitialRightPath;
-						doneLeft = true;
-					}
-				}
-			}
-			if (doneLeft && !doneRight) {
-				StringHelper.InitialRightPath = StringHelper.InitialLeftPath;
-				doneRight = true;
-			}
-
-			if (!doneLeft) {
-				File[] roots = File.listRoots();
-				StringHelper.InitialLeftPath = roots[0].toPath();
-				StringHelper.InitialRightPath = roots[0].toPath();
-			}
-		} else {
-			// i get windows argument here
-			// to resolve opening root dir
-			args[0] = args[0].replace("\"", "");
-			File temp = new File(args[0]);
-			StringHelper.InitialLeftPath = temp.toPath();
-			StringHelper.InitialRightPath = temp.toPath();
 		}
-		FileTracker.updateUserFileName(Setting.getActiveUser());
-		launch(args);
+		if (doneLeft && !doneRight) {
+			StringHelper.InitialRightPath = StringHelper.InitialLeftPath;
+			doneRight = true;
+		}
+
+		if (!doneLeft) {
+			File[] roots = File.listRoots();
+			StringHelper.InitialLeftPath = roots[0].toPath();
+			StringHelper.InitialRightPath = roots[0].toPath();
+		}
 	}
 
 	public static void refreshWelcomeController(List<Path> paths) {

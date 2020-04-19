@@ -21,6 +21,7 @@ import application.DialogHelper;
 import application.FileHelper;
 import application.Main;
 import application.StringHelper;
+import application.WatchServiceHelper;
 import application.fxGraphics.IntField;
 import application.model.RenameUtilityViewModel;
 import javafx.collections.FXCollections;
@@ -727,6 +728,7 @@ public class RenameUtilityController {
 		RemoveToIndex.clear();
 		ApplyNumber.setSelected(false);
 		isTurnOnGenerateNewNames = true;
+		ClearKeepFirst.setValue(0);
 		generateNewNames();
 	}
 
@@ -743,6 +745,10 @@ public class RenameUtilityController {
 			HashMap<Path, Path> currentNewToOldRename = new HashMap<>();
 			boolean renameOccur = false;
 			boolean isThereRealFile = false;
+			// TODO conserve status seen and notes!
+			WatchServiceHelper.setRuning(false);
+			Path oldFile = null, newFile = null;
+
 			for (RenameUtilityViewModel t : DataTable) {
 				if (t.getConsiderCheckBox().isSelected()) {
 					renameOccur = true;
@@ -752,9 +758,8 @@ public class RenameUtilityController {
 					} else {
 						// this is a real file
 						try {
-							Path oldFile = t.getPathFile();
-							Path newFile = t.getPathFile()
-									.resolveSibling(StringHelper.textFlowToString(t.getNewName()));
+							oldFile = t.getPathFile();
+							newFile = t.getPathFile().resolveSibling(StringHelper.textFlowToString(t.getNewName()));
 							FileHelper.RenameHelper(oldFile, newFile);
 							t.setPathFile(newFile);
 							t.setOldName(newFile.getFileName().toString());
@@ -769,9 +774,18 @@ public class RenameUtilityController {
 					}
 				}
 			}
+			WatchServiceHelper.setRuning(true);
 			if (!renameOccur) {
 				return;
 			}
+			try {
+				// just to refresh the view:
+				FileHelper.RenameHelper(newFile, oldFile);
+				FileHelper.RenameHelper(oldFile, newFile);
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+
 			tableRename.refresh();
 			resetAllField();
 			recalculateLimitLength(

@@ -5,10 +5,8 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.PrintStream;
-import java.net.URI;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -19,6 +17,8 @@ import java.util.stream.Collectors;
 
 import application.DialogHelper;
 import application.RunMenu;
+import application.StringHelper;
+import application.TeraCopy;
 import application.VLC;
 import javafx.scene.control.Alert.AlertType;
 
@@ -27,7 +27,7 @@ public class Setting {
 	// this things are temporary solution later will use :
 	// lightbend refrence.conf see testimagewthatable project
 	// these initial definition are even if not initialized
-	private static String Version = "4.0";
+	private static String Version = "5.0";
 	private static Boolean BackSync = false;
 	private static Boolean AutoExpand = true;
 	private static Boolean LoadAllIcon = true;
@@ -39,9 +39,10 @@ public class Setting {
 	private static String VLCHttpPass = "1234";
 	private static int MaxLimitFilesRecursive = 10000;
 	private static int MaxDepthFilesRecursive = 5;
-	private static String VLCPath = null;
 	private static boolean isDebugMode = false;
 	private static boolean autoRenameUTFFile = false;
+	private static boolean useTeraCopyByDefault = false;
+	private static boolean autoCloseClearDoneFileOperation = true;
 
 	private static boolean restoreLastOpenedFavorite = true;
 	private static ArrayList<Integer> lastOpenedFavoriteIndex = new ArrayList<Integer>();
@@ -56,9 +57,10 @@ public class Setting {
 	private static Map<String, String> mapOptions = new HashMap<String, String>();
 	private static File mSettingFile = new File(
 			System.getenv("APPDATA") + "\\Tracker Explorer\\TrackerExplorerSetting.txt");
+	public static File SETTING_DIRECTORY = new File(System.getenv("APPDATA") + "\\Tracker Explorer");
 
 	public static void initializeSetting() {
-		Version = "4.0";
+		Version = "5.0";
 		BackSync = false;
 		AutoExpand = true;
 		LoadAllIcon = true;
@@ -69,11 +71,20 @@ public class Setting {
 		ShowRightNotesColumn = false;
 		ActiveUser = "default";
 		MaxLimitFilesRecursive = 10000;
+		MaxDepthFilesRecursive = 5;
 		setVLCHttpPass("1234");
-		if (VLC.initializeDefaultVLCPath()) {
-			VLCPath = VLC.getPath_Setup().toUri().toString();
-		}
+
+		VLC.initializeDefaultVLCPath();
+		TeraCopy.initializeDefaultVLCPath();
+
 		UserNames.add("default");
+
+		isDebugMode = false;
+		autoRenameUTFFile = false;
+		useTeraCopyByDefault = false;
+		autoCloseClearDoneFileOperation = true;
+		restoreLastOpenedFavorite = true;
+
 		try {
 			RunMenu.initialize();
 			migrateOldSetting();
@@ -97,10 +108,15 @@ public class Setting {
 			p.println("/this is a generated folder by application to Save Setting");
 			p.println("Version=" + Version);
 			p.println("VLCHttpPass=" + getVLCHttpPass());
-			p.println("VLCPath=" + VLCPath);
+			// saved as URI
+			p.println("VLCPath=" + VLC.getPath_Setup().toUri().toString());
+			if (TeraCopy.getPath_Setup() != null) {
+				p.println("TeraCopyPath=" + TeraCopy.getPath_Setup().toUri().toString());
+			}
 			p.println("BackSync=" + BackSync);
 			p.println("AutoExpand=" + AutoExpand);
 			p.println("autoRenameUTFFile=" + autoRenameUTFFile);
+			p.println("useTeraCopyByDefault=" + useTeraCopyByDefault);
 			p.println("restoreLastOpenedFavorite=" + restoreLastOpenedFavorite);
 			p.println("LoadAllIcon=" + LoadAllIcon);
 			p.println("ActiveUser=" + ActiveUser);
@@ -108,31 +124,38 @@ public class Setting {
 			p.println("ShowRightNotesColumn=" + ShowRightNotesColumn);
 			p.println("MaxLimitFilesRecursive=" + MaxLimitFilesRecursive);
 
+			// In General was using Path.toUri() and was all good
+			// but after on when creating network location file like:
+			// webdav \\192.168.0.104@8080\DavWWWRoot
+			// Path.toUri() gives a bad converting (one way):
+			// file:////192.168.0.104@8080/DavWWWRoot/
+			// File.toURI() gives a 2 ways uri (create and parse):
+			// file:////192.168.0.104@8080/DavWWWRoot/
+			//
+			// As result use file.toFile().toURI()) for network location
 			if (LeftLastKnowLocation != null) {
-				p.println("LeftLastKnowLocation=" + LeftLastKnowLocation.toUri().toString());
+				p.println("LeftLastKnowLocation=" + LeftLastKnowLocation.toFile().toURI());
 			} else {
 				p.println("LeftLastKnowLocation=null");
 			}
 			if (RightLastKnowLocation != null) {
-				p.println("RightLastKnowLocation=" + RightLastKnowLocation.toUri().toString());
+				p.println("RightLastKnowLocation=" + RightLastKnowLocation.toFile().toURI());
 			} else {
 				p.println("RightLastKnowLocation=null");
 			}
 			p.println("UserNames=" + String.join(";", UserNames));
 			p.println("lastOpenedFavoriteIndex=" + String.join(";",
 					lastOpenedFavoriteIndex.stream().map(m -> m.toString()).collect(Collectors.toList())));
-			// p.println("FavoritesLocations=" + String.join(";", (String[])
-			// FavoritesLocations.toArray(new
-			// String[FavoritesLocations.size()])));
+
 			// check https://winterbe.com/posts/2014/07/31/java8-stream-tutorial-examples/
 			p.println("FavoritesTitlesLocations="
 					+ FavoritesLocations.getTitle().stream().map(s -> s).collect(Collectors.joining(";")));
 
 			p.println("FavoritesLeftLocations=" + FavoritesLocations.getLeftLoc().stream()
-					.map(s -> s.toUri().toString()).collect(Collectors.joining(";")));
+					.map(s -> s.toFile().toURI().toString()).collect(Collectors.joining(";")));
 
 			p.println("FavoritesRightLocations=" + FavoritesLocations.getRightLoc().stream()
-					.map(s -> s.toUri().toString()).collect(Collectors.joining(";")));
+					.map(s -> s.toFile().toURI().toString()).collect(Collectors.joining(";")));
 			p.close();
 		} catch (IOException e) {
 			e.printStackTrace();
@@ -165,8 +188,10 @@ public class Setting {
 		} catch (FileNotFoundException e) {
 			e.printStackTrace();
 		}
-		// those assuming they are in order
-		// very bad as same as quickly on the go just for now
+		// To read:
+		List<String> favoritesTitles = null;
+		List<String> favoritesLeftLocs = null;
+		List<String> favoritesRightLocs = null;
 
 		for (String key : mapOptions.keySet()) {
 			String value = mapOptions.get(key);
@@ -178,11 +203,15 @@ public class Setting {
 					if (key.equals("VLCHttpPass")) {
 						setVLCHttpPass(value);
 					} else if (key.equals("VLCPath")) {
-						setVLCPath(value);
+						VLC.setPath_Setup(StringHelper.parseUriToPath(value));
+					} else if (key.equals("TeraCopyPath")) {
+						TeraCopy.setPath_Setup(StringHelper.parseUriToPath(value));
 					} else if (key.equals("BackSync")) {
 						BackSync = Boolean.parseBoolean(value);
 					} else if (key.equals("autoRenameUTFFile")) {
 						autoRenameUTFFile = Boolean.parseBoolean(value);
+					} else if (key.equals("useTeraCopyByDefault")) {
+						useTeraCopyByDefault = Boolean.parseBoolean(value);
 					} else if (key.equals("restoreLastOpenedFavorite")) {
 						restoreLastOpenedFavorite = Boolean.parseBoolean(value);
 					} else if (key.equals("AutoExpand")) {
@@ -196,9 +225,9 @@ public class Setting {
 					} else if (key.equals("MaxLimitFilesRecursive")) {
 						MaxLimitFilesRecursive = Integer.parseInt(value);
 					} else if (key.equals("LeftLastKnowLocation")) {
-						LeftLastKnowLocation = Paths.get(URI.create(value));
+						LeftLastKnowLocation = StringHelper.parseUriToPath(value);
 					} else if (key.equals("RightLastKnowLocation")) {
-						RightLastKnowLocation = Paths.get(URI.create(value));
+						RightLastKnowLocation = StringHelper.parseUriToPath(value);
 					} else if (key.equals("ActiveUser")) {
 						ActiveUser = value;
 					} else if (key.equals("UserNames")) {
@@ -208,17 +237,18 @@ public class Setting {
 						lastOpenedFavoriteIndex.clear();
 						Arrays.asList(value.split(";")).stream().mapToInt(m -> Integer.parseInt(m))
 								.forEach(e -> lastOpenedFavoriteIndex.add(e));
-						;
+
 					} else if (key.equals("FavoritesTitlesLocations")) {
-						FavoritesLocations.getTitle().addAll(Arrays.asList(value.split(";")));
+
+						// Favorites stuff to save for later and synchronize them
+						favoritesTitles = Arrays.asList(value.split(";"));
+
 					} else if (key.equals("FavoritesLeftLocations")) {
-						FavoritesLocations.getLeftLoc().addAll(Arrays.asList(value.split(";")).stream().map(s -> {
-							return Paths.get(URI.create(s));
-						}).collect(Collectors.toList()));
+
+						favoritesLeftLocs = Arrays.asList(value.split(";"));
+
 					} else if (key.equals("FavoritesRightLocations")) {
-						FavoritesLocations.getRightLoc().addAll(Arrays.asList(value.split(";")).stream().map(s -> {
-							return Paths.get(URI.create(s));
-						}).collect(Collectors.toList()));
+						favoritesRightLocs = Arrays.asList(value.split(";"));
 					}
 				} catch (Exception e) {
 					System.out.println("Something went wrong loading setting");
@@ -227,11 +257,7 @@ public class Setting {
 			}
 		}
 		scan.close();
-	}
-
-	public static void setVLCPath(String uriPath) {
-		VLCPath = uriPath;
-		VLC.setPath_Setup(Paths.get(URI.create(uriPath)));
+		FavoritesLocations.initializeFavoriteViewList(favoritesTitles, favoritesLeftLocs, favoritesRightLocs);
 	}
 
 	public static void migrateOldSetting() throws IOException {
@@ -326,8 +352,7 @@ public class Setting {
 			p.close();
 			Desktop.getDesktop().open(tempFile);
 		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			// e.printStackTrace();
+			e.printStackTrace();
 		}
 	}
 
@@ -346,8 +371,7 @@ public class Setting {
 			p.close();
 			Desktop.getDesktop().open(tempFile);
 		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			// e.printStackTrace();
+			e.printStackTrace();
 		}
 	}
 
@@ -380,7 +404,6 @@ public class Setting {
 	// Menu Added Successfully",
 	// "You can now right click anywhere and open me,Thanks you.");
 	// } catch (IOException | InterruptedException e) {
-	// // TODO Auto-generated catch block
 	// // e.printStackTrace();
 	// }
 	// else
@@ -408,7 +431,6 @@ public class Setting {
 	// Removed Successfully",
 	// "Action rolled Back,Sorry For inconveniance\nThanks you.");
 	// } catch (IOException | InterruptedException e) {
-	// // TODO Auto-generated catch block
 	// // e.printStackTrace();
 	// }
 	// else
@@ -508,8 +530,8 @@ public class Setting {
 		VLCHttpPass = vLCHttpPass;
 	}
 
-	public static String getVLCPath() {
-		return VLCPath;
+	public static Path getVLCPath() {
+		return VLC.getPath_Setup();
 	}
 
 	public static FavoriteViewList getFavoritesLocations() {
@@ -581,5 +603,27 @@ public class Setting {
 
 	public static void setLastOpenedFavoriteIndex(ArrayList<Integer> lastOpenedFavoriteIndex) {
 		Setting.lastOpenedFavoriteIndex = lastOpenedFavoriteIndex;
+	}
+
+	public static void setAutoCloseClearDoneFileOperation(boolean value) {
+		autoCloseClearDoneFileOperation = value;
+	}
+
+	public static boolean isAutoCloseClearDoneFileOperation() {
+		return autoCloseClearDoneFileOperation;
+	}
+
+	/**
+	 * @return the useTeraCopyByDefault
+	 */
+	public static boolean isUseTeraCopyByDefault() {
+		return useTeraCopyByDefault && TeraCopy.isWellSetup();
+	}
+
+	/**
+	 * @param useTeraCopyByDefault the useTeraCopyByDefault to set
+	 */
+	public static void setUseTeraCopyByDefault(boolean useTeraCopyByDefault) {
+		Setting.useTeraCopyByDefault = useTeraCopyByDefault;
 	}
 }

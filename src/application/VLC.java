@@ -11,8 +11,11 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Scanner;
+
+import org.jetbrains.annotations.Nullable;
 
 import application.controller.FilterVLCController;
 import application.datatype.MediaCutData;
@@ -22,24 +25,27 @@ import javafx.util.Duration;
 
 public class VLC {
 
-	private static ArrayList<String> ArrayAudioExt = new ArrayList<String>(
+	public final static ArrayList<String> ArrayAudioExt = new ArrayList<String>(
 			Arrays.asList("AAC", "AC3", "ALAC", "AMR", "DTS", "DVAudio", "XM", "FLAC", "It", "MACE", "MOD", "MP3",
 					"Opus", "PLS", "QCP", "QDM2", "QDMC", "S3M", "TTA", "WMA"));
-	private static ArrayList<String> ArrayPlayListExt = new ArrayList<String>(Arrays.asList("XSPF"));
-	private static ArrayList<String> ArrayVideoExt = new ArrayList<String>(
-			Arrays.asList("3GP", "ASF", "AVI", "DVR-MS", "FLV", "MKV", "MIDI", "MP4", "Ogg", "OGM", "WAV", "MPEG-2",
-					"MXF", "VOB", "RM", "Blu-ray", "DVD-Video", "VCD", "SVCD", "DVB", "HEIF", "AVIF", "WMV", "TS","MPEG"));
+	public final static ArrayList<String> ArrayPlayListExt = new ArrayList<String>(
+			Arrays.asList("XSPF", "M3U", "M3U8"));
+	public final static ArrayList<String> ArrayVideoExt = new ArrayList<String>(Arrays.asList("3GP", "ASF", "AVI",
+			"DVR-MS", "FLV", "MKV", "MIDI", "MP4", "Ogg", "OGM", "WAV", "MPEG-2", "MXF", "VOB", "RM", "Blu-ray",
+			"DVD-Video", "VCD", "SVCD", "DVB", "HEIF", "AVIF", "WMV", "TS", "MPEG"));
 
 	// private static String Path_Config= "%appdata%/vlc/vlc-qt-interface.ini";
 	private static Path Path_Config = new File(System.getenv("APPDATA") + "\\vlc\\vlc-qt-interface.ini").toPath();
 
-	private static Path Path_Setup;
+	private static Path Path_Setup = null;
+	private static String FILE_NAME = "vlc.exe";
 
 	public static Map<Path, Integer> RecentTracker = new HashMap<Path, Integer>();
 
 	/**
 	 * @return the path_Setup
 	 */
+	@Nullable
 	public static Path getPath_Setup() {
 		return Path_Setup;
 	}
@@ -94,9 +100,9 @@ public class VLC {
 		return ext.contains(StringHelper.getExtention(name));
 	}
 
-	public static boolean isInstalled() {
-		File test = VLC.getPath_Setup().toFile();
-		return test.exists();
+	public static boolean isWellSetup() {
+		return Path_Setup != null && Path_Setup.toFile().exists()
+				&& Path_Setup.getFileName().toString().equals(FILE_NAME);
 	}
 
 	public static boolean isPlaylist(String name) {
@@ -108,7 +114,7 @@ public class VLC {
 	}
 
 	public static boolean isVLCMediaExt(String name) {
-		return isAudio(name) || isVideo(name);
+		return isAudio(name) || isVideo(name) || isPlaylist(name);
 	}
 
 	public static int pickTime(Path path, Duration resumeTime) {
@@ -131,7 +137,8 @@ public class VLC {
 			return RecentTracker.get(path);
 		} else {
 			DialogHelper.showAlert(AlertType.ERROR, "VLC Picker", "Something went wrong",
-					"Try Again.\nPossible Reason: \n Recent mrl is turned Off.");
+					"Try Again.\nPossible Reason: \n - Recent mrl is turned Off."
+							+ "\n - Clip at early start or early end:\n\t Please enter time manually.");
 			return 0;
 		}
 	}
@@ -206,7 +213,7 @@ public class VLC {
 			} else // this to generate the file next to media
 			{
 				// WatchServiceHelper.setRuning(false); // prevent overload
-				String name = mediaName.replace(SystemIconsHelper.getFileExt(path.toString()), "[Filtered].xspf");
+				String name = mediaName.replace(StringHelper.getExtention(path.toString()), "[Filtered].xspf");
 				tempFile = path.getParent().resolve(name).toFile();
 				mediaLocation = path.toUri().toString().substring(path.toUri().toString().lastIndexOf('/') + 1);
 			}
@@ -265,7 +272,7 @@ public class VLC {
 			p.write("    </trackList>\r\n" + "</playlist>" + "\n\r");
 			p.close();
 			if (isFullPath) {
-				startXSPF(tempFile.toPath());
+				startXSPFInOrder(tempFile.toPath());
 				tempFile.deleteOnExit();
 			}
 			// else
@@ -283,6 +290,17 @@ public class VLC {
 		Path_Setup = path_Setup;
 	}
 
+	/**
+	 * Start VLC with given arguments
+	 *
+	 * <p>
+	 * <b>Important: </b> Call JVM for running Garbage Collector after calling this
+	 * function so VLC won't get stuck.<br>
+	 * ---------------><b> System.gc(); </b>
+	 *
+	 * @param arg
+	 * @return
+	 */
 	public static Process StartVlc(String arg) {
 		try {
 			Process p = null;
@@ -303,18 +321,34 @@ public class VLC {
 			return p;
 		} catch (IOException e) {
 			DialogHelper.showAlert(AlertType.ERROR, "Run VLC", "Could Not Run VLC",
-					"VLC is not installed on the system or misconfigured.\n\n Please Get VLC from the menu.");
+					"VLC is not installed on the system or misconfigured.\n\n Please Get/Configure VLC using VLC menu.");
 			e.printStackTrace();
 		}
 		return null;
 	}
 
-	public static void startXSPF(Path path) {
-		watchWithRemote(path, "");
+	/**
+	 * Start Playlist in order with remote feature
+	 *
+	 * <p>
+	 * <b>Important: </b> Call JVM for running Garbage Collector after calling this
+	 * function so VLC won't get stuck.<br>
+	 * ---------------><b> System.gc(); </b>
+	 *
+	 * @param arg
+	 * @return
+	 */
+	public static void startXSPFInOrder(Path path) {
+		watchWithRemote(path, "--no-random");
 	}
 
 	/**
-	 * Start VLC and open http Lua remote with the saved password(1234) if default
+	 * Start VLC and open http Lua remote with the saved password(1234)
+	 *
+	 * <p>
+	 * <b>Important: </b> Call JVM for running Garbage Collector after calling this
+	 * function so VLC won't get stuck.<br>
+	 * ---------------><b> System.gc(); </b>
 	 *
 	 * @param path        can be null
 	 * @param addArgument can be anything add at the last of command
@@ -326,6 +360,48 @@ public class VLC {
 		// we do start watching in remote mode only in case
 		StartVlc(" --extraintf=http --http-password=" + Setting.getVLCHttpPass() + " --qt-recentplay-filter=watch*"
 				+ addArgument);
+	}
+
+	/**
+	 *
+	 *
+	 * @param mediaFiles
+	 * @param playlist   Can be absolute path or just a name to be automatically
+	 *                   saved to {@linkplain TrackerPlayer#SHORTCUT_DIRECTORY}
+	 */
+	public static void createPlaylistM3U(List<Path> mediaFiles, Path playlist) {
+
+		// Forcing M3U8 Extension
+		String name = playlist.getFileName().toString();
+		if (!StringHelper.getExtention(name).equals("m3u8")) {
+			name = StringHelper.getBaseName(name) + ".m3u8";
+			playlist = playlist.getParent().resolve(name);
+		}
+		// Set to start menu path by default
+		if (!playlist.isAbsolute()) {
+			playlist = TrackerPlayer.SHORTCUT_DIRECTORY.resolve(name);
+		}
+
+		try {
+			// creating Playlist file
+			File playlistFile = playlist.toFile();
+			playlistFile.getParentFile().mkdirs();
+			playlistFile.createNewFile();
+
+			OutputStreamWriter p = new OutputStreamWriter(new FileOutputStream(playlistFile), StandardCharsets.UTF_8);
+
+			// initialize things: template
+			String initi = "#EXTM3U\r\n" + "#PLAYLIST: " + name + "\r\n";
+
+			p.write(initi + "\n\r");
+			for (Path path : mediaFiles) {
+				p.write("#EXTINF:0," + path.getFileName() + "\n\r");
+				p.write(path.toUri().toString() + "\n\r");
+			}
+			p.close();
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
 	}
 
 }

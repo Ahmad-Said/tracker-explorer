@@ -3,6 +3,7 @@
 <?import application.fxGraphics.IntField?>
 <?import java.lang.String?>
 <?import javafx.geometry.Insets?>
+<?import javafx.scene.Cursor?>
 <?import javafx.scene.control.Button?>
 <?import javafx.scene.control.CheckBox?>
 <?import javafx.scene.control.Label?>
@@ -59,14 +60,33 @@
       </GridPane>
    </bottom>
    <center>
-      <TabPane prefHeight="200.0" prefWidth="200.0" tabClosingPolicy="UNAVAILABLE" BorderPane.alignment="CENTER">
+      <TabPane fx:id="tabPaneSetting" prefHeight="200.0" prefWidth="200.0" tabClosingPolicy="UNAVAILABLE" BorderPane.alignment="CENTER">
         <tabs>
-          <Tab text="General Setting">
+          <Tab fx:id="tabGeneralSetting" text="General Setting">
                <content>
                   <ScrollPane fitToHeight="true" fitToWidth="true" prefHeight="200.0" prefWidth="200.0">
                      <content>
                         <VBox maxWidth="1.7976931348623157E308">
                            <children>
+                              <TitledPane expanded="false" layoutX="10.0" layoutY="10.0" prefHeight="108.0" prefWidth="634.0" text="Use TeraCopy for File operations" wrapText="true">
+                                 <content>
+                                    <AnchorPane prefHeight="200.0" prefWidth="200.0">
+                                       <children>
+                                          <Label layoutX="14.0" layoutY="14.0" text="Description" />
+                                          <Text layoutX="27.0" layoutY="52.0" strokeType="OUTSIDE" strokeWidth="0.0" text="Replace built in copy/move operation with famous copier &quot;TeraCopy&quot;." wrappingWidth="359.3330078125" />
+                                          <CheckBox fx:id="useTeraCopy" layoutX="497.0" layoutY="36.0" mnemonicParsing="false" text="Use TeraCopy" />
+                                          <Text layoutX="76.0" layoutY="99.0" onMouseClicked="#openTeraCopyLink" strokeType="OUTSIDE" strokeWidth="0.0" text="Get it Here: https://www.codesector.com/teracopy" underline="true" wrappingWidth="359.3330078125">
+                                             <cursor>
+                                                <Cursor fx:constant="HAND" />
+                                             </cursor>
+                                          </Text>
+                                          <Label layoutX="14.0" layoutY="121.0" text="TeraCopy Location:" />
+                                          <Label fx:id="teraCopyPath" layoutX="153.0" layoutY="121.0" text="Could not be detected automatically" wrapText="true" />
+                                          <Button layoutX="521.0" layoutY="116.0" mnemonicParsing="false" onAction="#ConfigureTeraCopyPath" text="Change" />
+                                       </children>
+                                    </AnchorPane>
+                                 </content>
+                              </TitledPane>
                               <TitledPane expanded="false" prefHeight="108.0" prefWidth="634.0" text="Auto Rename Files To UTF" wrapText="true">
                                  <content>
                                     <AnchorPane prefHeight="200.0" prefWidth="200.0">
@@ -101,7 +121,18 @@
                                     </AnchorPane>
                                  </content>
                               </TitledPane>
-                              <TitledPane expanded="false" layoutX="10.0" layoutY="226.0" prefHeight="108.0" prefWidth="634.0" text="On Startup Open Recent Favorites Tabs" wrapText="true">
+                              <TitledPane expanded="false" layoutX="10.0" layoutY="226.0" prefHeight="108.0" prefWidth="634.0" text="Auto Clear Operation File" wrapText="true">
+                                 <content>
+                                    <AnchorPane prefHeight="200.0" prefWidth="200.0">
+                                       <children>
+                                          <Label layoutX="14.0" layoutY="14.0" text="Description" />
+                                          <Text layoutX="14.0" layoutY="51.0" strokeType="OUTSIDE" strokeWidth="0.0" text="After copying/moving file from view to another, the operation windows will auto clear it's history log." wrappingWidth="387.2490234375" />
+                                          <CheckBox fx:id="autoClearOperationFIle" layoutX="441.0" layoutY="59.0" mnemonicParsing="false" text="Auto Clear Operations log" />
+                                       </children>
+                                    </AnchorPane>
+                                 </content>
+                              </TitledPane>
+                              <TitledPane expanded="false" layoutX="10.0" layoutY="283.0" prefHeight="108.0" prefWidth="634.0" text="On Startup Open Recent Favorites Tabs" wrapText="true">
                                  <content>
                                     <AnchorPane prefHeight="200.0" prefWidth="200.0">
                                        <children>
@@ -121,7 +152,7 @@
                   </ScrollPane>
                </content>
           </Tab>
- <Tab text="User Manager">
+ <Tab fx:id="tabUserManager" text="User Manager">
                <content>
                   <ScrollPane fitToHeight="true" fitToWidth="true" prefHeight="200.0" prefWidth="200.0">
                      <content>
@@ -206,7 +237,7 @@
                   </ScrollPane>
                </content>
           </Tab>
-          <Tab text="Favorite Manger">
+          <Tab fx:id="tabFavoriteManger" text="Favorite Manager">
                <content>
                   <ScrollPane fitToHeight="true" fitToWidth="true" prefHeight="200.0" prefWidth="200.0">
                      <content>
@@ -304,6 +335,129 @@
                   </ScrollPane>
                </content>
           </Tab>
+           <Tab fx:id="tabTrackerPlayer" text="Tracker Player">
+               <content>
+                                 <ScrollPane fitToHeight="true" fitToWidth="true" prefHeight="200.0" prefWidth="200.0">
+                     <content>
+                        <VBox maxWidth="1.7976931348623157E308">
+                           <children>
+                              <AnchorPane prefHeight="52.0" prefWidth="627.0">
+                                 <children>
+                                    <Text layoutX="20.0" layoutY="28.0" strokeType="OUTSIDE" strokeWidth="0.0" text="- Tracker Player was intended to play a Playlist using windows Cortana (Voice command), so it create a shorcut in start menu to be recognized." wrappingWidth="590.822265625" />
+                                    <Label layoutX="3.0" layoutY="-10.0" text="Description" />
+                                 </children>
+                              </AnchorPane>
+                              <Label style="-fx-font-weight: bold;" text="Favorites Location">
+                                 <VBox.margin>
+                                    <Insets top="5.0" />
+                                 </VBox.margin></Label>
+                              <Label text="(Make a selection then sort Favorites as you like)" />
+                              <HBox prefHeight="50.0" prefWidth="611.0" VBox.vgrow="ALWAYS">
+                                 <children>
+                                    <ListView fx:id="playlistListView" prefHeight="194.0" prefWidth="443.0" HBox.hgrow="ALWAYS">
+                                       <HBox.margin>
+                                          <Insets right="20.0" />
+                                       </HBox.margin></ListView>
+                                    <VBox prefHeight="233.0" prefWidth="197.0" spacing="5.0">
+                                       <children>
+                                          <Label text="Actions">
+                                             <VBox.margin>
+                                                <Insets top="10.0" />
+                                             </VBox.margin></Label>
+                                          <Button mnemonicParsing="false" onAction="#addNewPlaylist" style="-fx-font-weight: bold;" styleClass="primary" text="Add new Playlist">
+                                             <VBox.margin>
+                                                <Insets right="10.0" />
+                                             </VBox.margin>
+                                          </Button>
+                                          <Button mnemonicParsing="false" onAction="#removeSelectedPlaylist" style="-fx-font-weight: bold;" styleClass="danger" text="X Remove Selected X" />
+                                          <Button mnemonicParsing="false" onAction="#openSelectedPlaylist" style="-fx-font-weight: bold;" styleClass="info" text="Open Selected Playlist" />
+                                       </children>
+                                       <HBox.margin>
+                                          <Insets />
+                                       </HBox.margin>
+                                       <padding>
+                                          <Insets bottom="5.0" />
+                                       </padding>
+                                    </VBox>
+                                 </children>
+                              </HBox>
+                              <HBox prefHeight="44.0" prefWidth="634.0">
+                                 <children>
+                                    <Label text="Target:">
+                                       <padding>
+                                          <Insets right="3.0" top="5.0" />
+                                       </padding>
+                                    </Label>
+                                    <Label fx:id="targetPlaylistName" layoutX="20.0" layoutY="20.0" style="-fx-font-weight: bold;" text="oldName" HBox.hgrow="ALWAYS">
+                                       <padding>
+                                          <Insets right="20.0" top="5.0" />
+                                       </padding>
+                                    </Label>
+                                    <Label text="Rename">
+                                       <padding>
+                                          <Insets right="3.0" top="5.0" />
+                                       </padding>
+                                    </Label>
+                                    <TextField fx:id="inputPlaylistName" />
+                                    <Button mnemonicParsing="false" onAction="#renamePlaylist" style="-fx-font-weight: bold;" styleClass="last" text="Apply ✓" />
+                                    <Label fx:id="inputPlaylistNameError" style="-fx-font-weight: bold;" text="Error Text" textFill="RED">
+                                       <HBox.margin>
+                                          <Insets left="10.0" top="5.0" />
+                                       </HBox.margin>
+                                    </Label>
+                                 </children>
+                                 <padding>
+                                    <Insets top="5.0" />
+                                 </padding>
+                              </HBox>
+                              <GridPane prefHeight="88.0" prefWidth="633.0">
+                                <columnConstraints>
+                                  <ColumnConstraints hgrow="SOMETIMES" minWidth="10.0" prefWidth="100.0" />
+                                </columnConstraints>
+                                <rowConstraints>
+                                  <RowConstraints minHeight="10.0" prefHeight="30.0" vgrow="SOMETIMES" />
+                                </rowConstraints>
+                                 <children>
+                                    <Label text="On Run Location:">
+                                       <padding>
+                                          <Insets right="20.0" top="5.0" />
+                                       </padding>
+                                    </Label>
+                                    <Label fx:id="targetPlaylistLocation" onMouseClicked="#browsePlaylistLocation" style="-fx-font-weight: bold;" text="Target Location will be shown here" textFill="#3115e4" underline="true" wrapText="true" GridPane.halignment="LEFT" GridPane.hgrow="ALWAYS" GridPane.vgrow="ALWAYS">
+                                       <padding>
+                                          <Insets right="20.0" top="5.0" />
+                                       </padding>
+                                       <GridPane.margin>
+                                          <Insets left="120.0" right="20.0" />
+                                       </GridPane.margin>
+                                       <cursor>
+                                          <Cursor fx:constant="HAND" />
+                                       </cursor>
+                                    </Label>
+                                    <Button mnemonicParsing="false" onAction="#changeLocPlaylist" style="-fx-font-weight: bold;" styleClass="last" text="Change" GridPane.halignment="RIGHT">
+                                       <GridPane.margin>
+                                          <Insets />
+                                       </GridPane.margin>
+                                    </Button>
+                                    <Label fx:id="targetPlaylistLocationError" style="-fx-font-weight: bold;" text="Playlist Not Found!" textFill="RED" GridPane.halignment="RIGHT">
+                                       <GridPane.margin>
+                                          <Insets bottom="50.0" />
+                                       </GridPane.margin>
+                                    </Label>
+                                 </children>
+                              </GridPane>
+                           </children>
+                           <padding>
+                              <Insets bottom="10.0" left="10.0" right="10.0" top="10.0" />
+                           </padding>
+                        </VBox>
+                     </content>
+                     <padding>
+                        <Insets bottom="10.0" left="10.0" right="10.0" top="10.0" />
+                     </padding>
+                  </ScrollPane>
+               </content>
+           </Tab>
         </tabs>
       </TabPane>
    </center>

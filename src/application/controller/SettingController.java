@@ -1,13 +1,22 @@
 package application.controller;
 
+import java.io.File;
 import java.io.IOException;
+import java.nio.file.Path;
+import java.text.ParseException;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
 import application.DialogHelper;
+import application.FileHelper;
 import application.FileTracker;
 import application.Main;
+import application.StringHelper;
+import application.TeraCopy;
+import application.TrackerPlayer;
 import application.datatype.Setting;
 import application.fxGraphics.IntField;
 import javafx.collections.FXCollections;
@@ -22,41 +31,34 @@ import javafx.scene.control.CheckBox;
 import javafx.scene.control.Label;
 import javafx.scene.control.ListView;
 import javafx.scene.control.SelectionMode;
+import javafx.scene.control.Tab;
+import javafx.scene.control.TabPane;
 import javafx.scene.control.TextField;
+import javafx.scene.control.Tooltip;
 import javafx.scene.image.Image;
 import javafx.scene.input.KeyCode;
+import javafx.stage.FileChooser;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
 import javafx.util.Pair;
+import mslinks.ShellLinkException;
 
 public class SettingController {
 
-	@FXML
-	private ListView<String> favoritesListView;
+	// ----------------------------- General Setting -----------------------------
 
 	@FXML
-	private ListView<String> userListView;
-
-	@FXML
-	private TextField inputFavoriteName;
-
-	@FXML
-	private TextField inputNewUser;
-
-	@FXML
-	private Label targetFavoriteName;
-
-	@FXML
-	private Label inputFavoriteNameError;
-
-	@FXML
-	private Label inputNewUserError;
-
-	@FXML
-	private Label currentActiveUser;
+	private Tab tabGeneralSetting;
 
 	@FXML
 	private IntField limitFilesRercursive;
+
+	@FXML
+	private Label teraCopyPath;
+	@FXML
+	private CheckBox useTeraCopy;
+	@FXML
+	private CheckBox autoClearOperationFIle;
 
 	@FXML
 	private CheckBox autoRenameCheckBox;
@@ -67,10 +69,73 @@ public class SettingController {
 	@FXML
 	private CheckBox autoBackSyncCheckBox;
 
-	private Stage settingStage; // defined to close it later
+	// ----------------------------- User Manager -----------------------------
+	@FXML
+	private Tab tabUserManager;
+
+	@FXML
+	private ListView<String> userListView;
+
+	@FXML
+	private TextField inputNewUser;
+
+	@FXML
+	private Label inputNewUserError;
+
+	@FXML
+	private Label currentActiveUser;
+
 	private ObservableList<String> userData = FXCollections.observableArrayList();
+
+	// ----------------------------- Favorite Manager -----------------------------
+	@FXML
+	private Tab tabFavoriteManger;
+
+	@FXML
+	private ListView<String> favoritesListView;
+
+	@FXML
+	private TextField inputFavoriteName;
+
+	@FXML
+	private Label targetFavoriteName;
+
+	@FXML
+	private Label inputFavoriteNameError;
+
 	private ObservableList<String> favoritesData = FXCollections.observableArrayList();
 	private HashMap<String, String> favoritesCurrentToOldNames = new HashMap<>();
+
+	// ----------------------------- Tracker Player -----------------------------
+	@FXML
+	private Tab tabTrackerPlayer;
+
+	@FXML
+	private ListView<String> playlistListView;
+
+	@FXML
+	private TextField inputPlaylistName;
+
+	@FXML
+	private Label targetPlaylistName;
+
+	@FXML
+	private Label targetPlaylistLocation;
+
+	@FXML
+	private Label inputPlaylistNameError;
+	@FXML
+	private Label targetPlaylistLocationError;
+
+	private ObservableList<String> playlistData = FXCollections.observableArrayList();
+	// From playlist name to it's real playlist(m3u8..) location
+	private HashMap<String, Path> playlistShorcutLocation = new HashMap<>();
+
+	// ----------------------------- Common UI -----------------------------
+	@FXML
+	private TabPane tabPaneSetting;
+
+	private Stage settingStage; // defined to close it later
 	private WelcomeController welcomeController;
 
 	/**
@@ -95,7 +160,7 @@ public class SettingController {
 
 			scene.getStylesheets().add("/css/bootstrap3.css");
 
-			settingStage.setTitle("Setting Controller");
+			settingStage.setTitle("Setting Tracker Explorer");
 			settingStage.setScene(scene);
 
 			settingStage.getIcons().add(new Image(Main.class.getResourceAsStream("/img/setting-512.png")));
@@ -113,23 +178,42 @@ public class SettingController {
 	}
 
 	private void initializeButtons() {
+		// -----GGGGGGGGGGGGGGGGGGG----- General Setting -----GGGGGGGGGGGGGGGGGGG-----
+
+		// -----UUUUUUUUUUUUUUUUUUU----- User Manager -----UUUUUUUUUUUUUUUUUUU-----
 		inputNewUserError.setText("");
-		inputFavoriteNameError.setText("");
 		inputNewUser.setOnKeyPressed(e -> {
 			if (e.getCode().equals(KeyCode.ENTER)) {
 				e.consume();
 				addNewUser(null);
 			}
 		});
+
+		// -----FFFFFFFFFFFFFFFFFFF----- Favorite Manager -----FFFFFFFFFFFFFFFFFFF-----
+		inputFavoriteNameError.setText("");
 		inputFavoriteName.setOnKeyPressed(e -> {
 			if (e.getCode().equals(KeyCode.ENTER)) {
 				e.consume();
 				renameFavorite();
 			}
 		});
+
+		// -----PPPPPPPPPPPPPPPPPPP----- Tracker Player -----PPPPPPPPPPPPPPPPPPP-----
+		inputPlaylistNameError.setText("");
+		targetPlaylistLocationError.setText("");
+
+		inputPlaylistName.setOnKeyPressed(e -> {
+			if (e.getCode().equals(KeyCode.ENTER)) {
+				e.consume();
+				renamePlaylist();
+			}
+		});
 	}
 
 	private void initializeListView() {
+		// -----GGGGGGGGGGGGGGGGGGG----- General Setting -----GGGGGGGGGGGGGGGGGGG-----
+
+		// -----UUUUUUUUUUUUUUUUUUU----- User Manager -----UUUUUUUUUUUUUUUUUUU-----
 		userListView.setItems(userData);
 		userListView.setOnMouseClicked(e -> {
 			if (e.getClickCount() >= 2) {
@@ -138,44 +222,95 @@ public class SettingController {
 			}
 		});
 
+		// -----FFFFFFFFFFFFFFFFFFF----- Favorite Manager -----FFFFFFFFFFFFFFFFFFF-----
 		favoritesListView.setItems(favoritesData);
 		favoritesListView.getSelectionModel().setSelectionMode(SelectionMode.MULTIPLE);
 		favoritesListView.setOnMouseClicked(e -> {
 			targetFavoriteName.setText(favoritesListView.getSelectionModel().getSelectedItem());
 			inputFavoriteName.setText(favoritesListView.getSelectionModel().getSelectedItem());
 		});
+
+		// -----PPPPPPPPPPPPPPPPPPP----- Tracker Player -----PPPPPPPPPPPPPPPPPPP-----
+		playlistListView.setItems(playlistData);
+		playlistListView.getSelectionModel().setSelectionMode(SelectionMode.MULTIPLE);
+		playlistListView.setOnMouseClicked(e -> updateTrackerPlayerTarget());
+		targetPlaylistLocation.setTooltip(new Tooltip());
+		targetPlaylistLocation.textProperty().addListener((observable, oldValue, newValue) -> {
+			targetPlaylistLocation.getTooltip().setText(newValue);
+		});
 	}
 
 	@FXML
 	private void resetFormToDefault(ActionEvent event) {
+
+		// -----GGGGGGGGGGGGGGGGGGG----- General Setting -----GGGGGGGGGGGGGGGGGGG-----
 		autoBackSyncCheckBox.setSelected(Setting.isBackSync());
 		autoRenameCheckBox.setSelected(Setting.isAutoRenameUTFFile());
+		autoClearOperationFIle.setSelected(Setting.isAutoCloseClearDoneFileOperation());
+		useTeraCopy.setSelected(Setting.isUseTeraCopyByDefault());
 		limitFilesRercursive.setValue(Setting.getMaxLimitFilesRecursive());
 		openRecentFavorites.setSelected(Setting.isRestoreLastOpenedFavorite());
+		if (TeraCopy.getPath_Setup() != null) {
+			teraCopyPath.setText(TeraCopy.getPath_Setup().toString());
+		}
 
+		// -----UUUUUUUUUUUUUUUUUUU----- User Manager -----UUUUUUUUUUUUUUUUUUU-----
 		userData.clear();
 		userData.addAll(Setting.getUserNames());
+		currentActiveUser.setText(Setting.getActiveUser());
 
+		// -----FFFFFFFFFFFFFFFFFFF----- Favorite Manager -----FFFFFFFFFFFFFFFFFFF-----
 		favoritesData.clear();
 		favoritesData.addAll(Setting.getFavoritesLocations().getTitle());
-
 		favoritesCurrentToOldNames.clear();
 		favoritesData.forEach(e -> favoritesCurrentToOldNames.put(e, e));
 		resetFavoriteRename();
 
-		currentActiveUser.setText(Setting.getActiveUser());
+		// -----PPPPPPPPPPPPPPPPPPP----- Tracker Player -----PPPPPPPPPPPPPPPPPPP-----
+		playlistData.clear();
+		TrackerPlayer.getAllShortcutTracker().forEach((shortcut, realFile) -> {
+			playlistShorcutLocation.put(StringHelper.getBaseName(shortcut.getName()), realFile.toPath());
+		});
+
+		playlistData.addAll(playlistShorcutLocation.keySet());
+		for (String key : playlistShorcutLocation.keySet()) {
+			if (!playlistShorcutLocation.get(key).toFile().exists()) {
+				playlistListView.getSelectionModel().select(key);
+				updateTrackerPlayerTarget();
+				break;
+			}
+		}
 	}
 
-	void resetFavoriteRename() {
-		targetFavoriteName.setText("oldName");
-		inputFavoriteName.setText("");
+	// ----------------------------- General Setting -----------------------------
+	@FXML
+	public void openTeraCopyLink() {
+		TeraCopy.openTeraCopyURL();
 	}
 
 	@FXML
-	void cancel(ActionEvent event) {
-		settingStage.close();
+	public void ConfigureTeraCopyPath() {
+		FileChooser fileChooser = new FileChooser();
+		fileChooser.setTitle("Navigate to where TeraCopy is installed");
+		File initfile = FileHelper.getParentExeFile(TeraCopy.getPath_Setup(), null);
+		fileChooser.setInitialDirectory(initfile);
+		fileChooser.getExtensionFilters().addAll(new FileChooser.ExtensionFilter("Path To ", "TeraCopy.exe"));
+
+		File teraCopyfile = fileChooser.showOpenDialog(settingStage);
+		if (teraCopyfile == null) {
+			return;
+		}
+		if (teraCopyfile.getName().equals("TeraCopy.exe")) {
+			TeraCopy.setPath_Setup(teraCopyfile.toPath());
+			DialogHelper.showAlert(AlertType.INFORMATION, "Configure TeraCopy Path", "TeraCopy well configured",
+					"Path: " + TeraCopy.getPath_Setup());
+		} else {
+			DialogHelper.showAlert(AlertType.ERROR, "Configure TeraCopy Path", "TeraCopy misconfigured",
+					"Please chose the right file 'TeraCopy.exe'\n\nCurrent Path:\n " + TeraCopy.getPath_Setup());
+		}
 	}
 
+	// ----------------------------- User Manager -----------------------------
 	@FXML
 	void removeSelectedUser(ActionEvent event) {
 		if (userListView.getSelectionModel().getSelectedIndex() == 0) {
@@ -192,7 +327,6 @@ public class SettingController {
 				currentActiveUser.setText(userData.get(0));
 			}
 		}
-
 	}
 
 	@FXML
@@ -210,6 +344,12 @@ public class SettingController {
 		} else {
 			inputNewUserError.setText("Name does not respect rules!");
 		}
+	}
+
+	// ----------------------------- Favorite Manager -----------------------------
+	void resetFavoriteRename() {
+		targetFavoriteName.setText("oldName");
+		inputFavoriteName.setText("");
 	}
 
 	@FXML
@@ -308,13 +448,168 @@ public class SettingController {
 		favoritesCurrentToOldNames.put(inputString, oldValue);
 	}
 
+	// ----------------------------- Tracker Player -----------------------------
+
+	public void switchToTrackerPlayerTab() {
+		tabPaneSetting.getSelectionModel().select(tabTrackerPlayer);
+	}
+
+	private void updateTrackerPlayerTarget() {
+		String target = playlistListView.getSelectionModel().getSelectedItem();
+		if (target == null) {
+			return;
+		}
+		targetPlaylistName.setText(target);
+		targetPlaylistLocation.setText(playlistShorcutLocation.get(target).toString());
+		if (!playlistShorcutLocation.get(target).toFile().exists()) {
+			targetPlaylistLocationError.setText("Playlist Not Found!->");
+		} else {
+			targetPlaylistLocationError.setText("");
+		}
+		inputPlaylistName.setText(target);
+	}
+
+	@FXML
+	private void addNewPlaylist() {
+		String name = TrackerPlayer.getPlaylistName();
+		if (name == null) {
+			return;
+		}
+		File location = TrackerPlayer.getPlaylistLocation(null, getSettingStage());
+		if (location == null) {
+			return;
+		}
+		TrackerPlayer.createNewShortcutPlaylist(name, location.toPath());
+		playlistData.add(name);
+		playlistShorcutLocation.put(name, location.toPath());
+	}
+
+	@FXML
+	private void removeSelectedPlaylist() {
+		if (playlistListView.getSelectionModel().getSelectedItems().size() == 0) {
+			targetSelectFirstErrorDialog();
+			return;
+		}
+		List<String> AIO = new ArrayList<>(playlistListView.getSelectionModel().getSelectedItems());
+		boolean ans = DialogHelper.showConfirmationDialog("Remove Tracker Player Shortcut",
+				"Are you sure you want to remove these Shortcut?", AIO.toString());
+		if (ans) {
+			for (String string : AIO) {
+				TrackerPlayer.deleteShortcutAndPlaylist(string);
+				playlistData.remove(string);
+				playlistShorcutLocation.remove(string);
+			}
+		}
+		resetPlaylistTargetField();
+	}
+
+	private void resetPlaylistTargetField() {
+		inputPlaylistName.setText("");
+		targetPlaylistLocation.setText("");
+		targetPlaylistName.setText("");
+	}
+
+	@FXML
+	private void renamePlaylist() {
+		String newName = inputPlaylistName.getText();
+		String oldName = targetPlaylistName.getText();
+
+		if (newName.equals(oldName)) {
+			return;
+		} else if (oldName.equals("oldName")) {
+			inputFavoriteNameError.setText("Select target from table first!");
+			return;
+		} else if (playlistData.contains(newName)) {
+			inputPlaylistNameError.setText("Name already exist!");
+			playlistListView.getSelectionModel().clearAndSelect(favoritesData.indexOf(newName));
+			return;
+		} else if (newName.isEmpty()) {
+			inputPlaylistNameError.setText("Name Could Not be empty!");
+			return;
+		}
+		inputPlaylistNameError.setText("");
+
+		try {
+			newName = StringHelper.getValidName(newName, " ");
+			Pair<File, File> shortcutToPlaylist = TrackerPlayer.renameShorcutAndPlaylist(oldName, newName);
+
+			int index = playlistData.indexOf(oldName);
+			playlistData.remove(oldName);
+			playlistData.add(index, newName);
+			playlistListView.getSelectionModel().clearAndSelect(index);
+
+			playlistShorcutLocation.remove(oldName);
+			playlistShorcutLocation.put(newName, shortcutToPlaylist.getValue().toPath());
+
+			updateTrackerPlayerTarget();
+		} catch (IOException | ShellLinkException e) {
+			e.printStackTrace();
+			DialogHelper.showException(e);
+		}
+	}
+
+	@FXML
+	private void changeLocPlaylist() {
+		String targetKey = targetPlaylistName.getText();
+		if (!playlistData.contains(targetKey)) {
+			targetSelectFirstErrorDialog();
+			return;
+		}
+		File playlistFile = TrackerPlayer
+				.getPlaylistLocation(new File(targetPlaylistLocation.getText()).getParentFile(), settingStage);
+		if (playlistFile == null) {
+			return;
+		}
+		TrackerPlayer.createNewShortcutPlaylist(targetKey, playlistFile.toPath());
+		playlistShorcutLocation.put(targetKey, playlistFile.toPath());
+		playlistListView.getSelectionModel().select(targetKey);
+		updateTrackerPlayerTarget();
+	}
+
+	@FXML
+	private void browsePlaylistLocation() {
+		File test = new File(targetPlaylistLocation.getText());
+		if (test.exists()) {
+			StringHelper
+					.RunRuntimeProcess(new String[] { "explorer.exe", "/select,", targetPlaylistLocation.getText() });
+		}
+	}
+
+	@FXML
+	private void openSelectedPlaylist() {
+		File playlist = new File(targetPlaylistLocation.getText());
+		if (!playlistData.contains(targetPlaylistName.getText())) {
+			targetSelectFirstErrorDialog();
+			return;
+		}
+		try {
+			TrackerPlayer.openPlaylistInLnk(playlist);
+		} catch (IOException | ParseException e) {
+			e.printStackTrace();
+			DialogHelper.showException(e);
+		}
+	}
+
+	private void targetSelectFirstErrorDialog() {
+		DialogHelper.showAlert(AlertType.ERROR, "Change Playlist location", "Select a target first from table list",
+				"");
+	}
+
+	// ----------------------------- Common UI -----------------------------
+	@FXML
+	void cancel(ActionEvent event) {
+		settingStage.close();
+	}
+
 	public Stage getSettingStage() {
 		return settingStage;
 	}
 
 	@FXML
 	void saveSetting(ActionEvent event) {
+		Setting.setAutoCloseClearDoneFileOperation(autoClearOperationFIle.isSelected());
 		Setting.setAutoRenameUTFFile(autoRenameCheckBox.isSelected());
+		Setting.setUseTeraCopyByDefault(useTeraCopy.isSelected());
 		Setting.setBackSync(autoBackSyncCheckBox.isSelected());
 		Setting.setMaxLimitFilesRecursive(limitFilesRercursive.getValue());
 		Setting.setRestoreLastOpenedFavorite(openRecentFavorites.isSelected());
@@ -347,8 +642,10 @@ public class SettingController {
 		if (welcomeController != null) {
 			welcomeController.changeInSetting();
 		} else {
-			DialogHelper.showAlert(AlertType.INFORMATION, "User Changed", hint,
-					"A refresh May be required to take effect");
+			if (isUsersChanged) {
+				DialogHelper.showAlert(AlertType.INFORMATION, "User Changed", hint,
+						"A refresh May be required to take effect");
+			}
 		}
 
 		Setting.saveSetting();

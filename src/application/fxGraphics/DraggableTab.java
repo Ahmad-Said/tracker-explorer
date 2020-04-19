@@ -1,16 +1,14 @@
 package application.fxGraphics;
 
 import java.io.File;
-import java.nio.file.Path;
 import java.util.HashSet;
-import java.util.LinkedList;
 import java.util.Set;
 
+import application.model.SplitViewState;
 import javafx.collections.ListChangeListener;
 import javafx.event.EventHandler;
 import javafx.geometry.Point2D;
 import javafx.geometry.Pos;
-import javafx.geometry.Rectangle2D;
 import javafx.scene.Scene;
 import javafx.scene.control.Control;
 import javafx.scene.control.Label;
@@ -20,7 +18,6 @@ import javafx.scene.control.Tooltip;
 import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.StackPane;
 import javafx.scene.paint.Color;
-import javafx.scene.shape.Rectangle;
 import javafx.scene.text.Text;
 import javafx.stage.Stage;
 import javafx.stage.StageStyle;
@@ -39,13 +36,8 @@ import javafx.stage.WindowEvent;
 public class DraggableTab extends Tab {
 
 	// my Program added
-	private Path leftPath, rightPath;
-	private String title;
 	private boolean isEnteringAction = true;
-	private LinkedList<File> rightBackQueue = new LinkedList<File>();
-	private LinkedList<File> rightNextQueue = new LinkedList<File>();
-	private LinkedList<File> leftBackQueue = new LinkedList<File>();
-	private LinkedList<File> leftNextQueue = new LinkedList<File>();
+	private SplitViewState leftSplitViewState, rightSplitViewState;
 
 	private static final Set<TabPane> tabPanes = new HashSet<>();
 	private Label nameLabel;
@@ -57,7 +49,7 @@ public class DraggableTab extends Tab {
 	static {
 		markerStage = new Stage();
 		markerStage.initStyle(StageStyle.UNDECORATED);
-		Rectangle dummy = new Rectangle(3, 10, Color.web("#555555"));
+		RectangleExt dummy = new RectangleExt(3, 30, Color.web("#555555"));
 		StackPane markerStack = new StackPane();
 		markerStack.getChildren().add(dummy);
 		markerStage.setScene(new Scene(markerStack));
@@ -71,10 +63,11 @@ public class DraggableTab extends Tab {
 	 *
 	 * @param text the text to appear on the tag label.
 	 */
-	public DraggableTab(String text, Path leftPath, Path rightPath) {
-		this.leftPath = leftPath;
-		this.rightPath = rightPath;
-		title = text;
+	public DraggableTab(String text, File leftDir, File rightDir) {
+
+		leftSplitViewState = new SplitViewState(leftDir);
+		rightSplitViewState = new SplitViewState(rightDir);
+
 		setTooltip(new Tooltip(text));
 		nameLabel = new Label(text);
 		setGraphic(nameLabel);
@@ -108,7 +101,7 @@ public class DraggableTab extends Tab {
 						end = true;
 						index--;
 					}
-					Rectangle2D rect = getAbsoluteRect(data.getInsertPane().getTabs().get(index));
+					RectangleExt rect = getAbsoluteRect(data.getInsertPane().getTabs().get(index));
 					if (end) {
 						markerStage.setX(rect.getMaxX() + 13);
 					} else {
@@ -207,18 +200,24 @@ public class DraggableTab extends Tab {
 		dragText.setText(text);
 	}
 
+	public String getLabelText() {
+		return nameLabel.getText();
+	}
+
 	private InsertData getInsertData(Point2D screenPoint) {
 		for (TabPane tabPane : tabPanes) {
-			Rectangle2D tabAbsolute = getAbsoluteRect(tabPane);
+			RectangleExt tabAbsolute = getAbsoluteRect(tabPane);
+			tabAbsolute.setWidth(tabAbsolute.getWidth() * 2);
+			tabAbsolute.setHeight(tabAbsolute.getHeight() * 2);
 			if (tabAbsolute.contains(screenPoint)) {
 				int tabInsertIndex = 0;
 				if (!tabPane.getTabs().isEmpty()) {
-					Rectangle2D firstTabRect = getAbsoluteRect(tabPane.getTabs().get(0));
+					RectangleExt firstTabRect = getAbsoluteRect(tabPane.getTabs().get(0));
 					if (firstTabRect.getMaxY() + 60 < screenPoint.getY()
 							|| firstTabRect.getMinY() > screenPoint.getY()) {
 						return null;
 					}
-					Rectangle2D lastTabRect = getAbsoluteRect(tabPane.getTabs().get(tabPane.getTabs().size() - 1));
+					RectangleExt lastTabRect = getAbsoluteRect(tabPane.getTabs().get(tabPane.getTabs().size() - 1));
 					if (screenPoint.getX() < firstTabRect.getMinX() + firstTabRect.getWidth() / 2) {
 						tabInsertIndex = 0;
 					} else if (screenPoint.getX() > lastTabRect.getMaxX() - lastTabRect.getWidth() / 2) {
@@ -228,8 +227,8 @@ public class DraggableTab extends Tab {
 							Tab leftTab = tabPane.getTabs().get(i);
 							Tab rightTab = tabPane.getTabs().get(i + 1);
 							if (leftTab instanceof DraggableTab && rightTab instanceof DraggableTab) {
-								Rectangle2D leftTabRect = getAbsoluteRect(leftTab);
-								Rectangle2D rightTabRect = getAbsoluteRect(rightTab);
+								RectangleExt leftTabRect = getAbsoluteRect(leftTab);
+								RectangleExt rightTabRect = getAbsoluteRect(rightTab);
 								if (betweenX(leftTabRect, rightTabRect, screenPoint.getX())) {
 									tabInsertIndex = i + 1;
 									break;
@@ -244,8 +243,8 @@ public class DraggableTab extends Tab {
 		return null;
 	}
 
-	private Rectangle2D getAbsoluteRect(Control node) {
-		return new Rectangle2D(
+	private RectangleExt getAbsoluteRect(Control node) {
+		return new RectangleExt(
 				node.localToScene(node.getLayoutBounds().getMinX(), node.getLayoutBounds().getMinY()).getX()
 						+ node.getScene().getWindow().getX(),
 				node.localToScene(node.getLayoutBounds().getMinX(), node.getLayoutBounds().getMinY()).getY()
@@ -253,7 +252,7 @@ public class DraggableTab extends Tab {
 				node.getWidth(), node.getHeight());
 	}
 
-	private Rectangle2D getAbsoluteRect(Tab tab) {
+	private RectangleExt getAbsoluteRect(Tab tab) {
 		Control node = ((DraggableTab) tab).getLabel();
 		return getAbsoluteRect(node);
 	}
@@ -262,108 +261,10 @@ public class DraggableTab extends Tab {
 		return nameLabel;
 	}
 
-	private boolean betweenX(Rectangle2D r1, Rectangle2D r2, double xPoint) {
+	private boolean betweenX(RectangleExt r1, RectangleExt r2, double xPoint) {
 		double lowerBound = r1.getMinX() + r1.getWidth() / 2;
 		double upperBound = r2.getMaxX() - r2.getWidth() / 2;
 		return xPoint >= lowerBound && xPoint <= upperBound;
-	}
-
-	/**
-	 * @return the leftPath
-	 */
-	public Path getLeftPath() {
-		return leftPath;
-	}
-
-	/**
-	 * @param leftPath the leftPath to set
-	 */
-	public void setLeftPath(Path leftPath) {
-		this.leftPath = leftPath;
-	}
-
-	/**
-	 * @return the rightPath
-	 */
-	public Path getRightPath() {
-		return rightPath;
-	}
-
-	/**
-	 * @param rightPath the rightPath to set
-	 */
-	public void setRightPath(Path rightPath) {
-		this.rightPath = rightPath;
-	}
-
-	/**
-	 * @return the rightBackQueue
-	 */
-	public LinkedList<File> getRightBackQueue() {
-		return rightBackQueue;
-	}
-
-	/**
-	 * @param rightBackQueue the rightBackQueue to set
-	 */
-	public void setRightBackQueue(LinkedList<File> rightBackQueue) {
-		this.rightBackQueue = rightBackQueue;
-	}
-
-	/**
-	 * @return the rightNextQueue
-	 */
-	public LinkedList<File> getRightNextQueue() {
-		return rightNextQueue;
-	}
-
-	/**
-	 * @param rightNextQueue the rightNextQueue to set
-	 */
-	public void setRightNextQueue(LinkedList<File> rightNextQueue) {
-		this.rightNextQueue = rightNextQueue;
-	}
-
-	/**
-	 * @return the leftBackQueue
-	 */
-	public LinkedList<File> getLeftBackQueue() {
-		return leftBackQueue;
-	}
-
-	/**
-	 * @param leftBackQueue the leftBackQueue to set
-	 */
-	public void setLeftBackQueue(LinkedList<File> leftBackQueue) {
-		this.leftBackQueue = leftBackQueue;
-	}
-
-	/**
-	 * @return the leftNextQueue
-	 */
-	public LinkedList<File> getLeftNextQueue() {
-		return leftNextQueue;
-	}
-
-	/**
-	 * @param leftNextQueue the leftNextQueue to set
-	 */
-	public void setLeftNextQueue(LinkedList<File> leftNextQueue) {
-		this.leftNextQueue = leftNextQueue;
-	}
-
-	/**
-	 * @return the title
-	 */
-	public String getTitle() {
-		return title;
-	}
-
-	/**
-	 * @param title the title to set
-	 */
-	public void setTitle(String title) {
-		this.title = title;
 	}
 
 	/**
@@ -402,5 +303,17 @@ public class DraggableTab extends Tab {
 			return insertPane;
 		}
 
+		@Override
+		public String toString() {
+			return "InsertData [index=" + index + ", insertPane=" + insertPane + "]";
+		}
+	}
+
+	public SplitViewState getLeftSplitViewState() {
+		return leftSplitViewState;
+	}
+
+	public SplitViewState getRightSplitViewState() {
+		return rightSplitViewState;
 	}
 }

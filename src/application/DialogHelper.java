@@ -8,6 +8,7 @@ import java.util.Optional;
 
 import org.jetbrains.annotations.Nullable;
 
+import application.fxGraphics.IntField;
 import javafx.application.Platform;
 import javafx.geometry.Insets;
 import javafx.scene.Scene;
@@ -33,12 +34,17 @@ import javafx.scene.layout.VBox;
 import javafx.scene.text.Font;
 import javafx.scene.text.Text;
 import javafx.scene.text.TextFlow;
+import javafx.stage.Modality;
 import javafx.stage.Stage;
 import javafx.util.Pair;
 
 public class DialogHelper {
 
 	public static boolean showAlert(AlertType alertType, String title, String header, String content) {
+		return showAlert(alertType, title, header, content, Main.getPrimaryStage());
+	}
+
+	public static boolean showAlert(AlertType alertType, String title, String header, String content, Stage owner) {
 		Alert alert = new Alert(alertType);
 		alert.setTitle(title);
 		alert.setHeaderText(header);
@@ -50,6 +56,8 @@ public class DialogHelper {
 
 		Stage stage = (Stage) alert.getDialogPane().getScene().getWindow();
 		stage.getIcons().add(new Image(Main.class.getResourceAsStream("/img/icon.png")));
+		stage.initOwner(owner);
+		stage.initModality(Modality.WINDOW_MODAL);
 
 		Optional<ButtonType> result = alert.showAndWait();
 		return result.isPresent() ? result.get() == ButtonType.OK : false;
@@ -137,7 +145,8 @@ public class DialogHelper {
 
 		Stage stage = (Stage) dialog.getDialogPane().getScene().getWindow();
 		stage.getIcons().add(new Image(Main.class.getResourceAsStream("/img/icon.png")));
-
+		stage.initOwner(Main.getPrimaryStage());
+		stage.initModality(Modality.WINDOW_MODAL);
 		Optional<String> result = dialog.showAndWait();
 		return result.isPresent() ? result.get() : null;
 	}
@@ -185,6 +194,45 @@ public class DialogHelper {
 			return null;
 		});
 		Optional<Pair<String, String>> result = dialog.showAndWait();
+		return result.isPresent() ? result.get() : null;
+	}
+
+	@Nullable
+	public static Integer showIntegerInputDialog(String title, String header, String askedValueName, int minValue,
+			int maxValue, int initialValue) {
+		// https://stackoverflow.com/questions/31556373/javafx-dialog-with-2-input-fields
+		// Create the custom dialog.
+		Dialog<Integer> dialog = new Dialog<>();
+		dialog.setTitle(title);
+
+		Stage stage = (Stage) dialog.getDialogPane().getScene().getWindow();
+		stage.getIcons().add(new Image(Main.class.getResourceAsStream("/img/icon.png")));
+
+		// Set the button types.
+		ButtonType loginButtonType = new ButtonType("OK", ButtonData.OK_DONE);
+		dialog.getDialogPane().getButtonTypes().addAll(loginButtonType, ButtonType.CANCEL);
+
+		GridPane gridPane = new GridPane();
+		gridPane.setHgap(10);
+		gridPane.setVgap(10);
+		gridPane.setPadding(new Insets(20, 150, 10, 10));
+
+		IntField text1 = new IntField(minValue, maxValue, initialValue);
+
+		gridPane.add(new Label(askedValueName), 0, 0);
+		gridPane.add(text1, 1, 0);
+
+		dialog.getDialogPane().setContent(gridPane);
+
+		Platform.runLater(() -> text1.requestFocus());
+
+		dialog.setResultConverter(dialogButton -> {
+			if (dialogButton == loginButtonType) {
+				return text1.getValue();
+			}
+			return null;
+		});
+		Optional<Integer> result = dialog.showAndWait();
 		return result.isPresent() ? result.get() : null;
 	}
 
@@ -268,10 +316,8 @@ public class DialogHelper {
 	public static void showException(Exception e) {
 		StringWriter stringWriter = new StringWriter();
 		PrintWriter printWriter = new PrintWriter(stringWriter);
-		// e.printStackTrace(printWriter);
-		String exceptionText = printWriter.toString();
-		// System.out.println("this in dialog helper remove it later");
-		e.printStackTrace();
+		e.printStackTrace(printWriter);
+		String exceptionText = stringWriter.toString();
 		showExpandableAlert(AlertType.ERROR, "Tracker Explorer", "Something went wrong", e.toString(), exceptionText);
 	}
 

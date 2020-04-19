@@ -214,7 +214,7 @@ public class FileTracker {
 						}
 						try {
 							Path test = Dirpath.resolve(options.get(0));
-							keyInMap = test.toUri().toString();
+							keyInMap = test.toFile().toURI().toString();
 						} catch (java.nio.file.InvalidPathException e) {
 							// if path is valid
 							Setting.printStackTrace(e);
@@ -396,7 +396,7 @@ public class FileTracker {
 						continue;
 					}
 
-					mapDetails.put(f.toPath().toUri().toString(), Arrays.asList(f.getName(), "0", ""));
+					mapDetails.put(f.toURI().toString(), Arrays.asList(f.getName(), "0", ""));
 				} catch (Exception e) {
 					// checking that path contain legal character other wise skip them
 					Setting.printStackTrace(e);
@@ -696,6 +696,8 @@ public class FileTracker {
 			}
 			// resolve all character
 			// https://stackoverflow.com/questions/1001540/how-to-write-a-utf-8-file-with-java
+			// Always use UTF_8 for writing reading tracker files so no confilict occur when
+			// running under different environment
 			OutputStreamWriter writer = new OutputStreamWriter(new FileOutputStream(file), StandardCharsets.UTF_8);
 			// check https://www.baeldung.com/java-string-newline
 			String content = "/This is a generated file by Tracker Explorer to store track data of files\r\n";

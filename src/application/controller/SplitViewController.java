@@ -1,13 +1,10 @@
 package application.controller;
 
-import java.awt.Desktop;
 import java.awt.HeadlessException;
 import java.io.File;
 import java.io.IOException;
-import java.net.URI;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.text.ParseException;
 import java.time.Duration;
 import java.time.Instant;
@@ -37,12 +34,14 @@ import application.Main;
 import application.RecursiveFileWalker;
 import application.RunMenu;
 import application.StringHelper;
+import application.TrackerPlayer;
 import application.VLC;
 import application.WatchServiceHelper;
 import application.WindowsExplorerComparator;
 import application.WindowsShortcut;
 import application.datatype.MediaCutData;
 import application.datatype.Setting;
+import application.model.SplitViewState;
 import application.model.TableViewModel;
 import javafx.application.Platform;
 import javafx.collections.ListChangeListener;
@@ -190,7 +189,9 @@ public class SplitViewController {
 			public int compare(HBox o1, HBox o2) {
 				// first children is button watch status
 				// TableRow<TableViewModel> row = (TableRow<TableViewModel>) o1.getParent();
-				// TODO
+				// TODO this comparator doesn't work as i generate hbox with row factory for
+				// speed purpose if you want it to work just scroll and load all rows then it
+				// work just fine
 				if (o1.getChildren().size() == 0) {
 					return -1;
 				}
@@ -421,11 +422,10 @@ public class SplitViewController {
 											new String[] { "explorer.exe", "/select,", test.getmFilePath().toString() })
 									.waitFor();
 						} catch (InterruptedException e) {
-							// TODO Auto-generated catch block
 							e.printStackTrace();
 						}
 					} else {
-						StringHelper.open(mDirectory.toURI().toString());
+						StringHelper.openFile(mDirectory);
 					}
 				} else {
 					if (truePathField.equals("/")) {
@@ -620,9 +620,6 @@ public class SplitViewController {
 		if (lastRowSelected != null) {
 			lastRowSelected.getStyleClass().add("lastRowSelected");
 		}
-		if (lastRowSelected != null) {
-			lastRowSelected.getStyleClass().add("lastRowSelected");
-		}
 	}
 
 	/**
@@ -723,7 +720,7 @@ public class SplitViewController {
 			}
 		});
 
-		// TODO handle drag and drop event
+		// handle drag and drop events
 		Table.setOnDragOver(new EventHandler<DragEvent>() {
 
 			@Override
@@ -740,23 +737,73 @@ public class SplitViewController {
 			@Override
 			public void handle(DragEvent event) {
 				Dragboard db = event.getDragboard();
+				// System.out.println(db.getContentTypes());
 				if (db.hasFiles()) {
 					// TODO later resolve if drag and drop occurs in same node
 					// temp solution:
 					List<Path> ToOperatePath = new ArrayList<>();
+					List<File> ToOperatePathSameDir = new ArrayList<>();
 					db.getFiles().forEach(file3 -> {
 						if (!file3.getParentFile().equals(mDirectory)) {
 							ToOperatePath.add(file3.toPath());
+						} else {
+							ToOperatePathSameDir.add(file3);
 						}
 					});
-					if (ToOperatePath.size() == 0) {
-						event.consume();
-						return;
+					ContextMenu mn = new ContextMenu();
+					if (ToOperatePath.size() != 0) {
+						MenuItem mnCopy = new MenuItem("Copy");
+						MenuItem mnMove = new MenuItem("Move");
+						MenuItem mnCancel = new MenuItem("Cancel");
+						mnMove.setOnAction(e -> FileHelper.move(ToOperatePath, getDirectoryPath()));
+						mnCopy.setOnAction(e -> FileHelper.copy(ToOperatePath, getDirectoryPath()));
+						if (Setting.isUseTeraCopyByDefault()) {
+							MenuItem mnTeraCopy = new MenuItem("Copy With TeraCopy");
+							MenuItem mnTeraMove = new MenuItem("Move With TeraCopy");
+							mnTeraCopy.setOnAction(e -> FileHelper.copyWithTeraCopy(ToOperatePath, getDirectoryPath()));
+							mnTeraMove.setOnAction(e -> FileHelper.moveWithTeraCopy(ToOperatePath, getDirectoryPath()));
+							mn.getItems().addAll(mnCopy, mnTeraCopy, mnMove, mnTeraMove, mnCancel);
+						} else {
+							mn.getItems().addAll(mnCopy, mnMove, mnCancel);
+						}
+					} else if (ToOperatePathSameDir.size() != 0) {
+						MenuItem mnCopy = new MenuItem("Create Copy Here");
+						MenuItem mnCancel = new MenuItem("Cancel");
+						mnCopy.setOnAction(e -> {
+							List<File> targetFiles = new ArrayList<>();
+							for (File file : ToOperatePathSameDir) {
+								targetFiles.add(FileHelper.getCopyFileName(file));
+							}
+							FileHelper.copyFiles(ToOperatePathSameDir, targetFiles);
+						});
+						if (Setting.isUseTeraCopyByDefault()) {
+							MenuItem mnTeraCopy = new MenuItem("Create Copy Here With TeraCopy");
+							mnTeraCopy.setOnAction(e -> FileHelper.copyWithTeraCopy(
+									ToOperatePathSameDir.stream().map(f -> f.toPath()).collect(Collectors.toList()),
+									getDirectoryPath()));
+							mn.getItems().addAll(mnCopy, mnTeraCopy, mnCancel);
+						} else {
+							mn.getItems().addAll(mnCopy, mnCancel);
+						}
 					}
-					FileHelper.move(ToOperatePath, getDirectoryPath());
+					mn.show(Main.getPrimaryStage(), event.getScreenX(), event.getScreenY());
+
 				} else if (db.hasContent(DataFormat.URL)) {
 					// handle url create shortcuts
-					System.out.println(db.getContent(DataFormat.URL));
+					String fileName = null;
+					for (DataFormat file : db.getContentTypes()) {
+						String curName = StringHelper.getValueFromCMDArgs(file.toString(), "name");
+						if (curName != null) {
+							fileName = curName;
+						}
+					}
+					Path where = mDirectory.toPath().resolve(fileName);
+					try {
+						WindowsShortcut.createInternetShortcut(where.toFile(), db.getUrl(), "");
+					} catch (IOException e) {
+						e.printStackTrace();
+						DialogHelper.showException(e);
+					}
 				} else if (db.hasContent(DataFormat.PLAIN_TEXT)) {
 					// trying to parse string as path
 					// also do on ctrl+ v action on table if has string url optional
@@ -764,7 +811,7 @@ public class SplitViewController {
 						File test = new File(db.getContent(DataFormat.PLAIN_TEXT).toString());
 						setmDirectoryThenRefresh(test);
 					} catch (Exception e) {
-						// TODO: handle exception
+						e.printStackTrace();
 						DialogHelper.showException(e);
 					}
 				}
@@ -834,6 +881,9 @@ public class SplitViewController {
 		initializeTableRowFactory();
 	}
 
+	// TableView use handle pattern so in fact only few (13) TableRow is created
+	// and on scroll only contents is changed that's way allow smooth and fast
+	// scrolling of items row.
 	Map<TableViewModel, TableRow<TableViewModel>> rowMap = new HashMap<>();
 
 	/**
@@ -853,11 +903,14 @@ public class SplitViewController {
 					// is XSPF start the file directly with custom argument
 					if (VLC.isPlaylist(t.getName())) {
 						t.getOpenVLC().setOnMouseClicked(m -> {
-							VLC.startXSPF(t.getmFilePath());
+							VLC.startXSPFInOrder(t.getmFilePath());
 						});
 					}
-
-					String tooltipPreText = " ";
+					// on row hover
+					String rowtooltipPreText = "Name:\t" + t.getName();
+					if (!t.getmFilePath().toFile().isDirectory()) {
+						rowtooltipPreText += "\nSize:\t\t" + String.format("%.2f MB", t.getFileSize());
+					}
 					final String key = keyMapperToString(t);
 					if (key != null) {
 						try {
@@ -874,10 +927,12 @@ public class SplitViewController {
 						t.setNoteText(mFileTracker.getNoteTooltipText(t.getName()));
 
 						List<String> options = mFileTracker.getMapDetails().get(key);
+
+						String tooltipPreText = " ";
 						tooltipPreText = mFileTracker.getNoteTooltipText(key);
 						t.setNoteText(tooltipPreText);
 						if (!tooltipPreText.isEmpty()) {
-							setTooltip(getHoverTooltip(tooltipPreText));
+							rowtooltipPreText += "\nNote:\t" + tooltipPreText;
 						}
 						t.getmNoteButton().setOnAction(new EventHandler<ActionEvent>() {
 							@Override
@@ -974,7 +1029,8 @@ public class SplitViewController {
 							});
 						}
 					}
-
+					// Common stuff
+					setTooltip(getHoverTooltip(rowtooltipPreText));
 				}
 			}
 		});
@@ -1227,7 +1283,7 @@ public class SplitViewController {
 		// "This to make it faster a second time");
 		// Measure execution time for this method
 		Main.ProcessTitle("Please Wait .. It might Take long for the first time...Indexing...");
-		mWatchServiceHelper.setRuning(false);
+		WatchServiceHelper.setRuning(false);
 		/**
 		 * History data: 120130 Files Indexed in 122858 milliseconds! 120130 Files
 		 * Indexed in 116692 milliseconds!
@@ -1322,7 +1378,7 @@ public class SplitViewController {
 				});
 
 				finish = Instant.now();
-				mWatchServiceHelper.setRuning(true);
+				WatchServiceHelper.setRuning(true);
 
 				timeElapsed = Duration.between(start, finish).toMillis(); // in millis
 				msg = "Showing " + allThem.size() + " Files Indexed " + (doSort ? "of " + r.getFilesCount() : "")
@@ -1633,13 +1689,50 @@ public class SplitViewController {
 		MenuItem renameAction = new MenuItem("Rename Selected");
 		MenuItem newFileAction = new MenuItem("Create New File");
 		MenuItem newFolderAction = new MenuItem("Create New Folder");
-		ToolsMenu.getItems().add(copyBaseNames);
-		ToolsMenu.getItems().add(pasteBaseNames);
-		ToolsMenu.getItems().add(undoLastPasteNames);
-		ToolsMenu.getItems().add(renameAction);
-		ToolsMenu.getItems().add(newFileAction);
-		ToolsMenu.getItems().add(newFolderAction);
+		MenuItem newTrackerPlayerPlaylist = new MenuItem("Create New Cortana Playlist");
+		MenuItem newTrackerPlayerAny = new MenuItem("Create New Cortana Shortcut");
+		ToolsMenu.getItems().addAll(copyBaseNames, pasteBaseNames, undoLastPasteNames, renameAction, newFileAction,
+				newFolderAction, newTrackerPlayerPlaylist, newTrackerPlayerAny);
 
+		newTrackerPlayerAny.setOnAction(e -> {
+			TableViewModel t = Table.getSelectionModel().getSelectedItem();
+			if (t == null) {
+				DialogHelper.showAlert(AlertType.INFORMATION, "Cortana Shortcut", "Select an item from Table first",
+						"");
+				return;
+			}
+			String name = TrackerPlayer.getPlaylistName();
+			TrackerPlayer.createNewShortcutPlaylist(name, t.getmFilePath());
+		});
+		newTrackerPlayerPlaylist.setOnAction(e -> {
+			List<Path> files = new ArrayList<>();
+			for (TableViewModel t : Table.getSelectionModel().getSelectedItems()) {
+				File tFile = t.getmFilePath().toFile();
+				if (VLC.isVLCMediaExt(tFile.getName()) || tFile.isDirectory()) {
+					files.add(t.getmFilePath());
+				}
+			}
+			if (files.size() == 0) {
+				String allFilesString = "";
+				for (TableViewModel t : DataTable) {
+					File tFile = t.getmFilePath().toFile();
+					if (VLC.isVLCMediaExt(tFile.getName()) || tFile.isDirectory()) {
+						files.add(t.getmFilePath());
+						allFilesString += t.getName() + "\n";
+					}
+				}
+				if (files.size() == 0) {
+					return;
+				} else {
+					DialogHelper.showExpandableAlert(AlertType.INFORMATION, "Create New Cortana Playlist",
+							"All media in current view inserted", "Those are Media files detected:", allFilesString);
+				}
+			}
+			String name = TrackerPlayer.getPlaylistName();
+			if (name != null) {
+				TrackerPlayer.createNewShortcutPlaylist(name, files);
+			}
+		});
 		renameAction.setOnAction(e -> {
 			requestFocus();
 			parentWelcome.rename();
@@ -1877,7 +1970,7 @@ public class SplitViewController {
 		if (OutOfTheBoxRecursive) {
 			if (mFileTracker.isTrackedOutFolder(t.getmFilePath().getParent())) {
 				// the key is the full path
-				return t.getmFilePath().toUri().toString();
+				return t.getmFilePath().toFile().toURI().toString();
 			}
 
 		} else if (isOutOfTheBoxHelper) {
@@ -1908,12 +2001,11 @@ public class SplitViewController {
 
 		// double check in case of fixed shortcut
 		if (selectedFile.isDirectory()) {
-			PredictNavigation.setText("");
 			setmDirectoryThenRefresh(selectedFile);
 			isDirectory = true;
 		} else {
 			try {
-				if (VLC.isInstalled() && VLC.isVLCMediaExt(filePath.toFile().getName())
+				if (VLC.isWellSetup() && VLC.isVLCMediaExt(filePath.toFile().getName())
 						&& Table.getSelectionModel().getSelectedItems().size() != 1) {
 					String files = " --playlist-enqueue --loop";
 					for (TableViewModel t : Table.getSelectionModel().getSelectedItems()) {
@@ -1922,6 +2014,12 @@ public class SplitViewController {
 						}
 					}
 					VLC.StartVlc(files);
+					// requesting JVM for running Garbage Collector
+					// in order to release process from memory from being expanded as vlc will
+					// take large resources and may get freeze after certain ammount of time
+					// read more at : https://www.geeksforgeeks.org/garbage-collection-java/
+					System.gc();
+
 					// we always start media because playlist do not start automatically
 				} else {
 					// deal other types of files
@@ -1946,12 +2044,13 @@ public class SplitViewController {
 						// AWT function used here for better support of opening file from network
 						// AWT was not used to prevent hole stack of AWT but no good alternative in
 						// javaFX
-						Desktop.getDesktop().open(selectedFile);
-//						StringHelper.openFile(selectedFile);
+						// Desktop.getDesktop().open(selectedFile);
+						StringHelper.openFile(selectedFile);
 					}
 				}
 
 			} catch (Exception e) {
+				e.printStackTrace();
 				DialogHelper.showException(e);
 			}
 		}
@@ -1993,6 +2092,10 @@ public class SplitViewController {
 	}
 
 	private int smartScrollIndex(int scrollIndex) {
+		if (scrollIndex <= 4) {
+			return 0;
+		}
+
 		for (int i = 4; i > 0; i--) {
 			if (scrollIndex - i > 0) {
 				scrollIndex -= i;
@@ -2048,8 +2151,10 @@ public class SplitViewController {
 		// }).collect(Collectors.toList());
 		for (String pathST : mFileTracker.getMapDetails().keySet()) {
 			// List<String> options = mfileTracker.getMapDetails().get(pathST);
-			Path pathItem = Paths.get(URI.create(pathST));
-			allRowModel.add(new TableViewModel(" ", pathItem.toFile().getName(), pathItem));
+			Path pathItem = StringHelper.parseUriToPath(pathST);
+			if (pathItem != null) {
+				allRowModel.add(new TableViewModel(" ", pathItem.toFile().getName(), pathItem));
+			}
 		}
 		// StringHelper.endTimerAndDisplay();
 		return allRowModel;
@@ -2075,6 +2180,16 @@ public class SplitViewController {
 	}
 
 	private void RecursiveHelperUpdateTitle(String message) {
+		showToastMessage(message);
+		Main.ResetTitle();
+		refresh(truePathField);
+		recursiveHelperSetBlocked(false);
+		Table.requestFocus();
+		// to refresh selection number and select the first one
+		Table.getSelectionModel().select(0);
+	}
+
+	private ContextMenu showToastMessage(String message) {
 		ContextMenu mn = new ContextMenu();
 		MenuItem mnChild = new MenuItem(message);
 		mn.getItems().add(mnChild);
@@ -2083,12 +2198,7 @@ public class SplitViewController {
 		double xLoc = Main.getPrimaryStage().getX() + Table.getLayoutX() + Table.getWidth() * 0.1;
 		double yLoc = Main.getPrimaryStage().getY() + Table.getLayoutY() + Table.getHeight() + 70;
 		mn.show(Main.getPrimaryStage(), xLoc, yLoc);
-		Main.ResetTitle();
-		refresh(truePathField);
-		recursiveHelperSetBlocked(false);
-		Table.requestFocus();
-		// to refresh selection number and select the first one
-		Table.getSelectionModel().select(0);
+		return mn;
 	}
 
 	public void refreshAsPathField() {
@@ -2192,6 +2302,7 @@ public class SplitViewController {
 	// and enqueue it to back button..
 	// and so adding old directory to queue and so on
 	public void setmDirectoryThenRefresh(File mDirectory) {
+		PredictNavigation.setText("");
 		if (mDirectory.compareTo(this.mDirectory) != 0) {
 			AddToQueue(this.mDirectory);
 			EmptyNextQueue();
@@ -2336,5 +2447,32 @@ public class SplitViewController {
 			return null;
 		}
 		return allRelated;
+	}
+
+	public void saveStateToSplitState(SplitViewState state) {
+		// Save current state view to state
+		state.setmDirectory(getmDirectory());
+		state.setSearchKeyword(SearchField.getText());
+
+		state.setSelectedIndices(Table.getSelectionModel().getSelectedIndices());
+		state.setScrollTo(Table.getSelectionModel().getSelectedIndex());
+	}
+
+	public void restoreSplitViewState(SplitViewState state) {
+		// Restore state view to current view
+		setBackQueue(state.getBackQueue());
+		setNextQueue(state.getNextQueue());
+		if (mDirectory.compareTo(state.getmDirectoryExisting()) != 0) {
+			setmDirectoryThenRefresh(state.getmDirectoryExisting());
+			// clear false change between tabs
+			RemoveLastFalseQueue();
+		}
+		// restore search keyword
+		SearchField.setText(state.getSearchKeyword());
+
+		// restore selections
+		Table.getSelectionModel().clearSelection();
+		Table.getSelectionModel().selectIndices(-1, state.getSelectedIndices());
+		Table.scrollTo(smartScrollIndex(state.getScrollTo()));
 	}
 }

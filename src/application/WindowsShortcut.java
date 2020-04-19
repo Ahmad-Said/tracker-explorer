@@ -3,6 +3,7 @@ package application;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
@@ -12,8 +13,11 @@ import java.text.ParseException;
  * Represents a Windows shortcut (typically visible to Java only as a '.lnk'
  * file).
  *
- * Source : https://github.com/codebling/WindowsShortcuts Retrieved 2011-09-23
- * from
+ * ---- New added ShellLink ---- Create shortcut {@code ShellLink} by
+ * https://github.com/DmitriiShamrikov/mslinks Used in following function
+ *
+ * ---- Original ---- Source : https://github.com/codebling/WindowsShortcuts
+ * Retrieved 2011-09-23 from
  * http://stackoverflow.com/questions/309495/windows-shortcut-lnk-parser-in-java/672775#672775
  * Originally called LnkParser
  *
@@ -46,11 +50,9 @@ public class WindowsShortcut {
 	 * thrown and Exceptions are extremely slow to generate, therefore any code
 	 * needing to loop through several files should first check this.
 	 *
-	 * @param file
-	 *            the potential link
+	 * @param file the potential link
 	 * @return true if may be a link, false otherwise
-	 * @throws IOException
-	 *             if an IOException is thrown while reading from the file
+	 * @throws IOException if an IOException is thrown while reading from the file
 	 */
 	public static boolean isPotentialValidLink(final File file) throws IOException {
 		final int minimum_length = 0x64;
@@ -116,7 +118,7 @@ public class WindowsShortcut {
 
 	/**
 	 * Tests if the shortcut points to a local resource.
-	 * 
+	 *
 	 * @return true if the 'local' bit is set in this shortcut, false otherwise
 	 */
 	public boolean isLocal() {
@@ -125,7 +127,7 @@ public class WindowsShortcut {
 
 	/**
 	 * Tests if the shortcut points to a directory.
-	 * 
+	 *
 	 * @return true if the 'directory' bit is set in this shortcut, false otherwise
 	 */
 	public boolean isDirectory() {
@@ -134,13 +136,11 @@ public class WindowsShortcut {
 
 	/**
 	 * Gets all the bytes from an InputStream
-	 * 
-	 * @param in
-	 *            the InputStream from which to read bytes
+	 *
+	 * @param in the InputStream from which to read bytes
 	 * @return array of all the bytes contained in 'in'
-	 * @throws IOException
-	 *             if an IOException is encountered while reading the data from the
-	 *             InputStream
+	 * @throws IOException if an IOException is encountered while reading the data
+	 *                     from the InputStream
 	 */
 	private static byte[] getBytes(final InputStream in) throws IOException {
 		return getBytes(in, null);
@@ -148,15 +148,12 @@ public class WindowsShortcut {
 
 	/**
 	 * Gets up to max bytes from an InputStream
-	 * 
-	 * @param in
-	 *            the InputStream from which to read bytes
-	 * @param max
-	 *            maximum number of bytes to read
+	 *
+	 * @param in  the InputStream from which to read bytes
+	 * @param max maximum number of bytes to read
 	 * @return array of all the bytes contained in 'in'
-	 * @throws IOException
-	 *             if an IOException is encountered while reading the data from the
-	 *             InputStream
+	 * @throws IOException if an IOException is encountered while reading the data
+	 *                     from the InputStream
 	 */
 	private static byte[] getBytes(final InputStream in, Integer max) throws IOException {
 		// read the entire file into a byte buffer
@@ -168,8 +165,9 @@ public class WindowsShortcut {
 				break;
 			}
 			bout.write(buff, 0, n);
-			if (max != null)
+			if (max != null) {
 				max -= n;
+			}
 		}
 		in.close();
 		return bout.toByteArray();
@@ -183,14 +181,14 @@ public class WindowsShortcut {
 
 	/**
 	 * Gobbles up link data by parsing it and storing info in member fields
-	 * 
-	 * @param link
-	 *            all the bytes from the .lnk file
+	 *
+	 * @param link all the bytes from the .lnk file
 	 */
 	private void parseLink(final byte[] link) throws ParseException {
 		try {
-			if (!isMagicPresent(link))
+			if (!isMagicPresent(link)) {
 				throw new ParseException("Invalid shortcut; magic is missing", 0);
+			}
 
 			// get the flags byte
 			final byte flags = link[0x14];
@@ -303,11 +301,34 @@ public class WindowsShortcut {
 	 * an Intel only OS.
 	 */
 	private static int bytesToWord(final byte[] bytes, final int off) {
-		return ((bytes[off + 1] & 0xff) << 8) | (bytes[off] & 0xff);
+		return (bytes[off + 1] & 0xff) << 8 | bytes[off] & 0xff;
 	}
 
 	private static int bytesToDword(final byte[] bytes, final int off) {
-		return (bytesToWord(bytes, off + 2) << 16) | bytesToWord(bytes, off);
+		return bytesToWord(bytes, off + 2) << 16 | bytesToWord(bytes, off);
+	}
+
+	// ----------------------------- Mslinks Section -----------------------------
+
+	// ---------------------- Internet Shortcut Section ----------------------
+	/**
+	 * Create an Internet shortcut
+	 *
+	 * @param name   name of the shortcut
+	 * @param where  location of the shortcut
+	 * @param target URL
+	 * @param icon   URL (ex. http://www.server.com/favicon.ico) Can be empty
+	 * @throws IOException
+	 */
+	public static void createInternetShortcut(File where, String target, String icon) throws IOException {
+		FileWriter fw = new FileWriter(where);
+		fw.write("[InternetShortcut]\n");
+		fw.write("URL=" + target + "\n");
+		if (!icon.equals("")) {
+			fw.write("IconFile=" + icon + "\n");
+		}
+		fw.flush();
+		fw.close();
 	}
 
 }

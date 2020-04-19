@@ -189,6 +189,12 @@
                         <String fx:value="danger" />
                         <String fx:value="middle" />
                      </styleClass></Button>
+                  <Button fx:id="dragThisPhoto" layoutX="604.0" layoutY="10.0" mnemonicParsing="false" style="-fx-font-weight: bold;" text="Drag⮳">
+                     <styleClass>
+                        <String fx:value="success" />
+                        <String fx:value="middle" />
+                     </styleClass>
+                  </Button>
                   <Button fx:id="revealLocation" mnemonicParsing="false" onAction="#revealInExplorer" style="-fx-font-weight: bold;" text="Explorer - E">
                      <HBox.margin>
                         <Insets right="10.0" />
