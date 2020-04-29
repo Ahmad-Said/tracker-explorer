@@ -298,4 +298,15 @@ public class StringHelper {
 		}
 		return null;
 	}
+
+	public static String getFormattedSizeFromMB(double sizeInMB) {
+		String format = "";
+		if (sizeInMB > 1024) {
+			sizeInMB = sizeInMB / 1024;
+			format = String.format("%.1f GB", sizeInMB);
+		} else {
+			format = String.format("%.1f MB", sizeInMB);
+		}
+		return format;
+	}
 }

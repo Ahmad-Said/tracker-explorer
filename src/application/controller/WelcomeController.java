@@ -3,27 +3,22 @@ package application.controller;
 import java.awt.Desktop;
 import java.io.File;
 import java.io.IOException;
-import java.io.PrintWriter;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
 import java.net.URISyntaxException;
 import java.net.URL;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.FileVisitOption;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.text.ParseException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.ResourceBundle;
 import java.util.Set;
-import java.util.TreeMap;
 import java.util.concurrent.TimeUnit;
-import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import org.jetbrains.annotations.Nullable;
@@ -47,7 +42,10 @@ import javafx.collections.ObservableList;
 import javafx.event.ActionEvent;
 import javafx.event.EventHandler;
 import javafx.fxml.FXML;
+import javafx.fxml.FXMLLoader;
 import javafx.fxml.Initializable;
+import javafx.scene.Parent;
+import javafx.scene.Scene;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Alert.AlertType;
 import javafx.scene.control.Button;
@@ -66,6 +64,7 @@ import javafx.scene.control.TextField;
 import javafx.scene.control.ToggleButton;
 import javafx.scene.control.ToggleGroup;
 import javafx.scene.control.cell.PropertyValueFactory;
+import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.input.DataFormat;
 import javafx.scene.input.DragEvent;
@@ -73,6 +72,7 @@ import javafx.scene.input.MouseButton;
 import javafx.scene.input.TransferMode;
 import javafx.scene.layout.HBox;
 import javafx.stage.FileChooser;
+import javafx.stage.Stage;
 import javafx.util.Duration;
 
 public class WelcomeController implements Initializable {
@@ -169,6 +169,9 @@ public class WelcomeController implements Initializable {
 	private Button leftUp;
 
 	@FXML
+	private MenuItem newWindow;
+
+	@FXML
 	private MenuItem newFile;
 
 	@FXML
@@ -252,6 +255,8 @@ public class WelcomeController implements Initializable {
 	ObservableList<TableViewModel> rightDataTable = FXCollections.observableArrayList();
 	private SplitViewController leftView;
 	private SplitViewController rightView;
+	private String stageTitle = "";
+	private Stage stage = Main.getPrimaryStage();
 
 	@Override
 	public void initialize(URL url, ResourceBundle rb) {
@@ -259,7 +264,6 @@ public class WelcomeController implements Initializable {
 
 			// Assign column to which property in model
 
-			VLC.initializeDefaultVLCPath();
 			initializeMenuBar();
 
 			// later do thing if return false;
@@ -482,6 +486,32 @@ public class WelcomeController implements Initializable {
 		/**
 		 * Set up file menu
 		 */
+		// New Window menu
+		newWindow.setOnAction(e -> {
+			FXMLLoader loader = new FXMLLoader();
+			// loader.setLocation(getClass().getResource("/fxml/bootstrap3.fxml"));
+			loader.setLocation(getClass().getResource("/fxml/Welcome.fxml"));
+			try {
+				loader.load();
+
+				Parent root = loader.getRoot();
+				Scene scene = new Scene(root);
+				scene.getStylesheets().add("/css/bootstrap3.css");
+
+				Stage anotherStage = new Stage();
+				anotherStage.setScene(scene);
+				anotherStage.getIcons().add(new Image(Main.class.getResourceAsStream("/img/icon.png")));
+
+				WelcomeController anotherWelcome = loader.getController();
+				anotherWelcome.setStage(anotherStage);
+				anotherWelcome.leftView.navigate(leftView.getDirectoryPath());
+				anotherWelcome.rightView.navigate(rightView.getDirectoryPath());
+
+				anotherStage.show();
+			} catch (IOException e1) {
+				e1.printStackTrace();
+			}
+		});
 		newFile.setOnAction(e -> createFile());
 		newFile.setAccelerator(Main.SHORTCUT_NEW_FILE);
 
@@ -960,28 +990,6 @@ public class WelcomeController implements Initializable {
 		}
 	}
 
-	// private void removeLastFavorite() {
-	// removeFavorite(Setting.getFavoritesLocations().get(Setting.getFavoritesLocations().size()
-	// - 1));
-	// }
-
-	public void countWords() {
-		Path path = getSelectedPath();
-		if (path != null && path.toString().endsWith(".txt")) {
-			Path resultPath = path.getParent().resolve("[Word Count] " + path.getFileName());
-			try (PrintWriter printWriter = new PrintWriter(resultPath.toFile())) {
-				Arrays.stream(new String(Files.readAllBytes(path), StandardCharsets.UTF_8).toLowerCase().split("\\W+"))
-						.collect(Collectors.groupingBy(Function.identity(), TreeMap::new, Collectors.counting()))
-						.entrySet().stream().sorted(Map.Entry.<String, Long>comparingByValue().reversed())
-						.forEach(printWriter::println);
-				StringHelper.openFile(resultPath.toFile());
-			} catch (IOException e) {
-				e.printStackTrace();
-				DialogHelper.showException(e);
-			}
-		}
-	}
-
 	public void createDirectory() {
 		SplitViewController focusedPane = getFocusedPane();
 		if (focusedPane != null) {
@@ -1001,6 +1009,7 @@ public class WelcomeController implements Initializable {
 		SplitViewController focusedPane = getFocusedPane();
 		if (focusedPane != null) {
 			List<Path> source = focusedPane.getSelection();
+			int lastKnownIndex = focusedPane.indexOfName(focusedPane.getSelectedItem().getName());
 			if (!FileHelper.delete(source)) {
 				return;
 			}
@@ -1008,6 +1017,7 @@ public class WelcomeController implements Initializable {
 			// focusedPane.getMfileTracker().OperationUpdate(source, null, "delete");
 			// focusedPane.refreshAsPathField();
 			refreshWhenDetected(source.get(0).getParent());
+			focusedPane.selectIndex(lastKnownIndex);
 			// refresh and change to parent directory if deleted folder was the other view
 			SplitViewController unfocused = getunFocusedPane();
 			if (source.stream().anyMatch(p -> p.equals(unfocused.getDirectoryPath()))) {
@@ -1536,6 +1546,40 @@ public class WelcomeController implements Initializable {
 			FavoriteCheckBox.setVisible(true);
 			FavoriteCheckBox.setSelected(Setting.getFavoritesLocations().contains(leftView.getDirectoryPath()));
 		}
+	}
+
+	public void UpdateTitle(String toAdd) {
+		stageTitle = toAdd + " - Tracker Explorer";
+		stage.setTitle(stageTitle);
+	}
+
+	public void ResetTitle() {
+		stage.setTitle(stageTitle);
+	}
+
+	private char pr = '\\';
+
+	public void ProcessTitle(String toAppend) {
+		pr = pr == '\\' ? '/' : '\\';
+		stage.setTitle(" " + pr + toAppend);
+	}
+
+	public String GetTitle() {
+		return stage.getTitle();
+	}
+
+	/**
+	 * @return the stage
+	 */
+	public Stage getStage() {
+		return stage;
+	}
+
+	/**
+	 * @param stage the stage to set
+	 */
+	public void setStage(Stage stage) {
+		this.stage = stage;
 	}
 
 }

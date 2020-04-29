@@ -12,7 +12,9 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Set;
 import java.util.Stack;
+import java.util.stream.Collectors;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.FilenameUtils;
@@ -677,8 +679,8 @@ public class FileHelper {
 			Path path = parent.resolve(name);
 			try {
 				Files.createDirectory(path);
-				focusedPane.setmDirectoryThenRefresh(path.toFile());
-				focusedPane.getMfileTracker().trackNewFolder();
+				focusedPane.getMfileTracker().NewOutFolder(path);
+				Platform.runLater(() -> focusedPane.ScrollToName(path.toFile().getName()));
 			} catch (FileAlreadyExistsException e) {
 				DialogHelper.showAlert(Alert.AlertType.INFORMATION, title, "Directory already exists", path.toString());
 			} catch (Exception e) {
@@ -764,6 +766,10 @@ public class FileHelper {
 	public static Path RenameHelper(Path source, String newName) throws IOException {
 		Path newPath = source.resolveSibling(newName);
 		return RenameHelper(source, newPath);
+	}
+
+	public static Set<Path> getParentsPaths(List<File> sonFiles) {
+		return sonFiles.stream().map(f -> f.getParentFile().toPath()).collect(Collectors.toSet());
 	}
 
 	/**

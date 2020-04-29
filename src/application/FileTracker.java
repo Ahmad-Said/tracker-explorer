@@ -100,12 +100,22 @@ public class FileTracker {
 		mWorkingDirPath = p;
 	}
 
-	// this is used to define a virtual miniFileTracker
+	/**
+	 * this is used to define a virtual miniFileTracker if you wish to use Full URI
+	 * path for loadMap do change use {@link #setVirtualModeToFullURIPathKey()} to
+	 * true
+	 *
+	 * @param workingPath
+	 */
 	public FileTracker(Path workingPath) {
 		mapDetails = new HashMap<String, List<String>>();
 		mSplitViewController = new SplitViewController();
 		mWorkingDirPath = workingPath;
 		mSplitViewController.setmDirectory(workingPath.toFile());
+	}
+
+	public void setVirtualModeToFullURIPathKey() {
+		mSplitViewController.setIsOutOfTheBoxHelper(true);
 	}
 
 	public FileTracker(SplitViewController splitViewController) {
@@ -250,6 +260,13 @@ public class FileTracker {
 		return writeMapDir(DirtoTrack, false, false);
 	}
 
+	public void updateMapDetailsUponRename(String oldKey, String newKey, String newFileName) {
+		List<String> options = mapDetails.get(oldKey);
+		mapDetails.remove(oldKey);
+		options.set(0, newFileName);
+		mapDetails.put(newKey, options);
+	}
+
 	/**
 	 * when doing a copy or move operations: The purpose is to preserve the tracker
 	 * data when copying or moving and in case of delete do not track change in
@@ -265,30 +282,27 @@ public class FileTracker {
 	 *                         to remove the key can be null in case of rename in
 	 *                         case of rename it just the new file in same directory
 	 *
-	 * @param args...          Arrays of string arguments in case of:
-	 *                         rename:-----------------------------------------------
-	 *                         * 0 ->> is The original name
-	 *                         -------------------------------------------------------
-	 *                         *1 ->> is to be the new key
-	 *                         -------------------------------------
+	 * @param args             Arrays of string arguments in case of:<br>
+	 *                         rename:<br>
+	 *                         * 0 ->> is The original name <br>
+	 *                         *1 ->> is to be the new key <br>
+	 *                         <br>
 	 *
 	 *                         * 0 ->> otherwise "action" -> "copy","move","delete"
 	 *                         // note get the original name from path keyChanged
 	 */
 	public void operationUpdate(Path keyChangedSender, String... args) {
-		if (!isTracked()) {
+		if (!isTrackedOutFolder(keyChangedSender.getParent())) {
 			return;
 		}
 		if (args.length > 1) {
 			// rename action
-			if (!mSplitViewController.isOutOfTheBoxRecursive()) {
-				String oldKey = args[0];
-				List<String> options = mapDetails.get(oldKey);
-				mapDetails.remove(oldKey);
-				options.set(0, args[1]);
-				mapDetails.put(args[1], options);
+			if (!mSplitViewController.isOutOfTheBoxHelper()) {
+				updateMapDetailsUponRename(args[0], args[1], args[1]);
 				writeMapDir(mWorkingDirPath, false);
 			} else {
+				updateMapDetailsUponRename(keyChangedSender.toFile().toURI().toString(),
+						keyChangedSender.getParent().resolve(args[1]).toFile().toURI().toString(), args[1]);
 				OutofTheBoxWriteMap(keyChangedSender.getParent(), null, args);
 				// additional refresh in case of change isn't the same as root
 				// directory in case
@@ -496,7 +510,10 @@ public class FileTracker {
 	 * @param Dirto    The working directory containing the list of TableViewModel
 	 *                 files
 	 * @param toUpdate List to take in consideration that their status
-	 * @param args
+	 *                 seen/note..<br>
+	 *                 can be null if only use of "args" parameter
+	 * @param args     Used for rename/copy/move operation check more at
+	 *                 {@link #operationUpdate(Path, String...)}
 	 */
 	public void OutofTheBoxWriteMap(Path Dirto, List<TableViewModel> toUpdate, String... args) {
 		// the idea is to create another filetracker with another
@@ -507,9 +524,7 @@ public class FileTracker {
 		// refresh is forbidden
 
 		// initializing temporary corresponding file Tracker
-		SplitViewController minisplit = new SplitViewController();
-		minisplit.setmDirectory(Dirto.toFile());
-		FileTracker miniFileTracker = new FileTracker(minisplit);
+		FileTracker miniFileTracker = new FileTracker(Dirto);
 		if (!miniFileTracker.isTracked()) {
 			return;
 		}
@@ -518,10 +533,18 @@ public class FileTracker {
 		miniFileTracker.loadMap(Dirto, true, false);
 		// Do update name before resloving conflict
 		if (args.length > 0) {
+			// this miniFileTracker must be virtual using names as key otherwise
+			// it will enter in endless loop so if a virtual with fullURI key (outofthebox)
+			// call this function, then it create a miniOne this variable to help him
+			// writing maps with ease
 			miniFileTracker.operationUpdate(Dirto.resolve(args[0]), args);
+		} else {
+			// in case of Concurrent rename it may delete the old key
+			/**
+			 * Check PhotoViewerController#renameImage()
+			 */
+			miniFileTracker.resolveConflict();
 		}
-
-		miniFileTracker.resolveConflict();
 		if (toUpdate != null) {
 			toUpdate.forEach(p -> {
 				String keyName = p.getName();

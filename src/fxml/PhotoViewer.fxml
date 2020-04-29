@@ -2,19 +2,19 @@
 
 <?import java.lang.String?>
 <?import javafx.geometry.Insets?>
-<?import javafx.scene.Cursor?>
 <?import javafx.scene.control.Button?>
 <?import javafx.scene.control.CheckBox?>
 <?import javafx.scene.control.Label?>
-<?import javafx.scene.control.MenuItem?>
-<?import javafx.scene.control.Slider?>
 <?import javafx.scene.control.SplitMenuButton?>
 <?import javafx.scene.control.TextField?>
 <?import javafx.scene.control.ToggleButton?>
-<?import javafx.scene.image.ImageView?>
+<?import javafx.scene.control.Tooltip?>
 <?import javafx.scene.layout.BorderPane?>
+<?import javafx.scene.layout.ColumnConstraints?>
+<?import javafx.scene.layout.GridPane?>
 <?import javafx.scene.layout.HBox?>
-<?import javafx.scene.layout.Pane?>
+<?import javafx.scene.layout.Region?>
+<?import javafx.scene.layout.RowConstraints?>
 <?import javafx.scene.layout.VBox?>
 
 <BorderPane fx:id="borderPane" prefHeight="547.0" prefWidth="881.0" xmlns="http://javafx.com/javafx/8.0.171" xmlns:fx="http://javafx.com/fxml/1">
@@ -31,11 +31,18 @@
                         <Insets right="10.0" />
                      </HBox.margin>
                   </Label>
-                  <Label fx:id="sizeMb" maxWidth="1.7976931348623157E308" text="Size Mb" HBox.hgrow="ALWAYS">
+                  <Label fx:id="sizeMb" text="Size Mb" HBox.hgrow="ALWAYS">
                      <padding>
                         <Insets right="10.0" />
                      </padding>
                   </Label>
+                  <Button mnemonicParsing="false" onAction="#showPhotosOnly" text="Hide All" />
+                  <Region prefHeight="200.0" prefWidth="100.0" HBox.hgrow="ALWAYS" />
+                  <CheckBox fx:id="showZoomCheckBox" mnemonicParsing="false" selected="true" text="Zoom Slider">
+                     <HBox.margin>
+                        <Insets right="10.0" />
+                     </HBox.margin>
+                  </CheckBox>
                   <CheckBox fx:id="fitWidthCheckBox" mnemonicParsing="false" text="Fit Width">
                      <HBox.margin>
                         <Insets right="5.0" />
@@ -46,17 +53,8 @@
                         <Insets right="5.0" />
                      </HBox.margin>
                   </CheckBox>
-                  <Label text="|| Zoom Level">
-                     <HBox.margin>
-                        <Insets right="10.0" />
-                     </HBox.margin>
-                  </Label>
-                  <Slider fx:id="zoomSlider" maxWidth="1.7976931348623157E308" prefHeight="18.0" prefWidth="360.0" HBox.hgrow="NEVER" />
-                  <Label fx:id="zoomLevelLabel" maxWidth="1.7976931348623157E308" text="X1" HBox.hgrow="ALWAYS">
-                     <HBox.margin>
-                        <Insets right="5.0" />
-                     </HBox.margin>
-                  </Label>
+                  <CheckBox fx:id="stretchCheckBox" mnemonicParsing="false" text="Stretch" />
+                  <Region prefHeight="200.0" prefWidth="100.0" HBox.hgrow="ALWAYS" />
                   <ToggleButton fx:id="markSeen" mnemonicParsing="false" onAction="#toggleSeen" prefWidth="58.0" text="S">
                      <HBox.margin>
                         <Insets right="10.0" />
@@ -76,6 +74,7 @@
                         <Insets left="5.0" right="20.0" />
                      </HBox.margin>
                   </Label>
+                  <CheckBox fx:id="showNameCheckBox" mnemonicParsing="false" selected="true" text="Show" />
                   <Label fx:id="labelDescription" minHeight="-Infinity" minWidth="-Infinity" prefHeight="35.0" prefWidth="90.0" text="Name-M-F2">
                      <HBox.margin>
                         <Insets left="10.0" />
@@ -91,7 +90,7 @@
                         <Insets left="40.0" right="20.0" />
                      </HBox.margin>
                   </TextField>
-                  <Button fx:id="applyName" alignment="CENTER" minWidth="-Infinity" mnemonicParsing="false" onAction="#renameImage" prefWidth="105.0" styleClass="primary" text="Apply Name">
+                  <Button fx:id="applyName" alignment="CENTER" minWidth="-Infinity" mnemonicParsing="false" onAction="#renameImage" prefWidth="105.0" style="-fx-font-weight: bold;" styleClass="primary" text="Apply Name">
                      <HBox.margin>
                         <Insets left="10.0" right="20.0" />
                      </HBox.margin>
@@ -110,7 +109,8 @@
                         <Insets left="5.0" right="20.0" />
                      </HBox.margin>
                   </Label>
-                  <Label fx:id="labelDescription1" minHeight="-Infinity" minWidth="-Infinity" prefHeight="35.0" prefWidth="58.0" text="Note-N">
+                  <CheckBox fx:id="showNoteCheckBox" mnemonicParsing="false" selected="true" text="Show" />
+                  <Label minHeight="-Infinity" minWidth="-Infinity" prefHeight="35.0" prefWidth="58.0" text="Note-N">
                      <HBox.margin>
                         <Insets left="10.0" />
                      </HBox.margin>
@@ -127,7 +127,7 @@
                   </TextField>
                   <Button fx:id="applyNote" alignment="CENTER" mnemonicParsing="false" onAction="#addNoteImage" style="-fx-background-color: #7F00FF; -fx-text-fill: white; -fx-font-weight: bold;" text="Apply Note">
                      <HBox.margin>
-                        <Insets right="20.0" />
+                        <Insets left="10.0" right="20.0" />
                      </HBox.margin>
                   </Button>
                </children>
@@ -136,85 +136,57 @@
       </VBox>
    </bottom>
    <right>
-      <HBox prefHeight="213.0" prefWidth="93.0" BorderPane.alignment="CENTER">
+      <HBox prefWidth="72.0" BorderPane.alignment="CENTER">
          <children>
-            <Slider fx:id="ySlider" blockIncrement="0.1" max="1.0" maxWidth="-Infinity" orientation="VERTICAL" rotate="180.0" value="0.5" HBox.hgrow="NEVER">
-               <HBox.margin>
-                  <Insets top="10.0" />
-               </HBox.margin>
-            </Slider>
             <Button fx:id="nextButton" maxHeight="1.7976931348623157E308" maxWidth="1.7976931348623157E308" mnemonicParsing="false" onAction="#nextImage" prefHeight="255.0" prefWidth="52.0" text="F&gt;" HBox.hgrow="ALWAYS">
                <HBox.margin>
-                  <Insets bottom="10.0" left="10.0" top="10.0" />
+                  <Insets />
                </HBox.margin>
             </Button>
          </children>
       </HBox>
    </right>
    <top>
-      <VBox fx:id="topVbox" prefHeight="56.0" prefWidth="654.0" BorderPane.alignment="CENTER">
+      <VBox fx:id="topVbox" BorderPane.alignment="CENTER">
          <children>
-            <HBox prefHeight="100.0" prefWidth="200.0">
+            <HBox>
                <children>
                   <Label text="Location">
                      <HBox.margin>
                         <Insets left="10.0" right="5.0" top="5.0" />
                      </HBox.margin>
                   </Label>
-                  <Label fx:id="indexOfImage" prefHeight="21.0" prefWidth="77.0" text="index">
+                  <Label fx:id="indexOfImage" prefHeight="21.0" prefWidth="100.0" text="index">
                      <HBox.margin>
                         <Insets left="5.0" right="10.0" top="5.0" />
                      </HBox.margin>
                   </Label>
-                  <TextField fx:id="locationField" minWidth="-Infinity" prefWidth="100.0" styleClass="last" HBox.hgrow="ALWAYS">
+                  <TextField fx:id="locationField" focusTraversable="false" minWidth="-Infinity" prefWidth="100.0" styleClass="last" HBox.hgrow="ALWAYS">
                      <HBox.margin>
                         <Insets left="10.0" right="10.0" />
                      </HBox.margin></TextField>
-                  <SplitMenuButton fx:id="cropMenuButton" mnemonicParsing="false" onAction="#cropPhotoMode" style="-fx-font-weight: bold;" text="Crop">
-                    <items>
-                        <MenuItem fx:id="restoreCropped" mnemonicParsing="false" onAction="#restoreCropped" text="Restore Previous" />
-                        <MenuItem mnemonicParsing="false" onAction="#selectAllImage" text="Select All" />
-                      <MenuItem mnemonicParsing="false" onAction="#saveAsCrop" text="Save As" />
-                        <MenuItem mnemonicParsing="false" onAction="#saveToClipBoard" text="Copy To ClipBoard" />
-                        <MenuItem mnemonicParsing="false" onAction="#cancelCrop" text="Cancel" />
-                    </items>
-                  </SplitMenuButton>
-                  <Button layoutX="706.0" layoutY="10.0" mnemonicParsing="false" onAction="#rotateRightIMG" style="-fx-font-weight: bold;" text="Rotate ⟳">
-                     <styleClass>
-                        <String fx:value="info" />
-                        <String fx:value="middle" />
-                     </styleClass></Button>
-                  <Button mnemonicParsing="false" onAction="#deleteIMG" style="-fx-font-weight: bold;" text="Delete - D">
-                     <styleClass>
-                        <String fx:value="danger" />
-                        <String fx:value="middle" />
-                     </styleClass></Button>
-                  <Button fx:id="dragThisPhoto" layoutX="604.0" layoutY="10.0" mnemonicParsing="false" style="-fx-font-weight: bold;" text="Drag⮳">
-                     <styleClass>
-                        <String fx:value="success" />
-                        <String fx:value="middle" />
-                     </styleClass>
-                  </Button>
-                  <Button fx:id="revealLocation" mnemonicParsing="false" onAction="#revealInExplorer" style="-fx-font-weight: bold;" text="Explorer - E">
+                  <ToggleButton fx:id="showToolBoxToggle" layoutX="566.0" layoutY="10.0" mnemonicParsing="false" text="Show Tool Box" />
+                  <ToggleButton fx:id="zoomOnClick" mnemonicParsing="false" text="Zoom In/Out Click">
+                     <tooltip>
+                        <Tooltip text="Switch Between 1*1 and grid on Click" />
+                     </tooltip>
+                  </ToggleButton>
+                  <SplitMenuButton fx:id="gridSwitchButton" mnemonicParsing="false" text="Grid Switch">
                      <HBox.margin>
-                        <Insets right="10.0" />
+                        <Insets />
                      </HBox.margin>
-                     <styleClass>
-                        <String fx:value="last" />
-                        <String fx:value="warning" />
-                     </styleClass>
-                  </Button>
+                  </SplitMenuButton>
+                  <Button fx:id="increaseGridSize" mnemonicParsing="false" text="+" />
+                  <Button fx:id="decreaseGridSize" layoutX="734.0" layoutY="10.0" mnemonicParsing="false" text="-" />
                </children>
                <VBox.margin>
-                  <Insets top="5.0" />
+                  <Insets />
                </VBox.margin>
             </HBox>
-            <Slider blockIncrement="0.1" max="1.0" value="0.5" fx:id="xSlider">
-               <VBox.margin>
-                  <Insets left="60.0" right="90.0" />
-               </VBox.margin>
-            </Slider>
          </children>
+         <BorderPane.margin>
+            <Insets bottom="5.0" top="5.0" />
+         </BorderPane.margin>
       </VBox>
    </top>
    <left>
@@ -232,13 +204,15 @@
       </HBox>
    </left>
    <center>
-      <Pane fx:id="imagePane" maxHeight="1.7976931348623157E308" maxWidth="1.7976931348623157E308" prefHeight="360.0" prefWidth="718.0" BorderPane.alignment="CENTER">
-         <children>
-            <ImageView fx:id="imageView" fitHeight="156.0" fitWidth="320.0" pickOnBounds="true" preserveRatio="true" />
-         </children>
-         <cursor>
-            <Cursor fx:constant="DEFAULT" />
-         </cursor>
-      </Pane>
+   </center>
+   <center>
+            <GridPane fx:id="gridImagesPane" maxHeight="1.7976931348623157E308" maxWidth="1.7976931348623157E308" prefHeight="372.0" prefWidth="735.0">
+              <columnConstraints>
+                <ColumnConstraints hgrow="SOMETIMES" minWidth="10.0" prefWidth="100.0" />
+              </columnConstraints>
+              <rowConstraints>
+                <RowConstraints minHeight="10.0" prefHeight="30.0" vgrow="SOMETIMES" />
+              </rowConstraints>
+            </GridPane>
    </center>
 </BorderPane>

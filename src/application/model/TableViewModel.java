@@ -78,11 +78,11 @@ public class TableViewModel {
 	}
 
 	public String generateKeyURI() {
-		return mFilePath.toUri().toString();
+		return mFilePath.toFile().toURI().toString();
 	}
 
 	/**
-	 * @return the fileSize
+	 * @return the fileSize In MB
 	 */
 	public double getFileSize() {
 		return FileSize.get();

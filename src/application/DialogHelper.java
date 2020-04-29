@@ -221,10 +221,15 @@ public class DialogHelper {
 
 		gridPane.add(new Label(askedValueName), 0, 0);
 		gridPane.add(text1, 1, 0);
+		gridPane.add(new Label("Chose a number: "), 0, 1);
+		gridPane.add(new Label(minValue + " --- To ---> " + maxValue), 1, 1);
 
 		dialog.getDialogPane().setContent(gridPane);
 
-		Platform.runLater(() -> text1.requestFocus());
+		Platform.runLater(() -> {
+			text1.requestFocus();
+			text1.selectAll();
+		});
 
 		dialog.setResultConverter(dialogButton -> {
 			if (dialogButton == loginButtonType) {

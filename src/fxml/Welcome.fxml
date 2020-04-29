@@ -20,7 +20,6 @@
 <?import javafx.scene.layout.ColumnConstraints?>
 <?import javafx.scene.layout.GridPane?>
 <?import javafx.scene.layout.HBox?>
-<?import javafx.scene.layout.Pane?>
 <?import javafx.scene.layout.RowConstraints?>
 <?import javafx.scene.layout.VBox?>
 
@@ -30,6 +29,7 @@
         <menus>
           <Menu fx:id="fileMenu" mnemonicParsing="false" text="File">
             <items>
+                  <MenuItem fx:id="newWindow" mnemonicParsing="false" text="New Window" />
               <MenuItem fx:id="newFile" mnemonicParsing="false" text="New File" />
                   <MenuItem fx:id="newFolder" mnemonicParsing="false" text="New Folder" />
                   <MenuItem fx:id="renameItem" mnemonicParsing="false" text="Rename" />
@@ -315,14 +315,14 @@
    <bottom>
       <VBox prefHeight="60.0" prefWidth="100.0" BorderPane.alignment="CENTER">
          <children>
-            <HBox prefHeight="100.0" prefWidth="200.0">
+            <HBox prefHeight="24.0" prefWidth="890.0">
                <children>
                   <Button mnemonicParsing="false" onAction="#plusTab" text="+">
                      <HBox.margin>
                         <Insets left="10.0" />
                      </HBox.margin>
                   </Button>
-                  <TabPane fx:id="tabPane" maxHeight="1.7976931348623157E308" maxWidth="1.7976931348623157E308" minHeight="-Infinity" side="BOTTOM" tabClosingPolicy="ALL_TABS" HBox.hgrow="ALWAYS">
+                  <TabPane fx:id="tabPane" maxWidth="1.7976931348623157E308" minHeight="-Infinity" side="BOTTOM" tabClosingPolicy="ALL_TABS" HBox.hgrow="ALWAYS">
                     <tabs>
                       <Tab text="Default" />
                     </tabs>
@@ -332,37 +332,29 @@
                   </TabPane>
                </children>
             </HBox>
-            <HBox prefHeight="100.0" prefWidth="200.0">
+            <GridPane prefHeight="100.0">
+              <columnConstraints>
+                <ColumnConstraints hgrow="SOMETIMES" minWidth="10.0" prefWidth="100.0" />
+                <ColumnConstraints hgrow="SOMETIMES" minWidth="10.0" prefWidth="100.0" />
+              </columnConstraints>
+              <rowConstraints>
+                <RowConstraints minHeight="-Infinity" prefHeight="39.0" vgrow="SOMETIMES" />
+              </rowConstraints>
                <children>
-                  <Label minWidth="40.0" onMouseClicked="#copy" prefWidth="60.0" text="Copy">
-                     <HBox.margin>
-                        <Insets left="10.0" top="5.0" />
-                     </HBox.margin>
-                  </Label>
-                  <Label minWidth="40.0" onMouseClicked="#move" prefWidth="60.0" text="Move">
-                     <HBox.margin>
-                        <Insets left="10.0" top="5.0" />
-                     </HBox.margin>
-                  </Label>
-                  <CheckBox fx:id="FavoriteCheckBox" mnemonicParsing="false" prefWidth="155.0" text="Favorite View">
-                     <HBox.margin>
-                        <Insets left="20.0" />
-                     </HBox.margin>
+                  <CheckBox fx:id="FavoriteCheckBox" mnemonicParsing="false" text="Favorite View" GridPane.halignment="LEFT">
+                     <GridPane.margin>
+                        <Insets left="10.0" />
+                     </GridPane.margin>
                   </CheckBox>
-                  <Label fx:id="leftLabelItemsNumber" maxWidth="200.0" prefHeight="21.0" prefWidth="127.0" text="leftLabelItemsNumber" HBox.hgrow="ALWAYS" />
-                  <TextField fx:id="leftPredictNavigation" visible="false" />
-                  <Pane maxWidth="1.7976931348623157E308" prefHeight="31.0" prefWidth="70.0" HBox.hgrow="ALWAYS" />
-                  <Label fx:id="rightLabelItemsNumber" maxWidth="200.0" prefHeight="21.0" prefWidth="137.0" text="rightLabelItemsNumber" HBox.hgrow="ALWAYS" />
-                  <TextField fx:id="rightPredictNavigation" visible="false">
-                     <HBox.margin>
-                        <Insets right="10.0" />
-                     </HBox.margin>
-                  </TextField>
+                  <Label fx:id="leftLabelItemsNumber" text="leftLabelItemsNumber" GridPane.halignment="CENTER">
+                     <GridPane.margin>
+                        <Insets />
+                     </GridPane.margin></Label>
+                  <TextField fx:id="leftPredictNavigation" maxWidth="120.0" prefWidth="100.0" visible="false" GridPane.halignment="RIGHT" />
+                  <Label fx:id="rightLabelItemsNumber" text="rightLabelItemsNumber" GridPane.columnIndex="1" GridPane.halignment="CENTER" />
+                  <TextField fx:id="rightPredictNavigation" maxWidth="120.0" prefWidth="100.0" visible="false" GridPane.columnIndex="1" GridPane.halignment="RIGHT" />
                </children>
-               <VBox.margin>
-                  <Insets top="5.0" />
-               </VBox.margin>
-            </HBox>
+            </GridPane>
          </children>
       </VBox>
    </bottom>

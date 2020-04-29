@@ -16,6 +16,7 @@ import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadPoolExecutor;
@@ -30,7 +31,6 @@ import org.apache.commons.io.FilenameUtils;
 import application.DialogHelper;
 import application.FileHelper;
 import application.FileTracker;
-import application.Main;
 import application.RecursiveFileWalker;
 import application.RunMenu;
 import application.StringHelper;
@@ -479,14 +479,28 @@ public class SplitViewController {
 		});
 
 		Table.getSelectionModel().selectedItemProperty().addListener((obs, oldSelection, newSelection) -> {
-			// TODO if ctrl + A is pressed is not detected
 			if (Table.getSelectionModel().getSelectedItems().size() > 1) {
 				reloadColorLastRowSelected();
 			} else {
 				deColorLastRowSelected();
 			}
+			double totalSelectedSize = 0;
+			String formatSelect;
+			double totalAllSize = 0;
+			String formatAll;
+			for (TableViewModel t : Table.getSelectionModel().getSelectedItems()) {
+				totalSelectedSize += t.getFileSize();
+			}
+			for (TableViewModel t : sortedData) {
+				totalAllSize += t.getFileSize();
+			}
+
 			LabelItemsNumber
-					.setText(" #" + Table.getSelectionModel().getSelectedItems().size() + "/" + sortedData.size());
+					.setText(" #" + Table.getSelectionModel().getSelectedItems().size() + "/" + sortedData.size()
+							+ (totalSelectedSize > 0.01
+									? " (" + StringHelper.getFormattedSizeFromMB(totalSelectedSize) + " / "
+											+ StringHelper.getFormattedSizeFromMB(totalAllSize) + ")"
+									: ""));
 		});
 		PredictNavigation.textProperty().addListener((observable, oldValue, newValue) -> {
 			deColorLastRowSelected();
@@ -699,6 +713,13 @@ public class SplitViewController {
 				String newText = PredictNavigation.getText();
 				// detect special character event
 				if (key.isControlDown() || key.isAltDown()) {
+					if (key.getText().toLowerCase().equals("a")) {
+						int i = Table.getSelectionModel().getSelectedIndex();
+						Table.getSelectionModel().clearSelection();
+						Table.getSelectionModel().selectAll();
+						Table.getSelectionModel().clearSelection(i);
+						Table.getSelectionModel().select(i);
+					}
 					break;
 				}
 				if (key.isShiftDown()) {
@@ -767,6 +788,41 @@ public class SplitViewController {
 							mn.getItems().addAll(mnCopy, mnMove, mnCancel);
 						}
 					} else if (ToOperatePathSameDir.size() != 0) {
+						List<Path> ToOperatePathSameDirAsPaths = ToOperatePathSameDir.stream().map(f -> f.toPath())
+								.collect(Collectors.toList());
+
+						Optional<TableViewModel> onDroppedT = rowMap.values().stream().collect(Collectors.toSet())
+								.stream().filter(row -> {
+									if (event.getY() - row.getHeight() >= row.getLayoutY()
+											&& event.getY() - row.getHeight() <= row.getLayoutY() + row.getHeight()) {
+										return true;
+									}
+									return false;
+								}).map(row -> row.getItem()).findFirst();
+						if (onDroppedT.isPresent()) {
+							TableViewModel t = onDroppedT.get();
+							String targetFileName = t.getmFilePath().toFile().getName();
+							Path targetPath = t.getmFilePath();
+							if (t.getmFilePath().toFile().isDirectory()) {
+								MenuItem mnCopy = new MenuItem("Copy To \n\t\"" + targetFileName + "\"");
+								MenuItem mnMove = new MenuItem("Move To \n\t\"" + targetFileName + "\"");
+								mnCopy.setOnAction(e -> FileHelper.copy(ToOperatePathSameDirAsPaths, targetPath));
+								mnMove.setOnAction(e -> FileHelper.move(ToOperatePathSameDirAsPaths, targetPath));
+								if (Setting.isUseTeraCopyByDefault()) {
+									MenuItem mnTeraCopy = new MenuItem(
+											"Copy with TeraCopy To \n\t\"" + targetFileName + "\"");
+									MenuItem mnTeraMove = new MenuItem(
+											"Move with TeraCopy To \n\t\"" + targetFileName + "\"");
+									mnTeraCopy.setOnAction(
+											e -> FileHelper.copyWithTeraCopy(ToOperatePathSameDirAsPaths, targetPath));
+									mnTeraMove.setOnAction(
+											e -> FileHelper.moveWithTeraCopy(ToOperatePathSameDirAsPaths, targetPath));
+									mn.getItems().addAll(mnCopy, mnTeraCopy, mnMove, mnTeraMove);
+								} else {
+									mn.getItems().addAll(mnCopy, mnMove);
+								}
+							}
+						}
 						MenuItem mnCopy = new MenuItem("Create Copy Here");
 						MenuItem mnCancel = new MenuItem("Cancel");
 						mnCopy.setOnAction(e -> {
@@ -778,15 +834,14 @@ public class SplitViewController {
 						});
 						if (Setting.isUseTeraCopyByDefault()) {
 							MenuItem mnTeraCopy = new MenuItem("Create Copy Here With TeraCopy");
-							mnTeraCopy.setOnAction(e -> FileHelper.copyWithTeraCopy(
-									ToOperatePathSameDir.stream().map(f -> f.toPath()).collect(Collectors.toList()),
-									getDirectoryPath()));
+							mnTeraCopy.setOnAction(
+									e -> FileHelper.copyWithTeraCopy(ToOperatePathSameDirAsPaths, getDirectoryPath()));
 							mn.getItems().addAll(mnCopy, mnTeraCopy, mnCancel);
 						} else {
 							mn.getItems().addAll(mnCopy, mnCancel);
 						}
 					}
-					mn.show(Main.getPrimaryStage(), event.getScreenX(), event.getScreenY());
+					mn.show(parentWelcome.getStage(), event.getScreenX(), event.getScreenY());
 
 				} else if (db.hasContent(DataFormat.URL)) {
 					// handle url create shortcuts
@@ -1059,7 +1114,7 @@ public class SplitViewController {
 			truePathField = isOutOfTheBoxPath;
 			refreshIsOutOfTheBox();
 			// refresh state
-			Main.UpdateTitle(truePathField);
+			parentWelcome.UpdateTitle(truePathField);
 		} else {
 			OutOfTheBoxRecursive = false;
 			recursiveSearch.setSelected(false);
@@ -1078,7 +1133,7 @@ public class SplitViewController {
 			if (stageTitle.isEmpty()) {
 				stageTitle = mDirectory.getAbsolutePath();
 			}
-			Main.UpdateTitle(stageTitle);
+			parentWelcome.UpdateTitle(stageTitle);
 		}
 		if (isLeft) {
 			parentWelcome.updateFavoriteCheckBox(isOutOfTheBoxHelper);
@@ -1282,7 +1337,7 @@ public class SplitViewController {
 		// "Save Index File?",
 		// "This to make it faster a second time");
 		// Measure execution time for this method
-		Main.ProcessTitle("Please Wait .. It might Take long for the first time...Indexing...");
+		parentWelcome.ProcessTitle("Please Wait .. It might Take long for the first time...Indexing...");
 		WatchServiceHelper.setRuning(false);
 		/**
 		 * History data: 120130 Files Indexed in 122858 milliseconds! 120130 Files
@@ -1961,6 +2016,15 @@ public class SplitViewController {
 		return isOutOfTheBoxHelper;
 	}
 
+	/**
+	 * Only use for {@link FileTracker#FileTracker(Path)}
+	 * 
+	 * @param value
+	 */
+	public void setIsOutOfTheBoxHelper(boolean value) {
+		isOutOfTheBoxHelper = value;
+	}
+
 	public boolean isOutOfTheBoxRecursive() {
 		return OutOfTheBoxRecursive;
 	}
@@ -2062,6 +2126,19 @@ public class SplitViewController {
 	protected void NavigateForNameAndScrollTo(TableViewModel toNavigateFor) {
 		if (toNavigateFor != null) {
 			ScrollToName(toNavigateFor.getName());
+		}
+	}
+
+	public int indexOfName(String fileName) {
+		TableViewModel found = getViewModelOfName(fileName);
+		return sortedData.indexOf(found);
+	}
+
+	public void selectIndex(int index) {
+		TableViewModel found = sortedData.get(index);
+		if (found != null) {
+			Table.getSelectionModel().select(found);
+			Table.scrollTo(smartScrollIndex(sortedData.indexOf(found)));
 		}
 	}
 
@@ -2181,7 +2258,7 @@ public class SplitViewController {
 
 	private void RecursiveHelperUpdateTitle(String message) {
 		showToastMessage(message);
-		Main.ResetTitle();
+		parentWelcome.ResetTitle();
 		refresh(truePathField);
 		recursiveHelperSetBlocked(false);
 		Table.requestFocus();
@@ -2195,9 +2272,9 @@ public class SplitViewController {
 		mn.getItems().add(mnChild);
 		mn.getStyleClass().addAll("lastRowSelected");
 		mnChild.getStyleClass().addAll("lastRowSelected");
-		double xLoc = Main.getPrimaryStage().getX() + Table.getLayoutX() + Table.getWidth() * 0.1;
-		double yLoc = Main.getPrimaryStage().getY() + Table.getLayoutY() + Table.getHeight() + 70;
-		mn.show(Main.getPrimaryStage(), xLoc, yLoc);
+		double xLoc = parentWelcome.getStage().getX() + Table.getLayoutX() + Table.getWidth() * 0.1;
+		double yLoc = parentWelcome.getStage().getY() + Table.getLayoutY() + Table.getHeight() + 70;
+		mn.show(parentWelcome.getStage(), xLoc, yLoc);
 		return mn;
 	}
 

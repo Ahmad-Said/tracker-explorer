@@ -134,6 +134,7 @@ public class Main extends Application {
 		Parent root = loader.getRoot();
 
 		mWelcomeController = loader.getController();
+		mWelcomeController.setStage(primaryStage);
 
 		Scene scene = new Scene(root);
 
