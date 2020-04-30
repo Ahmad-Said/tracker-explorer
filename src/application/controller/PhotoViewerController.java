@@ -121,6 +121,7 @@ public class PhotoViewerController {
 //	private ScrollPane scrollPane;
 	@FXML
 	private GridPane gridImagesPane;
+	@FXML
 	private ScrollPane scrollPane;
 	private int gridRowSize = 1;
 	private int gridColumnSize = 1;
@@ -217,16 +218,8 @@ public class PhotoViewerController {
 		allGridItems.add(initialGridItem);
 		gridImagesPane.add(initialGridItem.getImageAllPane(), 0, 0);
 
-		// just to get scrollPane height being calculated
-		// as if it doesn't being added before stage.show it won't get updated
-		// and remain 0
-		scrollPane = new ScrollPane();
-		topVbox.getChildren().add(scrollPane);
-
 		photoStage.show();
 		photoStage.setMaximized(true);
-
-		topVbox.getChildren().remove(scrollPane);
 
 		initializeGridImagesPane();
 
@@ -235,8 +228,9 @@ public class PhotoViewerController {
 		gridImagesPane.requestFocus();
 
 		// Scroll Pane in case of too much grid Item
-		scrollPane.getStyleClass().clear();
 		scrollPane.setStyle("-fx-background-color:transparent;");
+		gridImagesPane.setPrefWidth(scrollPane.getWidth() - 10);
+		gridImagesPane.setPrefHeight(scrollPane.getHeight() - 10);
 		scrollPane.widthProperty().addListener((obsevable, oldWidth, newWidth) -> {
 			if (scrollPane.getContent() != null && scrollPane.getContent().equals(gridImagesPane)) {
 				gridImagesPane.setPrefWidth(newWidth.doubleValue() - 10);
@@ -293,10 +287,6 @@ public class PhotoViewerController {
 		initialGridItem.getImageAllPane()
 				.setOnMouseClicked(e -> fireOnClickEvent(e.isStillSincePress(), initialGridItem));
 		initialGridItem.getImageAllPane().setOnTouchPressed(e -> fireOnClickEvent(true, initialGridItem));
-//		initialGridItem.setOnFinishLoading(e -> selectImageGrid(initialGridItem));
-		initialGridItem.setOnSetUpImage(e -> {
-			switchToScrollPaneIfNecessary();
-		});
 
 		borderPane.setOnDragOver(new EventHandler<DragEvent>() {
 
@@ -429,31 +419,6 @@ public class PhotoViewerController {
 		}
 		gridImagesPane.getChildren().addAll(allImagePanes);
 		Platform.runLater(() -> changeImage(ImgResources.get(rollerPhoto)));
-	}
-
-	/**
-	 * Called after {@link #initialGridItem} on
-	 * {@link ImageGridItem#setOnSetUpImage(EventHandler)}
-	 */
-	private void switchToScrollPaneIfNecessary() {
-		double maxAllowenHeight = photoStage.getScene().getHeight() - 10;
-		if (borderPane.getBottom() != null) {
-			maxAllowenHeight -= borderPane.getBottom().getBoundsInParent().getHeight();
-		}
-		if (borderPane.getTop() != null) {
-			maxAllowenHeight -= borderPane.getTop().getBoundsInParent().getHeight();
-		}
-		if (initialGridItem.getCurrentHeight() * gridRowSize >= maxAllowenHeight) {
-			if (!borderPane.getCenter().equals(scrollPane)) {
-				scrollPane.setContent(gridImagesPane);
-				borderPane.setCenter(scrollPane);
-			}
-		} else {
-			if (!borderPane.getCenter().equals(gridImagesPane)) {
-				scrollPane.setContent(null);
-				borderPane.setCenter(gridImagesPane);
-			}
-		}
 	}
 
 	private void limitGridSize() {

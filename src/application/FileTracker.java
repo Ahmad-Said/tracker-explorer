@@ -306,7 +306,7 @@ public class FileTracker {
 				OutofTheBoxWriteMap(keyChangedSender.getParent(), null, args);
 				// additional refresh in case of change isn't the same as root
 				// directory in case
-				if (!keyChangedSender.getParent().equals(mWorkingDirPath)) {
+				if (!keyChangedSender.getParent().equals(mWorkingDirPath) && !isVirtual()) {
 					mSplitViewController.refreshAsPathField();
 				}
 			}

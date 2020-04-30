@@ -41,8 +41,8 @@ public class TrackerPlayer {
 			.get(System.getenv("APPDATA") + "\\Microsoft\\Windows\\Start Menu\\Programs\\Ahmad Said\\Playlist");
 	public static Path ICON_DIRECTORY = Paths
 			.get(System.getenv("APPDATA") + "\\Microsoft\\Windows\\Start Menu\\Programs\\Ahmad Said\\Playlist\\Icons");
-	private static Path TRACKER_EXE = Paths
-			.get(System.getenv("APPDATA") + "\\Microsoft\\Windows\\Start Menu\\Programs\\Ahmad Said\\Playlist\\Icons");
+	private static Path TRACKER_EXE = Paths.get(System.getenv("APPDATA")).getParent()
+			.resolve("Local\\Tracker Explorer\\Tracker Explorer.exe");
 
 	/**
 	 * Create a shortcut to Tracker Explorer with argument to run a specific
@@ -58,29 +58,29 @@ public class TrackerPlayer {
 
 		ShellLink sl = ShellLink.createLink(trackerExplorer.toString()).setWorkingDir(workingDir.toString());
 
-//		if (VLC.isVLCMediaExt(playlist.toString())) {
-//			sl.setIconLocation("%SystemRoot%\\system32\\SHELL32.dll");
-//			sl.getHeader().setIconIndex(116);
-//		} else {
-		try {
-			// creating icon
-			String ext = SystemIconsHelper.getFileExt(playlist.toString());
-			File iconFile = ICON_DIRECTORY.resolve(ext.substring(1) + ".ico").toFile();
-			if (!iconFile.exists()) {
-				if (!ICON_DIRECTORY.toFile().exists()) {
-					ICON_DIRECTORY.toFile().mkdirs();
-				}
-				Image iconImage = SystemIconsHelper.getFileIcon(playlist.toString());
-				BufferedImage bImage = SwingFXUtils.fromFXImage(iconImage, null);
-				ICOEncoder.write(bImage, iconFile);
-			}
-			sl.setIconLocation(iconFile.toString());
-		} catch (IOException e1) {
+		if (VLC.isVLCMediaExt(playlist.toString())) {
 			sl.setIconLocation("%SystemRoot%\\system32\\SHELL32.dll");
 			sl.getHeader().setIconIndex(116);
-			e1.printStackTrace();
+		} else {
+			try {
+				// creating icon
+				String ext = SystemIconsHelper.getFileExt(playlist.toString());
+				File iconFile = ICON_DIRECTORY.resolve(ext.substring(1) + ".ico").toFile();
+				if (!iconFile.exists()) {
+					if (!ICON_DIRECTORY.toFile().exists()) {
+						ICON_DIRECTORY.toFile().mkdirs();
+					}
+					Image iconImage = SystemIconsHelper.getFileIcon(playlist.toString());
+					BufferedImage bImage = SwingFXUtils.fromFXImage(iconImage, null);
+					ICOEncoder.write(bImage, iconFile);
+				}
+				sl.setIconLocation(iconFile.toString());
+			} catch (IOException e1) {
+				sl.setIconLocation("%SystemRoot%\\system32\\SHELL32.dll");
+				sl.getHeader().setIconIndex(116);
+				e1.printStackTrace();
+			}
 		}
-//		}
 
 		sl.setCMDArgs("--silent=1 --player=\"" + playlist + "\"");
 
