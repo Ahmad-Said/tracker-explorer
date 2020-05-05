@@ -1,10 +1,13 @@
 package application.model;
 
 import java.nio.file.Path;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ThreadPoolExecutor;
 
 import application.SystemIconsHelper;
 import application.VLC;
 import application.controller.SplitViewController;
+import javafx.application.Platform;
 import javafx.beans.property.SimpleDoubleProperty;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.scene.control.Button;
@@ -167,9 +170,19 @@ public class TableViewModel {
 		initializeButton();
 		initializeVLCFeatures();
 
-		Image fxImage = SystemIconsHelper.getFileIcon(mFilePath.toString());
-		imgIcon = new ImageView(fxImage);
+		Image fxImage = SystemIconsHelper.getFileIconIfCached(mFilePath.toString());
+		imgIcon = new ImageView();
+		if (fxImage != null) {
+			imgIcon.setImage(fxImage);
+		} else {
+			executor.execute(() -> {
+				Image fxImage2 = SystemIconsHelper.getFileIcon(mFilePath.toString());
+				Platform.runLater(() -> imgIcon.setImage(fxImage2));
+			});
+		}
 	}
+
+	private ThreadPoolExecutor executor = (ThreadPoolExecutor) Executors.newFixedThreadPool(1);
 
 	private void initializeVLCFeatures() {
 

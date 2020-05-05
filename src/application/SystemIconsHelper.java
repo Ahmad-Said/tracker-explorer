@@ -7,6 +7,8 @@ import java.util.HashMap;
 
 import javax.swing.filechooser.FileSystemView;
 
+import org.jetbrains.annotations.Nullable;
+
 import application.datatype.Setting;
 import javafx.embed.swing.SwingFXUtils;
 import javafx.scene.image.Image;
@@ -15,6 +17,11 @@ public class SystemIconsHelper {
 
 	static HashMap<String, Image> mapOfFileExtToSmallIcon = new HashMap<String, Image>();
 	static int id = 1;
+
+	@Nullable
+	public static Image getFileIconIfCached(String filePath) {
+		return mapOfFileExtToSmallIcon.get(getFileExt(filePath));
+	}
 
 	// filePath here is a full path to file i.e path.toString()
 	public static Image getFileIcon(String filePath) {
