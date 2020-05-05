@@ -1,23 +1,43 @@
 package application.datatype;
 
-import java.nio.file.Path;
+import java.io.File;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 
+import javax.xml.bind.annotation.XmlRootElement;
+
 import application.StringHelper;
 import javafx.util.Pair;
 
-public class FavoriteViewList implements Cloneable {
+@XmlRootElement(name = "FavoritesList")
+public class FavoriteViewList {
+	public String Version = "5.0";
+	public Boolean BackSync = false;
+	public Boolean AutoExpand = true;
+	public Boolean LoadAllIcon = true;
+	public File LeftLastKnowLocation = null;
+	public File RightLastKnowLocation = null;
+	public Boolean ShowLeftNotesColumn = false;
+	public Boolean ShowRightNotesColumn = false;
+	public String ActiveUser = "default";
+	public String VLCHttpPass = "1234";
+	public int MaxLimitFilesRecursive = 10000;
+	public int MaxDepthFilesRecursive = 5;
+	public boolean isDebugMode = false;
+	public boolean autoRenameUTFFile = false;
+	public boolean useTeraCopyByDefault = false;
+	public boolean autoCloseClearDoneFileOperation = true;
+
 	// left location and titles are the key of favorites locations
-	private ArrayList<Path> leftLocs, rightLocs;
+	private ArrayList<File> leftLocs, rightLocs;
 	private ArrayList<String> titles;
-	private Pair<String, Path> lastRemovedKey;
+	private Pair<String, File> lastRemovedKey;
 
 	public FavoriteViewList() {
 		setLeftLoc(new ArrayList<>());
-		setRightLoc(new ArrayList<Path>());
+		setRightLoc(new ArrayList<File>());
 		setTitle(new ArrayList<String>());
 	}
 
@@ -35,15 +55,15 @@ public class FavoriteViewList implements Cloneable {
 		}
 		int size = Math.min(Math.min(favoritesTitles.size(), favoritesLeftLocs.size()), favoritesRightLocs.size());
 		String title = "";
-		Path left = null, right = null;
+		File left = null, right = null;
 
 		for (int i = 0; i < size; i++) {
 			title = favoritesTitles.get(i);
 			if (title == null || title.isEmpty()) {
 				continue;
 			}
-			left = StringHelper.parseUriToPath(favoritesLeftLocs.get(i));
-			right = StringHelper.parseUriToPath(favoritesRightLocs.get(i));
+			left = StringHelper.parseUriToPath(favoritesLeftLocs.get(i)).toFile();
+			right = StringHelper.parseUriToPath(favoritesRightLocs.get(i)).toFile();
 			if (left == null || right == null) {
 				continue;
 			}
@@ -63,16 +83,16 @@ public class FavoriteViewList implements Cloneable {
 		titles.clear();
 	}
 
-	public void addNewFovorite(String Title, Path left, Path right) {
+	public void addNewFovorite(String Title, File left, File right) {
 		titles.add(Title);
 		leftLocs.add(left);
 		rightLocs.add(right);
 	}
 
-	public void add(int i, String title, Path leftPath, Path rightPath) {
+	public void add(int i, String title, File leftFile, File rightFile) {
 		titles.add(i, title);
-		leftLocs.add(i, leftPath);
-		rightLocs.add(i, rightPath);
+		leftLocs.add(i, leftFile);
+		rightLocs.add(i, rightFile);
 	}
 
 	public int size() {
@@ -83,12 +103,12 @@ public class FavoriteViewList implements Cloneable {
 		return titles.contains(title);
 	}
 
-	public boolean contains(Path leftPath) {
-		return leftLocs.contains(leftPath);
+	public boolean contains(File leftFile) {
+		return leftLocs.contains(leftFile);
 	}
 
-	public void remove(Path leftPath) {
-		removeIndexI(leftLocs.indexOf(leftPath));
+	public void remove(File leftFile) {
+		removeIndexI(leftLocs.indexOf(leftFile));
 	}
 
 	public void remove(String title) {
@@ -99,25 +119,25 @@ public class FavoriteViewList implements Cloneable {
 		if (i < 0) {
 			return;
 		}
-		lastRemovedKey = new Pair<String, Path>(titles.get(i), leftLocs.get(i));
+		lastRemovedKey = new Pair<String, File>(titles.get(i), leftLocs.get(i));
 		titles.remove(i);
 		leftLocs.remove(i);
 		rightLocs.remove(i);
 	}
 
-	public Pair<String, Path> getLastRemoved() {
+	public Pair<String, File> getLastRemoved() {
 		return lastRemovedKey;
 	}
 
-	public String getTitleByLeft(Path favoLeftPath) {
-		return titles.get(leftLocs.indexOf(favoLeftPath));
+	public String getTitleByLeft(File favoLeftFile) {
+		return titles.get(leftLocs.indexOf(favoLeftFile));
 	}
 
-	public Path getLeftLocByTitle(String title) {
+	public File getLeftLocByTitle(String title) {
 		return leftLocs.get(titles.indexOf(title));
 	}
 
-	public Path getRightLocByTitle(String title) {
+	public File getRightLocByTitle(String title) {
 		return leftLocs.get(titles.indexOf(title));
 	}
 
@@ -142,34 +162,34 @@ public class FavoriteViewList implements Cloneable {
 	/**
 	 * @return the leftLoc
 	 */
-	public ArrayList<Path> getLeftLoc() {
+	public ArrayList<File> getLeftLoc() {
 		return leftLocs;
 	}
 
 	/**
 	 * @param leftLoc the leftLoc to set
 	 */
-	public void setLeftLoc(ArrayList<Path> leftLoc) {
+	public void setLeftLoc(ArrayList<File> leftLoc) {
 		leftLocs = leftLoc;
 	}
 
 	/**
 	 * @return the rightLoc
 	 */
-	public ArrayList<Path> getRightLoc() {
+	public ArrayList<File> getRightLoc() {
 		return rightLocs;
 	}
 
 	/**
 	 * @param rightLoc the rightLoc to set
 	 */
-	public void setRightLoc(ArrayList<Path> rightLoc) {
+	public void setRightLoc(ArrayList<File> rightLoc) {
 		rightLocs = rightLoc;
 	}
 
 	public void updateTitlesAndIndexs(HashMap<String, Pair<String, Integer>> oldToNewTitleAndIndex) {
-		ArrayList<Path> nleftLocs = new ArrayList<>(Arrays.asList(new Path[oldToNewTitleAndIndex.size()])),
-				nrightLocs = new ArrayList<>(Arrays.asList(new Path[oldToNewTitleAndIndex.size()]));
+		ArrayList<File> nleftLocs = new ArrayList<>(Arrays.asList(new File[oldToNewTitleAndIndex.size()])),
+				nrightLocs = new ArrayList<>(Arrays.asList(new File[oldToNewTitleAndIndex.size()]));
 		ArrayList<String> ntitles = new ArrayList<>(Arrays.asList(new String[oldToNewTitleAndIndex.size()]));
 
 		for (int i = 0; i < titles.size(); i++) {

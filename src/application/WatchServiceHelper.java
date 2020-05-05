@@ -21,30 +21,31 @@ public class WatchServiceHelper {
 	private WatchKey mWatchKey;
 	private WatchService mWatchService;
 	private volatile Thread mWatchThread;
-	private SplitViewController SplitView;
+	private SplitViewController splitView;
 
-	private static boolean PostPone = false;
-	private static boolean PostPoneAction = false;
-	private Runnable PostPoneActivator = new Runnable() {
+	private boolean postPone = false;
+	private boolean postPoneAction = false;
+	private Runnable postPoneActivator = new Runnable() {
 		@Override
 		public void run() {
 			try {
 				TimeUnit.MILLISECONDS.sleep(2000);
-				PostPone = false;
-				if (PostPoneAction) {
+				postPone = false;
+				if (postPoneAction) {
 					updateUI();
 				}
 			} catch (InterruptedException e) {
+				e.printStackTrace();
 			}
 
 		}
 	};
 
 	public WatchServiceHelper(SplitViewController listView) {
-		SplitView = listView;
+		splitView = listView;
 		try {
 			mWatchService = FileSystems.getDefault().newWatchService();
-			setObsevableDirectory(SplitView.getDirectoryPath());
+			setObsevableDirectory(splitView.getDirectoryPath());
 //			mWatchKey = SplitView.getDirectoryPath().register(mWatchService, StandardWatchEventKinds.ENTRY_CREATE,
 //					StandardWatchEventKinds.ENTRY_DELETE);
 			// , StandardWatchEventKinds.ENTRY_MODIFY);
@@ -52,7 +53,6 @@ public class WatchServiceHelper {
 //			mCurrentDirectory = SplitView.getDirectoryPath();
 		} catch (IOException e) {
 			e.printStackTrace();
-			DialogHelper.showException(e);
 		}
 		mWatchThread = new Thread(() -> {
 			while (true) {
@@ -72,13 +72,13 @@ public class WatchServiceHelper {
 					// watchKey.pollEvents();
 					// if (doChange && isRuning && !isForceStopped) {
 
-					if (PostPone) {
+					if (postPone) {
 						// there is already previous change which caused postpone
-						PostPoneAction = true;
+						postPoneAction = true;
 					} else if (doChange && isRuning) {
 						updateUI();
-						PostPone = true;
-						Thread thread = new Thread(PostPoneActivator);
+						postPone = true;
+						Thread thread = new Thread(postPoneActivator);
 						thread.start();
 					}
 					watchKey.reset();
@@ -92,7 +92,8 @@ public class WatchServiceHelper {
 
 	}
 
-	private void setObsevableDirectory(Path newDirectory) {
+	private void setObsevableDirectory(Path newDirectory) throws IOException {
+		// This is an WebDav File
 		if (newDirectory.toString().startsWith("\\\\")) {
 			newDirectory = File.listRoots()[0].toPath();
 			if (!newDirectory.equals(mCurrentDirectory)) {
@@ -106,12 +107,12 @@ public class WatchServiceHelper {
 			mCurrentDirectory = newDirectory;
 		} catch (IOException e) {
 			setObsevableDirectory(File.listRoots()[0].toPath());
-			e.printStackTrace();
+			throw e;
 		}
 
 	}
 
-	public void changeObservableDirectory(Path newDirectory) {
+	public void changeObservableDirectory(Path newDirectory) throws IOException {
 		if (mCurrentDirectory.equals(newDirectory)) {
 			return;
 		}
@@ -132,15 +133,15 @@ public class WatchServiceHelper {
 
 	private void updateUI() {
 		// Platform.runLater(() -> SplitView.refresh(null));
-		Platform.runLater(() -> SplitView.refreshAsPathField());
+		Platform.runLater(() -> splitView.refreshAsPathField());
 	}
 
-	public static boolean isPostPone() {
-		return PostPone;
+	public boolean isPostPone() {
+		return postPone;
 	}
 
-	public static void setPostPone(boolean postPone) {
-		PostPone = postPone;
+	public void setPostPone(boolean postPone) {
+		this.postPone = postPone;
 	}
 
 }

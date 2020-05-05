@@ -12,12 +12,12 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.text.ParseException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.EnumSet;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.ResourceBundle;
 import java.util.Set;
+import java.util.Stack;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
@@ -35,47 +35,79 @@ import application.datatype.Setting;
 import application.fxGraphics.DraggableTab;
 import application.fxGraphics.MenuItemFactory;
 import application.model.SplitViewState;
-import application.model.TableViewModel;
 import javafx.application.Platform;
-import javafx.collections.FXCollections;
-import javafx.collections.ObservableList;
 import javafx.event.ActionEvent;
 import javafx.event.EventHandler;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.fxml.Initializable;
+import javafx.scene.Node;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Alert.AlertType;
-import javafx.scene.control.Button;
-import javafx.scene.control.CheckBox;
 import javafx.scene.control.ContextMenu;
-import javafx.scene.control.Label;
 import javafx.scene.control.Menu;
 import javafx.scene.control.MenuButton;
 import javafx.scene.control.MenuItem;
 import javafx.scene.control.RadioMenuItem;
+import javafx.scene.control.SplitPane;
+import javafx.scene.control.SplitPane.Divider;
 import javafx.scene.control.Tab;
 import javafx.scene.control.TabPane;
-import javafx.scene.control.TableColumn;
-import javafx.scene.control.TableView;
-import javafx.scene.control.TextField;
-import javafx.scene.control.ToggleButton;
 import javafx.scene.control.ToggleGroup;
-import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.image.Image;
-import javafx.scene.image.ImageView;
 import javafx.scene.input.DataFormat;
 import javafx.scene.input.DragEvent;
+import javafx.scene.input.KeyCode;
+import javafx.scene.input.KeyCodeCombination;
+import javafx.scene.input.KeyCombination;
+import javafx.scene.input.KeyEvent;
 import javafx.scene.input.MouseButton;
 import javafx.scene.input.TransferMode;
-import javafx.scene.layout.HBox;
+import javafx.scene.layout.BorderPane;
+import javafx.scene.layout.GridPane;
 import javafx.stage.FileChooser;
 import javafx.stage.Stage;
 import javafx.util.Duration;
 
 public class WelcomeController implements Initializable {
+	static final KeyCombination SHORTCUT_OPEN_NEW_TAB = new KeyCodeCombination(KeyCode.T, KeyCombination.CONTROL_DOWN);
+	static final KeyCombination SHORTCUT_CLOSE_CURRENT_TAB = new KeyCodeCombination(KeyCode.W,
+			KeyCombination.CONTROL_DOWN);
+	static final KeyCombination SHORTCUT_SWITCH_NEXT_TABS = new KeyCodeCombination(KeyCode.TAB,
+			KeyCombination.CONTROL_DOWN);
+	static final KeyCombination SHORTCUT_SWITCH_PREVIOUS_TABS = new KeyCodeCombination(KeyCode.TAB,
+			KeyCombination.CONTROL_DOWN, KeyCombination.SHIFT_DOWN);
+
+	static final KeyCombination SHORTCUT_EASY_FOCUS_SWITCH_VIEW = new KeyCodeCombination(KeyCode.F3);
+	static final KeyCombination SHORTCUT_FOCUS_VIEW = new KeyCodeCombination(KeyCode.TAB);
+	static final KeyCombination SHORTCUT_FOCUS_PREVIOUS_VIEW = new KeyCodeCombination(KeyCode.TAB,
+			KeyCombination.SHIFT_DOWN);
+
+	@FXML
+	private BorderPane borderPane;
+	@FXML
+	private SplitPane allSplitViewPane;
+
+	// TOP Border Pane
+	// File SubMenus
+	@FXML
+	private Menu newEmbedWindow;
+	@FXML
+	private MenuItem newWindow;
+	@FXML
+	private MenuItem newFile;
+	@FXML
+	private MenuItem newFolder;
+	@FXML
+	private MenuItem renameItem;
+	@FXML
+	private MenuItem deleteItem;
+
+	// Tracker SubMenus
+	@FXML
+	private Menu TrackerMenu;
 
 	@FXML
 	private TabPane tabPane;
@@ -84,249 +116,192 @@ public class WelcomeController implements Initializable {
 	private MenuItem aboutMenuItem;
 
 	@FXML
-	private ToggleButton autoExpand;
-
-	@FXML
 	private MenuItem bulkRemoveMenuItem;
-
-	@FXML
-	private MenuItem deleteItem;
-
-	@FXML
-	private Button DeleteTracker;
-
-	@FXML
-	private CheckBox FavoriteCheckBox;
-
-	@FXML
-	private MenuButton FavoritesLocations;
-
-	@FXML
-	private Menu fileMenu;
-
-	@FXML
-	private Button GoDesktop;
 
 	@FXML
 	private Menu helpMenu;
 
 	@FXML
-	private Button leftBack;
-
-	@FXML
-	private Button leftDominate;
-
-	@FXML
-	private Button leftExplorer;
-
-	@FXML
-	private TableColumn<TableViewModel, HBox> lefthboxActions;
-
-	@FXML
-	private TableColumn<TableViewModel, ImageView> leftIcon;
-
-	// show favorites location navigation
-	@FXML
-	private Label leftLabelItemsNumber;
-
-	@FXML
-	private TableColumn<TableViewModel, String> leftName;
-
-	@FXML
-	private Button leftNavigateRecursive;
-
-	@FXML
-	private Button leftNext;
-
-	@FXML
-	private TableColumn<TableViewModel, String> leftNote;
-
-	@FXML
-	private TextField leftPathInput;
-
-	@FXML
-	private TextField leftPredictNavigation;
-
-	@FXML
-	private CheckBox leftRecusiveSearch;
-
-	@FXML
-	private Button leftSearchButton;
-
-	@FXML
-	private TextField leftSearchField;
-
-	@FXML
-	private TableColumn<TableViewModel, Double> leftSize;
-
-	@FXML
-	private TableView<TableViewModel> leftTable;
-
-	@FXML
-	private MenuButton leftToolsMenu;
-
-	@FXML
-	private Button leftUp;
-
-	@FXML
-	private MenuItem newWindow;
-
-	@FXML
-	private MenuItem newFile;
-
-	@FXML
-	private MenuItem newFolder;
-
-	@FXML
-	private MenuItem renameItem;
-
-	@FXML
-	private Button rightBack;
-
-	@FXML
-	private Button rightDominate;
-
-	@FXML
-	private Button rightExplorer;
-
-	@FXML
-	private TableColumn<TableViewModel, HBox> righthboxActions;
-
-	@FXML
-	private TableColumn<TableViewModel, ImageView> rightIcon;
-
-	@FXML
-	private Label rightLabelItemsNumber;
-
-	@FXML
-	private TableColumn<TableViewModel, String> rightName;
-
-	@FXML
-	private Button rightNavigateRecursive;
-
-	@FXML
-	private Button rightNext;
-
-	@FXML
-	private TableColumn<TableViewModel, String> rightNote;
-
-	@FXML
-	private TextField rightPathInput;
-
-	@FXML
-	private TextField rightPredictNavigation;
-
-	@FXML
-	private CheckBox rightRecusiveSearch;
-
-	@FXML
-	private Button rightSearchButton;
-
-	@FXML
-	private TextField rightSearchField;
-
-	@FXML
-	private TableColumn<TableViewModel, Double> rightSize;
-
-	@FXML
-	private TableView<TableViewModel> rightTable;
-
-	@FXML
 	private MenuButton rightToolsMenu;
 
 	@FXML
-	private Button rightUp;
-
-	@FXML
 	private MenuButton rootsMenu;
-	Menu subMenuActiveUser;
-	Menu subMenuRemoveUser;
-	@FXML
-	private Button SwapButton;
+	private Menu subMenuActiveUser;
+	private Menu subMenuRemoveUser;
 
 	ToggleGroup toogleActiveUserGroup;
-	@FXML
-	private Menu TrackerMenu;
 
 	@FXML
 	private Menu cortanaMenu;
 
-	ObservableList<TableViewModel> leftDataTable = FXCollections.observableArrayList();
-	ObservableList<TableViewModel> rightDataTable = FXCollections.observableArrayList();
+	private Stack<SplitViewController> allSplitViewController;
+	private Stack<SplitViewController> allSplitViewControllerRemoved;
 	private SplitViewController leftView;
 	private SplitViewController rightView;
 	private String stageTitle = "";
-	private Stage stage = Main.getPrimaryStage();
+	private Stage stage;
 
 	@Override
 	public void initialize(URL url, ResourceBundle rb) {
 		try {
-
+			allSplitViewController = new Stack<>();
+			allSplitViewControllerRemoved = new Stack<>();
 			// Assign column to which property in model
 
 			initializeMenuBar();
 
-			// later do thing if return false;
+			leftView = addSplitView(StringHelper.InitialLeftPath, true);
+			rightView = addSplitView(StringHelper.InitialRightPath, false);
 
-			leftNote.setCellValueFactory(new PropertyValueFactory<TableViewModel, String>("NoteText"));
-			leftName.setCellValueFactory(new PropertyValueFactory<TableViewModel, String>("Name"));
-			lefthboxActions.setCellValueFactory(new PropertyValueFactory<TableViewModel, HBox>("hboxActions"));
-			leftIcon.setCellValueFactory(new PropertyValueFactory<TableViewModel, ImageView>("imgIcon"));
-			leftSize.setCellValueFactory(new PropertyValueFactory<TableViewModel, Double>("FileSize"));
-
-			rightNote.setCellValueFactory(new PropertyValueFactory<TableViewModel, String>("NoteText"));
-			rightName.setCellValueFactory(new PropertyValueFactory<TableViewModel, String>("Name"));
-			righthboxActions.setCellValueFactory(new PropertyValueFactory<TableViewModel, HBox>("hboxActions"));
-			rightIcon.setCellValueFactory(new PropertyValueFactory<TableViewModel, ImageView>("imgIcon"));
-			rightSize.setCellValueFactory(new PropertyValueFactory<TableViewModel, Double>("FileSize"));
-
-			leftView = new SplitViewController(StringHelper.InitialLeftPath, true, this, leftDataTable, leftPathInput,
-					leftUp, leftSearchField, leftSearchButton, leftTable, leftExplorer, lefthboxActions, leftBack,
-					leftNext, leftPredictNavigation, leftRecusiveSearch, leftLabelItemsNumber, leftNavigateRecursive,
-					leftToolsMenu, leftNote, leftName);
-			rightView = new SplitViewController(StringHelper.InitialRightPath, false, this, rightDataTable,
-					rightPathInput, rightUp, rightSearchField, rightSearchButton, rightTable, rightExplorer,
-					righthboxActions, rightBack, rightNext, rightPredictNavigation, rightRecusiveSearch,
-					rightLabelItemsNumber, rightNavigateRecursive, rightToolsMenu, rightNote, rightName);
-
-			refreshBothViews(null);
+			initializeViewSetting();
+			// refresh is done since we switch to default tab
+			initializeTabs();
 			initializeButtons();
-
-			// initialize coloumn preference
-			rightNote.setVisible(Setting.getShowRightNotesColumn());
-			leftNote.setVisible(Setting.getShowLeftNotesColumn());
 		} catch (Exception e1) {
 			e1.printStackTrace();
 			DialogHelper.showException(e1);
 		}
 	}
 
-	private void initializeButtons() {
-		autoExpand.setSelected(Setting.isAutoExpand());
-		GoDesktop.setOnAction(new EventHandler<ActionEvent>() {
+	/**
+	 * @param stage the stage to set having Scene
+	 */
+	public void initializeViewStage(Stage stage, boolean doRefreshView) {
+		this.stage = stage;
+		if (doRefreshView) {
+			leftView.refresh(null);
+			rightView.refresh(null);
+		}
+		initializeStage();
+	}
 
-			@Override
-			public void handle(ActionEvent event) {
-				changeDirInLastestView(new File(System.getProperty("user.home") + File.separator + "Desktop"));
+	private void initializeStage() {
+		stage.getScene().addEventFilter(KeyEvent.KEY_RELEASED, e -> {
+			if (SHORTCUT_OPEN_NEW_TAB.match(e)) {
+				openNewTab();
+			} else if (SHORTCUT_CLOSE_CURRENT_TAB.match(e)) {
+				closeCurrentTab();
+			} else if (SHORTCUT_SWITCH_NEXT_TABS.match(e)) {
+				switchNextTabs();
+			} else if (SHORTCUT_SWITCH_PREVIOUS_TABS.match(e)) {
+				switchPreviousTab();
+			} else if (SHORTCUT_EASY_FOCUS_SWITCH_VIEW.match(e) || SHORTCUT_FOCUS_VIEW.match(e)) {
+				focusNextSplitView();
+			} else if (SHORTCUT_FOCUS_PREVIOUS_VIEW.match(e)) {
+				focusPreviousSplitView();
 			}
 		});
-		initializeRootsMenu();
-		rootsMenu.setOnMouseReleased(m -> {
-			initializeRootsMenu();
-		});
-		initializeFavorites();
-		initializeTabs();
+	}
+
+	private SplitViewController addSplitView() {
+		boolean doAddLeft = false;
+		if (allSplitViewController.size() % 2 == 0) {
+			doAddLeft = true;
+		}
+		SplitViewController newSplitView = null;
+		try {
+			newSplitView = addSplitView(allSplitViewController.peek().getDirectoryPath(), doAddLeft);
+			newSplitView.refresh(null);
+		} catch (IOException e1) {
+			e1.printStackTrace();
+		}
+		return newSplitView;
+	}
+
+	private SplitViewController addSplitView(Path initialePath, boolean isLeftTemplate) throws IOException {
+		SplitViewController newSplit = null;
+		if (allSplitViewControllerRemoved.size() != 0) {
+			newSplit = allSplitViewControllerRemoved.pop();
+			newSplit.setmDirectoryThenRefresh(initialePath.toFile());
+		} else {
+			newSplit = new SplitViewController(initialePath, isLeftTemplate, this);
+			if (isLeftTemplate) {
+				SplitViewController.loadFXMLViewAsLeft(newSplit);
+			} else {
+				SplitViewController.loadFXMLViewAsRight(newSplit);
+			}
+		}
+		newSplit.getAutoExpand().setText("+");
+		MenuItem mn = new MenuItem("Close This View");
+		final SplitViewController splitView = newSplit;
+		newSplit.getExitSplitButton().setOnAction(e -> removeSplitView(splitView));
+		mn.setOnAction(e -> splitView.getExitSplitButton().fire());
+		newSplit.getAutoExpand().setContextMenu(new ContextMenu(mn));
+
+		allSplitViewController.add(newSplit);
+		allSplitViewPane.getItems().add(newSplit.getViewPane());
+
+		autoFitWidthSplitPane();
+		if (allSplitViewController.size() > 1) {
+			// mean there exist left
+			SplitViewController leftNeighbor = allSplitViewController.get(allSplitViewController.size() - 2);
+			newSplit.setLeftViewNeighbor(leftNeighbor);
+			leftNeighbor.setRightViewNeighbor(newSplit);
+			leftNeighbor.getAutoExpand().setOnAction(null);
+			leftNeighbor.getAutoExpand().setText("<>");
+			leftNeighbor.getExitSplitButton().setVisible(false);
+			setSplitAsLastOne(newSplit);
+		}
+		return newSplit;
+	}
+
+	private void setSplitAsLastOne(SplitViewController splitViewController) {
+		splitViewController.getAutoExpand().setText("+");
+		splitViewController.getAutoExpand().setSelected(false);
+		splitViewController.setRightViewNeighbor(null);
+		splitViewController.getExitSplitButton().setVisible(true);
+		splitViewController.getAutoExpand().setOnAction(e -> addSplitView());
+	}
+
+	private void removeSplitView(SplitViewController toRemoveSplitView) {
+		removeSplitView(allSplitViewController.indexOf(toRemoveSplitView));
+	}
+
+	private void removeSplitView(int toRemoveIndex) {
+		int indexLastOne = allSplitViewController.size() - 1;
+		SplitViewController removedSplitView = allSplitViewController.get(toRemoveIndex);
+		allSplitViewPane.getItems().remove(toRemoveIndex);
+		allSplitViewController.remove(toRemoveIndex);
+		// updating neighbors
+		if (removedSplitView.getRightViewNeighbor() != null && removedSplitView.getLeftViewNeighbor() != null) {
+			removedSplitView.getRightViewNeighbor().setLeftViewNeighbor(removedSplitView.getLeftViewNeighbor());
+			removedSplitView.getLeftViewNeighbor().setRightViewNeighbor(removedSplitView.getRightViewNeighbor());
+		}
+		allSplitViewControllerRemoved.add(removedSplitView);
+		if (allSplitViewPane.getItems().size() == 0) {
+			stage.close();
+			return;
+		}
+		if (indexLastOne == toRemoveIndex) {
+			setSplitAsLastOne(removedSplitView.getLeftViewNeighbor());
+		}
+		autoFitWidthSplitPane();
+	}
+
+	private void autoFitWidthSplitPane() {
+		double dividerEach = 1.0 / allSplitViewController.size();
+		double start = dividerEach;
+		for (Divider d : allSplitViewPane.getDividers()) {
+			d.setPosition(start);
+			start += dividerEach;
+		}
+	}
+
+	private void initializeViewSetting() {
+		leftView.setAutoExpand(Setting.isAutoExpand());
+	}
+
+	private void initializeButtons() {
+
 	}
 
 	private void initializeTabs() {
 		// initialize tabs
 		tabPane.getTabs().clear();
-		DraggableTab defaultTab = new DraggableTab("Default", StringHelper.InitialLeftPath.toFile(),
-				StringHelper.InitialRightPath.toFile());
+		DraggableTab defaultTab = new DraggableTab("Default",
+				Arrays.asList(StringHelper.InitialLeftPath.toFile(), StringHelper.InitialRightPath.toFile()));
 		defaultTab.setClosable(false);
 		defaultTab.flipisEnteringAction();
-		leftView.restoreSplitViewState(defaultTab.getLeftSplitViewState());
-		rightView.restoreSplitViewState(defaultTab.getRightSplitViewState());
 		tabPane.getTabs().add(defaultTab);
 		activeActionTab(defaultTab);
 
@@ -335,47 +310,10 @@ public class WelcomeController implements Initializable {
 			for (int i : Setting.getLastOpenedFavoriteIndex()) {
 				if (i >= 0 && i < sizeFavo) {
 					addTabOnly(Setting.getFavoritesLocations().getTitle().get(i),
-							Setting.getFavoritesLocations().getLeftLoc().get(i),
-							Setting.getFavoritesLocations().getRightLoc().get(i));
+							Arrays.asList(Setting.getFavoritesLocations().getLeftLoc().get(i),
+									Setting.getFavoritesLocations().getRightLoc().get(i)));
 				}
 			}
-		}
-	}
-
-	private void initializeFavorites() {
-		reloadFavorites();
-		FavoriteCheckBox.setOnAction(new EventHandler<ActionEvent>() {
-			@Override
-			public void handle(ActionEvent event) {
-				if (FavoriteCheckBox.isSelected()) {
-					// ask for title here
-					String hint = leftView.getDirectoryPath().toFile().getName().toString();
-					if (Setting.getFavoritesLocations().getLastRemoved() != null && Setting.getFavoritesLocations()
-							.getLastRemoved().getValue().equals(leftView.getDirectoryPath())) {
-						hint = Setting.getFavoritesLocations().getLastRemoved().getKey();
-					}
-					String title = DialogHelper.showTextInputDialog("Favorite Title",
-							"Please Enter the name of this Favorite View", "", hint);
-					if (title == null || title.trim().equals("")) {
-						FavoriteCheckBox.setSelected(false);
-						return;
-					}
-					title = title.replaceAll(";", "_");
-					AddandPriorizethisMenu(title, leftView.getDirectoryPath(), rightView.getDirectoryPath());
-				} else {
-					removeFavorite(leftView.getDirectoryPath());
-				}
-			}
-		});
-	}
-
-	private void reloadFavorites() {
-		FavoritesLocations.getItems().clear();
-		allMenuFavoriteLocation.clear();
-		for (int i = Setting.getFavoritesLocations().size() - 1; i >= 0; i--) {
-			AddandPriorizethisMenu(Setting.getFavoritesLocations().getTitle().get(i),
-					Setting.getFavoritesLocations().getLeftLoc().get(i),
-					Setting.getFavoritesLocations().getRightLoc().get(i));
 		}
 	}
 
@@ -385,20 +323,32 @@ public class WelcomeController implements Initializable {
 			// 2 tabs will trigger this action the entering tab which we will restore from
 			// it's state
 			// and the leaving tab which will save it's state
+			ArrayList<SplitViewState> splitStates = dragTab.getSplitViewStates();
 
-			SplitViewState left = dragTab.getLeftSplitViewState();
-			SplitViewState right = dragTab.getRightSplitViewState();
+			// Sync states size
+			int maxStates = splitStates.size();
+			int shownSplit = allSplitViewController.size();
+			// If showing split view more than saved add new Split States same as last split
+			// View
+			if (maxStates != shownSplit) {
+				File defaultDir = splitStates.get(splitStates.size() - 1).getmDirectoryExisting();
+				for (int i = maxStates - 1; i < shownSplit; i++) {
+					splitStates.add(new SplitViewState(defaultDir));
+				}
+			}
 
 			if (dragTab.isEnteringAction()) {
 				// the new tab switched to
 				// change queue for the corresponding tab
-				leftView.restoreSplitViewState(left);
-				rightView.restoreSplitViewState(right);
+				for (int i = 0; i < shownSplit; i++) {
+					allSplitViewController.get(i).restoreSplitViewState(splitStates.get(i));
+				}
 			} else {
 				// the tab that is switched from
 				// will trigger code first
-				leftView.saveStateToSplitState(left);
-				rightView.saveStateToSplitState(right);
+				for (int i = 0; i < shownSplit; i++) {
+					allSplitViewController.get(i).saveStateToSplitState(splitStates.get(i));
+				}
 			}
 			dragTab.flipisEnteringAction();
 		});
@@ -433,11 +383,15 @@ public class WelcomeController implements Initializable {
 	}
 
 	@FXML
-	public void plusTab() {
-		addTabAndSwitch("New Tab", leftView.getDirectoryPath(), rightView.getDirectoryPath());
+	private void plusTab() {
+		addTabAndSwitch("New Tab", getSplitDirectories());
 	}
 
-	public void close_Current_Tab() {
+	private List<File> getSplitDirectories() {
+		return allSplitViewController.stream().map(spCon -> spCon.getmDirectory()).collect(Collectors.toList());
+	}
+
+	public void closeCurrentTab() {
 		if (tabPane.getSelectionModel().getSelectedItem().isClosable()) {
 			tabPane.getTabs().remove(tabPane.getSelectionModel().getSelectedItem());
 		} else {
@@ -447,45 +401,140 @@ public class WelcomeController implements Initializable {
 		}
 	}
 
-	public void open_New_Tab() {
+	public void openNewTab() {
 		plusTab();
 	}
 
-	public void switch_Next_Tabs() {
+	public void switchNextTabs() {
 		tabPane.getSelectionModel()
 				.select((tabPane.getSelectionModel().getSelectedIndex() + 1) % tabPane.getTabs().size());
 	}
 
-	public void switch_Previous_Tab() {
+	public void switchPreviousTab() {
 		tabPane.getSelectionModel()
 				.select((tabPane.getSelectionModel().getSelectedIndex() - 1 + tabPane.getTabs().size())
 						% tabPane.getTabs().size());
 
 	}
 
-	private DraggableTab addTabAndSwitch(String title, Path leftPath, Path rightPath) {
-		DraggableTab tempTab = addTabOnly(title, leftPath, rightPath);
+	private DraggableTab addTabAndSwitch(String title, List<File> splitDirectories) {
+		DraggableTab tempTab = addTabOnly(title, splitDirectories);
 		tabPane.getSelectionModel().select(tempTab);
 		return tempTab;
 	}
 
-	private DraggableTab addTabOnly(String title, Path leftPath, Path rightPath) {
-		DraggableTab tempTab = new DraggableTab(title, leftPath.toFile(), rightPath.toFile());
+	private DraggableTab addTabOnly(String title, List<File> splitDirectories) {
+		DraggableTab tempTab = new DraggableTab(title, splitDirectories);
 		activeActionTab(tempTab);
 		tabPane.getTabs().add(tempTab);
 		return tempTab;
 	}
 
+	@Nullable
+	private SplitViewController getFocusedPane() {
+		SplitViewController focusedSplit = null;
+		Node focusedNode = stage.getScene().getFocusOwner();
+		while (focusedNode != null && !(focusedNode instanceof GridPane)) {
+			focusedNode = focusedNode.getParent();
+		}
+		for (SplitViewController splitView : allSplitViewController) {
+			if (focusedNode == splitView.getViewPane() || splitView.isFocused()) {
+				focusedSplit = splitView;
+				break;
+			}
+		}
+		return focusedSplit;
+	}
+
+	private void focusNextSplitView() {
+		SplitViewController lastFocus = getFocusedPane();
+		if (lastFocus != null && lastFocus.isFocusedSearchField()) {
+			lastFocus.requestFocus();
+		} else if (lastFocus != null && lastFocus.getRightViewNeighbor() != null) {
+			lastFocus.getRightViewNeighbor().requestFocus();
+		} else {
+			allSplitViewController.get(0).requestFocus();
+		}
+	}
+
+	private void focusPreviousSplitView() {
+		SplitViewController lastFocus = getFocusedPane();
+		if (lastFocus != null && lastFocus.getLeftViewNeighbor() != null) {
+			lastFocus.getLeftViewNeighbor().requestFocus();
+		} else {
+			allSplitViewController.peek().requestFocus();
+		}
+	}
+
+//	public void focus_Switch_VIEW() {
+//		SplitViewController focusedPane = getunFocusedPane();
+//		if (focusedPane != null) {
+//			focusedPane.focusTable();
+//		} else {
+//			leftView.focusTable();
+//		}
+//		switcher = !switcher;
+//	}
+//
+//
+//	public void focus_VIEW() {
+//		SplitViewController focusedPane = getFocusedPane();
+//		if (focusedPane != null) {
+//			focusedPane.focusTable();
+//		} else {
+//			if (switcher) {
+//				leftView.focusTable();
+//			} else {
+//				rightView.focusTable();
+//			}
+//			switcher = !switcher;
+//		}
+//	}
+//
+//	public void focusSearchField() {
+//		SplitViewController focusedPane = getFocusedPane();
+//		if (focusedPane != null) {
+//			focusedPane.focusSearchField();
+//		} else {
+//			leftView.focusSearchField();
+//		}
+//	}
+//
+//	public void focusTextField() {
+//		SplitViewController focusedPane = getFocusedPane();
+//		if (focusedPane != null) {
+//			focusedPane.getPathField().requestFocus();
+//		}
+//	}
+
 	public void changeInSetting() {
 		initializeMenuBar();
-		reloadFavorites();
-		refreshBothViews(null);
+		allSplitViewController.forEach(s -> s.reloadFavorites());
+		refreshAllSplitViews();
 	}
 
 	private void initializeMenuBar() {
 		/**
 		 * Set up file menu
 		 */
+		// New Embed Window menu
+		MenuItem newSplitLeftTemplate = new MenuItem("Left Template");
+		newSplitLeftTemplate.setOnAction(e -> {
+			try {
+				addSplitView(allSplitViewController.peek().getmDirectory().toPath(), true).refresh(null);
+			} catch (IOException e3) {
+				e3.printStackTrace();
+			}
+		});
+		MenuItem newSplitRightTemplate = new MenuItem("Right Template");
+		newSplitRightTemplate.setOnAction(e -> {
+			try {
+				addSplitView(allSplitViewController.peek().getmDirectory().toPath(), false).refresh(null);
+			} catch (IOException e3) {
+				e3.printStackTrace();
+			}
+		});
+		newEmbedWindow.getItems().addAll(newSplitLeftTemplate, newSplitRightTemplate);
 		// New Window menu
 		newWindow.setOnAction(e -> {
 			FXMLLoader loader = new FXMLLoader();
@@ -493,7 +542,6 @@ public class WelcomeController implements Initializable {
 			loader.setLocation(getClass().getResource("/fxml/Welcome.fxml"));
 			try {
 				loader.load();
-
 				Parent root = loader.getRoot();
 				Scene scene = new Scene(root);
 				scene.getStylesheets().add("/css/bootstrap3.css");
@@ -503,26 +551,16 @@ public class WelcomeController implements Initializable {
 				anotherStage.getIcons().add(new Image(Main.class.getResourceAsStream("/img/icon.png")));
 
 				WelcomeController anotherWelcome = loader.getController();
-				anotherWelcome.setStage(anotherStage);
+				anotherStage.show();
+				anotherWelcome.initializeViewStage(anotherStage, false);
 				anotherWelcome.leftView.navigate(leftView.getDirectoryPath());
 				anotherWelcome.rightView.navigate(rightView.getDirectoryPath());
-
-				anotherStage.show();
 			} catch (IOException e1) {
 				e1.printStackTrace();
 			}
 		});
-		newFile.setOnAction(e -> createFile());
-		newFile.setAccelerator(Main.SHORTCUT_NEW_FILE);
 
-		newFolder.setOnAction(e -> createDirectory());
-		newFolder.setAccelerator(Main.SHORTCUT_NEW_DIRECTORY);
-
-		renameItem.setOnAction(e -> rename());
-		renameItem.setAccelerator(Main.SHORTCUT_RENAME);
-
-		deleteItem.setOnAction(e -> delete());
-		deleteItem.setAccelerator(Main.SHORTCUT_DELETE);
+		renameItem.setOnAction(e -> new RenameUtilityController(new ArrayList<>()));
 
 		/**
 		 * set up FileTracker Menu TODO
@@ -582,8 +620,7 @@ public class WelcomeController implements Initializable {
 								+ "\nOpen in the left view Then uncheck box \"Favorite Folder\"\nPress Ok to clear list. OtherWise cancel operation");
 				if (ans) {
 					Setting.getFavoritesLocations().clear();
-					FavoritesLocations.getItems().clear();
-					allMenuFavoriteLocation.clear();
+					allSplitViewController.forEach(s -> s.clearFavorites());
 				}
 			}
 		});
@@ -626,7 +663,7 @@ public class WelcomeController implements Initializable {
 				AddActiveUser(user);
 				AddRemoveUser(user);
 				Setting.getUserNames().add(user);
-				refreshBothViews(null);
+				refreshAllSplitViews();
 			}
 		});
 		// Select Active User Menu
@@ -679,7 +716,7 @@ public class WelcomeController implements Initializable {
 							});
 
 							// Main.ResetTitle();
-							Platform.runLater(() -> refreshBothViews(null));
+							Platform.runLater(() -> refreshAllSplitViews());
 						} catch (IOException e) {
 							// e.printStackTrace();
 						}
@@ -726,27 +763,29 @@ public class WelcomeController implements Initializable {
 		TrackerPlayer.openTrackerSettingGUI();
 	}
 
-	ArrayList<RadioMenuItem> allActiveUser = new ArrayList<>();
-	private Map<String, MenuItem> allMenuFavoriteLocation = new HashMap<String, MenuItem>();
-	ArrayList<MenuItem> allRemoveUser = new ArrayList<>();
-
-	public void initializeRootsMenu() {
-		rootsMenu.getItems().clear();
-		File[] roots = File.listRoots();
-		// check https://www.geeksforgeeks.org/javafx-menubutton/
-		for (File temp : roots) {
-			MenuItem mx = new MenuItem(temp.toString());
-			mx.setOnAction(new EventHandler<ActionEvent>() {
-
-				@Override
-				public void handle(ActionEvent event) {
-					// addTabAndSwitch(temp.toString(), temp.toPath(), temp.toPath());
-					changeDirInLastestView(temp);
-				}
-			});
-			rootsMenu.getItems().add(mx);
+	// TODO later make favorites for all views
+	public void openFavoriteLocation(String title, Path leftPath, Path rightPath,
+			SplitViewController splitViewController) {
+		if (!leftPath.toFile().exists()) {
+			DialogHelper.showAlert(AlertType.INFORMATION, "Open Favorites", "File Doesn't exist!", leftPath.toString());
+		}
+		if (!rightPath.toFile().exists()) {
+			DialogHelper.showAlert(AlertType.INFORMATION, "Open Favorites", "File Doesn't exist!",
+					rightPath.toString());
+		}
+		if (splitViewController == leftView) {
+			DraggableTab newTab = new DraggableTab(title, Arrays.asList(leftPath.toFile(), rightPath.toFile()));
+			activeActionTab(newTab);
+			tabPane.getTabs().add(newTab);
+			tabPane.getSelectionModel().select(newTab);
+		} else {
+			splitViewController.setmDirectoryThenRefresh(leftPath.toFile());
+			splitViewController.synctoRight(rightPath.toString());
 		}
 	}
+
+	ArrayList<RadioMenuItem> allActiveUser = new ArrayList<>();
+	ArrayList<MenuItem> allRemoveUser = new ArrayList<>();
 
 	private void AddActiveUser(String user) {
 		RadioMenuItem mn = new RadioMenuItem(user);
@@ -755,7 +794,7 @@ public class WelcomeController implements Initializable {
 			@Override
 			public void handle(ActionEvent event) {
 				FileTracker.updateUserFileName(user);
-				refreshBothViews(null);
+				refreshAllSplitViews();
 			}
 		});
 		toogleActiveUserGroup.getToggles().add(mn);
@@ -764,31 +803,6 @@ public class WelcomeController implements Initializable {
 			mn.setSelected(true);
 		}
 		subMenuActiveUser.getItems().add(mn);
-	}
-
-	private void AddandPriorizethisMenu(String title, Path leftPath, Path rightPath) {
-		if (allMenuFavoriteLocation.containsKey(title)) {
-			removeFavorite(title);
-		}
-		MenuItem mx = new MenuItem(title);
-		mx.setOnAction(new EventHandler<ActionEvent>() {
-
-			@Override
-			public void handle(ActionEvent event) {
-				DraggableTab newTab = new DraggableTab(title, leftPath.toFile(), rightPath.toFile());
-				activeActionTab(newTab);
-				tabPane.getTabs().add(newTab);
-				tabPane.getSelectionModel().select(newTab);
-			}
-		});
-		allMenuFavoriteLocation.put(title, mx);
-		if (!Setting.getFavoritesLocations().contains(title)) {
-			Setting.getFavoritesLocations().add(0, title, leftPath, rightPath);
-		}
-		FavoritesLocations.getItems().add(0, mx);
-		// auto clean menu if more than 10
-		// if (allMenuFavoriteLocation.size() > 10)
-		// removeLastFavorite();
 	}
 
 	private void AddRemoveUser(String user) {
@@ -829,22 +843,6 @@ public class WelcomeController implements Initializable {
 	@FXML
 	public void AddToContextMenu() {
 		Setting.AddToContextMenu();
-	}
-
-	private SplitViewController changeDirInLastestView(File temp) {
-		// get the lastest view changed by detecting title folder name
-		// and giving priority the left view
-		SplitViewController view = null;
-		if (SplitViewController.isLastChangedLeft) {
-			view = leftView;
-		} else {
-			view = rightView;
-		}
-
-		// best approach it let the use to chooze on interface which one
-		view.setmDirectoryThenRefresh(temp);
-		view.requestFocus();
-		return view;
 	}
 
 	// the current problem in conflict log is this case:
@@ -972,129 +970,39 @@ public class WelcomeController implements Initializable {
 			Desktop.getDesktop().browse(
 					new URL("https://itunes.apple.com/us/app/vlc-mobile-remote/id1140931401?ls=1&mt=8").toURI());
 		} catch (IOException | URISyntaxException e) {
-			// e.printStackTrace();
+			e.printStackTrace();
 		}
 
 	}
 
-	@FXML
-	public void copy() {
-		if (leftView.isFocusedTable()) {
-			List<Path> source = leftView.getSelection();
-			Path target = rightView.getDirectoryPath();
-			FileHelper.copy(source, target);
-		} else if (rightView.isFocusedTable()) {
-			List<Path> source = rightView.getSelection();
-			Path target = leftView.getDirectoryPath();
-			FileHelper.copy(source, target);
-		}
+	public void refreshAllSplitViews() {
+		allSplitViewController.forEach(spCon -> spCon.refreshAsPathField());
 	}
 
-	public void createDirectory() {
-		SplitViewController focusedPane = getFocusedPane();
-		if (focusedPane != null) {
-			FileHelper.createDirectory(focusedPane.getDirectoryPath(), focusedPane);
-		}
+	/**
+	 * Refresh Split view only current directory match provided File parameter
+	 *
+	 * @param directoryView
+	 * @param exception     Do not refresh given splitView <br>
+	 *                      can be null
+	 */
+	public void refreshAllSplitViewsIfMatch(File directoryView, SplitViewController exception) {
+		allSplitViewController.stream()
+				.filter(spCon -> spCon != exception && spCon.getmDirectory().equals(directoryView))
+				.forEach(spCon -> spCon.refreshAsPathField());
 	}
 
-	public void createFile() {
-		SplitViewController focusedPane = getFocusedPane();
-		if (focusedPane != null) {
-			FileHelper.createFile(focusedPane.getDirectoryPath());
-		}
-	}
-
-	public void delete() {
-		// WatchServiceHelper.setRuning(false);
-		SplitViewController focusedPane = getFocusedPane();
-		if (focusedPane != null) {
-			List<Path> source = focusedPane.getSelection();
-			int lastKnownIndex = focusedPane.indexOfName(focusedPane.getSelectedItem().getName());
-			if (!FileHelper.delete(source)) {
-				return;
+	public void refreshUnExistingViewsDir() {
+		allSplitViewController.forEach(spCon -> {
+			boolean doRefresh = false;
+			while (!spCon.getDirectoryPath().toFile().exists()) {
+				spCon.setmDirectory(spCon.getmDirectory().getParentFile());
+				doRefresh = true;
 			}
-			// WatchServiceHelper.setRuning(false);
-			// focusedPane.getMfileTracker().OperationUpdate(source, null, "delete");
-			// focusedPane.refreshAsPathField();
-			refreshWhenDetected(source.get(0).getParent());
-			focusedPane.selectIndex(lastKnownIndex);
-			// refresh and change to parent directory if deleted folder was the other view
-			SplitViewController unfocused = getunFocusedPane();
-			if (source.stream().anyMatch(p -> p.equals(unfocused.getDirectoryPath()))) {
-				unfocused.setmDirectoryThenRefresh(unfocused.getmDirectory().getParentFile());
+			if (doRefresh) {
+				spCon.refresh(null);
 			}
-		}
-		// WatchServiceHelper.setRuning(true);
-	}
-
-	@FXML
-	public void Deleteright() {
-		if (!rightView.getMfileTracker().isTracked()) {
-			DialogHelper.showAlert(AlertType.INFORMATION, "Delete Tracker Data", "This is already Untracked folder",
-					"Are you kidding me.");
-			return;
-		}
-		boolean ans = DialogHelper.showConfirmationDialog("Delete Tracker Data",
-				"Are you Sure You want to wipe tracker data?",
-				"Note: this have nothing to do with your files, it just delete .tracker_explorer.txt"
-						+ " >>And so set all item to untracked.\nThis cannot be undone!");
-
-		if (ans) {
-			rightView.getMfileTracker().deleteFile();
-			rightView.refreshAsPathField();
-		}
-	}
-
-	@FXML
-	public void DominateLeft() {
-		leftView.setPathFieldThenRefresh(rightView.getPathField().getText());
-	}
-
-	@FXML
-	public void DominateRight() {
-		rightView.setPathFieldThenRefresh(leftView.getPathField().getText());
-	}
-
-	public void focus_Switch_VIEW() {
-		SplitViewController focusedPane = getunFocusedPane();
-		if (focusedPane != null) {
-			focusedPane.focusTable();
-		} else {
-			leftView.focusTable();
-		}
-		switcher = !switcher;
-	}
-
-	private boolean switcher = true;
-
-	public void focus_VIEW() {
-		SplitViewController focusedPane = getFocusedPane();
-		if (focusedPane != null) {
-			focusedPane.focusTable();
-		} else {
-			if (switcher) {
-				leftView.focusTable();
-			} else {
-				rightView.focusTable();
-			}
-			switcher = !switcher;
-		}
-	}
-
-	public void focusSearchField() {
-		SplitViewController focusedPane = getFocusedPane();
-		if (focusedPane != null) {
-			focusedPane.focusSearchField();
-		} else {
-			leftView.focusSearchField();
-		}
-	}
-
-	public void focusTextField() {
-		SplitViewController focusedPane = getFocusedPane();
-		if (focusedPane != null) {
-			focusedPane.getPathField().requestFocus();
-		}
+		});
 	}
 
 	@FXML
@@ -1110,18 +1018,8 @@ public class WelcomeController implements Initializable {
 			try {
 				Desktop.getDesktop().browse(new URL("https://www.bulkrenameutility.co.uk").toURI());
 			} catch (IOException | URISyntaxException e) {
-				// e.printStackTrace();
+				e.printStackTrace();
 			}
-		}
-	}
-
-	private SplitViewController getFocusedPane() {
-		if (leftView.isFocused()) {
-			return leftView;
-		} else if (rightView.isFocused()) {
-			return rightView;
-		} else {
-			return null;
 		}
 	}
 
@@ -1146,7 +1044,7 @@ public class WelcomeController implements Initializable {
 			try {
 				Desktop.getDesktop().browse(new URL("https://www.mp3tag.de/en/").toURI());
 			} catch (IOException | URISyntaxException e) {
-				// e.printStackTrace();
+				e.printStackTrace();
 			}
 		}
 	}
@@ -1172,10 +1070,6 @@ public class WelcomeController implements Initializable {
 		return selection.get(0);
 	}
 
-	public MenuButton getToggleFavorite() {
-		return FavoritesLocations;
-	}
-
 	// private SplitViewController getFocusedPane(TextField textField) {
 	// if (textField == leftView.getPathField()) {
 	// return leftView;
@@ -1183,16 +1077,6 @@ public class WelcomeController implements Initializable {
 	// return rightView;
 	// }
 	// }
-
-	private SplitViewController getunFocusedPane() {
-		if (leftView.isFocused()) {
-			return rightView;
-		} else if (rightView.isFocused()) {
-			return leftView;
-		} else {
-			return null;
-		}
-	}
 
 	@FXML
 	void GetVLC(ActionEvent event) {
@@ -1208,10 +1092,6 @@ public class WelcomeController implements Initializable {
 				// e.printStackTrace();
 			}
 		}
-	}
-
-	public boolean isAutoExpandToRight() {
-		return autoExpand.isSelected();
 	}
 
 	@FXML
@@ -1265,7 +1145,7 @@ public class WelcomeController implements Initializable {
 						Platform.runLater(() -> Main.ProcessTitle(p.toString()));
 						leftView.getMfileTracker().NewOutFolder(p);
 					});
-					Platform.runLater(() -> refreshBothViews(null));
+					Platform.runLater(() -> refreshAllSplitViews());
 				} catch (IOException e) {
 					// e.printStackTrace();
 				}
@@ -1274,146 +1154,60 @@ public class WelcomeController implements Initializable {
 		trackerThread.start();
 	}
 
-	@FXML
-	public void move() {
-		// WatchServiceHelper.setRuning(false);
-		if (leftView.isFocusedTable()) {
-			List<Path> source = leftView.getSelection();
-			Path target = rightView.getDirectoryPath();
-			FileHelper.move(source, target);
-			// rightView.getMfileTracker().OperationUpdate(source,
-			// leftView.getMfileTracker(), "move");
-		} else if (rightView.isFocusedTable()) {
-			List<Path> source = rightView.getSelection();
-			Path target = leftView.getDirectoryPath();
-			FileHelper.move(source, target);
-			// leftView.getMfileTracker().OperationUpdate(source,
-			// rightView.getMfileTracker(), "move");
-		}
-		// refresh is committed from within FileTracker#insert function
-		// WatchServiceHelper.setRuning(true);
-	}
-
-	public void RecursiveHelpersetBlocked(boolean state) {
-		if (state == true) {
-			autoExpand.setSelected(false);
-		} else {
-			autoExpand.setSelected(Setting.isAutoExpand());
-		}
-		rightDominate.setDisable(state);
-		leftDominate.setDisable(state);
-		autoExpand.setDisable(state);
-		FavoritesLocations.setDisable(state);
-		TrackerMenu.setDisable(state);
-		SwapButton.setDisable(state);
-		rootsMenu.setDisable(state);
-		GoDesktop.setDisable(state);
-	}
-
-	// i can just refresh both but trying to optimize and call refresh only when
-	// Necessary
-	public void refreshBothViews(SplitViewController mSplitViewController) {
-		// could send null also to refresh both views
-		if (mSplitViewController == null || leftView.getmDirectory().equals(rightView.getmDirectory())) {
-			rightView.refresh(null);
-			leftView.refresh(null);
-			return;
-		}
-		mSplitViewController.refresh(null);
-	}
-
-	public void refreshBothViewsAsPathField(SplitViewController mSplitViewController) {
-		if (mSplitViewController == null || leftView.getmDirectory().equals(rightView.getmDirectory())) {
-			leftView.refreshAsPathField();
-			rightView.refreshAsPathField();
-			return;
-		}
-		mSplitViewController.refreshAsPathField();
-	}
-
-	// this is used in case of change on a view without refreshing it
-	// so to force change on the other view do this
-	public void refreshTheOtherView(SplitViewController mSplitViewController) {
-		if (leftView.getmDirectory().equals(rightView.getmDirectory())) {
-			// do search and refresh the other view
-			// problem see mfile tracker where is used
-			if (mSplitViewController.equals(leftView)) {
-				rightView.refreshAsPathField();
-			} else {
-				leftView.refreshAsPathField();
-			}
-		}
-	}
-
-	// the lastest version of refresh: send paths and refresh the corresponding
-	// views
-	public void refreshWhenDetected(Path... paths) {
-		if (paths.length == 0) {
-			refreshBothViewsAsPathField(null);
-		}
-		for (Path path : paths) {
-			if (leftView.getDirectoryPath().equals(path)) {
-				leftView.refreshAsPathField();
-			}
-			if (rightView.getDirectoryPath().equals(path)) {
-				rightView.refreshAsPathField();
-			}
-		}
-	}
-
-	private void removeFavorite(Path FavoLeftPath) {
-		removeFavorite(Setting.getFavoritesLocations().getTitleByLeft(FavoLeftPath));
-	}
-
-	private void removeFavorite(String FavoTitle) {
-		if (Setting.getFavoritesLocations().contains(FavoTitle)) {
-			Setting.getFavoritesLocations().remove(FavoTitle);
-			FavoritesLocations.getItems().remove(allMenuFavoriteLocation.get(FavoTitle));
-			allMenuFavoriteLocation.remove(FavoTitle);
-		}
-	}
+//	// i can just refresh both but trying to optimize and call refresh only when
+//	// Necessary
+//	public void refreshBothViews(SplitViewController mSplitViewController) {
+//		// could send null also to refresh both views
+//		if (mSplitViewController == null || leftView.getmDirectory().equals(rightView.getmDirectory())) {
+//			rightView.refresh(null);
+//			leftView.refresh(null);
+//			return;
+//		}
+//		mSplitViewController.refresh(null);
+//	}
+//
+//	public void refreshBothViewsAsPathField(SplitViewController mSplitViewController) {
+//		if (mSplitViewController == null || leftView.getmDirectory().equals(rightView.getmDirectory())) {
+//			leftView.refreshAsPathField();
+//			rightView.refreshAsPathField();
+//			return;
+//		}
+//		mSplitViewController.refreshAsPathField();
+//	}
+//
+//	// this is used in case of change on a view without refreshing it
+//	// so to force change on the other view do this
+//	public void refreshTheOtherView(SplitViewController mSplitViewController) {
+//		if (leftView.getmDirectory().equals(rightView.getmDirectory())) {
+//			// do search and refresh the other view
+//			// problem see mfile tracker where is used
+//			if (mSplitViewController.equals(leftView)) {
+//				rightView.refreshAsPathField();
+//			} else {
+//				leftView.refreshAsPathField();
+//			}
+//		}
+//	}
+//
+//	// the lastest version of refresh: send paths and refresh the corresponding
+//	// views
+//	public void refreshWhenDetected(Path... paths) {
+//		if (paths.length == 0) {
+//			refreshBothViewsAsPathField(null);
+//		}
+//		for (Path path : paths) {
+//			if (leftView.getDirectoryPath().equals(path)) {
+//				leftView.refreshAsPathField();
+//			}
+//			if (rightView.getDirectoryPath().equals(path)) {
+//				rightView.refreshAsPathField();
+//			}
+//		}
+//	}
 
 	@FXML
 	public void RemoveFromContextMenu() {
 		Setting.RemoveFromContextMenu();
-	}
-
-	public void rename() {
-		SplitViewController focusedPane = getFocusedPane();
-		if (focusedPane != null) {
-			List<Path> selection = focusedPane.getSelection();
-			if (selection.size() == 1) {
-				Path src = selection.get(0);
-				if (src.getNameCount() == 0) {
-					return;
-				}
-				Path target = FileHelper.rename(src, false);
-				if (target == null) {
-					return;
-				}
-				// file tracker operation update
-				focusedPane.getMfileTracker().operationUpdate(target, src.toFile().getName(),
-						target.toFile().getName());
-				// refresh directory is satisfied by watch service
-
-				// scroll to renamed item in any view
-				Thread tempScroll = new Thread() {
-
-					@Override
-					public void run() {
-						try {
-							TimeUnit.MILLISECONDS.sleep(100);
-							Platform.runLater(() -> focusedPane.ScrollToName(target.getFileName().toString()));
-						} catch (InterruptedException e) {
-							e.printStackTrace();
-						}
-					}
-				};
-				tempScroll.start();
-			} else {
-				new RenameUtilityController(selection);
-			}
-		}
 	}
 
 	public void RevealINExplorer() {
@@ -1473,8 +1267,9 @@ public class WelcomeController implements Initializable {
 	public void saveSetting() {
 		Setting.setLeftLastKnowLocation(getLeftLastKnowLocation());
 		Setting.setRightLastKnowLocation(getRightLastKnowLocation());
-		Setting.setShowLeftNotesColumn(leftNote.isVisible());
-		Setting.setShowRightNotesColumn(rightNote.isVisible());
+		Setting.setShowLeftNotesColumn(leftView.isNoteColumnVisible());
+		Setting.setShowRightNotesColumn(rightView.isNoteColumnVisible());
+		Setting.setAutoExpand(leftView.isAutoExpand());
 		if (Setting.isRestoreLastOpenedFavorite()) {
 			ArrayList<Integer> lastOpenedFavoritesIndex = new ArrayList<Integer>();
 			for (Tab tab : tabPane.getTabs()) {
@@ -1487,13 +1282,6 @@ public class WelcomeController implements Initializable {
 		}
 	}
 
-	@FXML
-	public void SwapView() {
-		String temp = rightView.getPathField().getText();
-		DominateRight();
-		leftView.setPathFieldThenRefresh(temp);
-	}
-
 	public void switchRecursive() {
 		SplitViewController focusedPane = getFocusedPane();
 		if (focusedPane != null) {
@@ -1503,48 +1291,12 @@ public class WelcomeController implements Initializable {
 		}
 	}
 
-	public void SynctoLeft(String pathField) {
-		leftView.setPathFieldThenRefresh(pathField);
-		// leftView.setmDirectoryThenRefresh(rightView.NametoFile(path));
-	}
-
-	public void SynctoLeftParent() {
-		File parent = rightView.getmDirectory().getParentFile();
-		if (parent.exists()) {
-			leftView.setmDirectoryThenRefresh(parent);
-			leftView.refresh(null);
-		}
-	}
-
-	public void SynctoRight(String pathField) {
-		rightView.setPathFieldThenRefresh(pathField);
-		// rightView.setmDirectoryThenRefresh(leftView.NametoFile(path));
-	}
-
-	@FXML
-	void toggleAutoExpand(ActionEvent event) {
-		Setting.setAutoExpand(!Setting.isAutoExpand());
-	}
-
-	public void ToogleFavorite() {
-		FavoriteCheckBox.fire();
-	}
-
 	@FXML
 	void Tutorial(ActionEvent event) {
 		try {
 			Desktop.getDesktop().browse(new URL("https://github.com/Ahmad-Said/tracker-explorer").toURI());
 		} catch (IOException | URISyntaxException e) {
 			// e.printStackTrace();
-		}
-	}
-
-	public void updateFavoriteCheckBox(boolean isOutofTheBoxHelper) {
-		if (isOutofTheBoxHelper) {
-			FavoriteCheckBox.setVisible(false);
-		} else {
-			FavoriteCheckBox.setVisible(true);
-			FavoriteCheckBox.setSelected(Setting.getFavoritesLocations().contains(leftView.getDirectoryPath()));
 		}
 	}
 
@@ -1574,12 +1326,4 @@ public class WelcomeController implements Initializable {
 	public Stage getStage() {
 		return stage;
 	}
-
-	/**
-	 * @param stage the stage to set
-	 */
-	public void setStage(Stage stage) {
-		this.stage = stage;
-	}
-
 }

@@ -5,7 +5,6 @@ package application;
 
 import java.io.File;
 import java.io.IOException;
-import java.nio.file.Path;
 import java.text.ParseException;
 import java.util.List;
 import java.util.Map;
@@ -21,50 +20,20 @@ import javafx.scene.Scene;
 import javafx.scene.control.Alert.AlertType;
 import javafx.scene.control.Label;
 import javafx.scene.image.Image;
-import javafx.scene.input.KeyCode;
-import javafx.scene.input.KeyCodeCombination;
-import javafx.scene.input.KeyCombination;
-import javafx.scene.input.KeyEvent;
 import javafx.stage.Stage;
 import javafx.stage.WindowEvent;
 
 public class Main extends Application {
-	static final KeyCombination SHORTCUT_COPY = new KeyCodeCombination(KeyCode.C, KeyCombination.CONTROL_DOWN);
-	static final KeyCombination SHORTCUT_MOVE = new KeyCodeCombination(KeyCode.X, KeyCombination.CONTROL_DOWN);
-	static final KeyCombination SHORTCUT_OPEN_FAVORITE = new KeyCodeCombination(KeyCode.F, KeyCombination.SHIFT_DOWN);
-	public static final KeyCombination SHORTCUT_DELETE = new KeyCodeCombination(KeyCode.DELETE);
-	public static final KeyCombination SHORTCUT_NEW_FILE = new KeyCodeCombination(KeyCode.N,
-			KeyCombination.SHORTCUT_DOWN);
-	public static final KeyCombination SHORTCUT_NEW_DIRECTORY = new KeyCodeCombination(KeyCode.N,
-			KeyCombination.SHORTCUT_DOWN, KeyCombination.SHIFT_DOWN);
-	static final KeyCombination SHORTCUT_FOCUS_VIEW = new KeyCodeCombination(KeyCode.TAB);
-	static final KeyCombination SHORTCUT_SWITCH_RECURSIVE = new KeyCodeCombination(KeyCode.R,
-			KeyCombination.CONTROL_DOWN);
-	public static final KeyCombination SHORTCUT_RENAME = new KeyCodeCombination(KeyCode.F2);
-	static final KeyCombination SHORTCUT_SWITCH_NEXT_TABS = new KeyCodeCombination(KeyCode.TAB,
-			KeyCombination.CONTROL_DOWN);
-	static final KeyCombination SHORTCUT_SWITCH_PREVIOUS_TABS = new KeyCodeCombination(KeyCode.TAB,
-			KeyCombination.CONTROL_DOWN, KeyCombination.SHIFT_DOWN);
-	static final KeyCombination SHORTCUT_CLOSE_CURRENT_TAB = new KeyCodeCombination(KeyCode.W,
-			KeyCombination.CONTROL_DOWN);
-	static final KeyCombination SHORTCUT_OPEN_NEW_TAB = new KeyCodeCombination(KeyCode.T, KeyCombination.CONTROL_DOWN);
-	static final KeyCombination SHORTCUT_EASY_FOCUS_SWITCH_VIEW = new KeyCodeCombination(KeyCode.F3);
-	static final KeyCombination SHORTCUT_SEARCH = new KeyCodeCombination(KeyCode.F, KeyCombination.CONTROL_DOWN);
-	static final KeyCombination SHORTCUT_Clear_Search = new KeyCodeCombination(KeyCode.ESCAPE,
-			KeyCombination.CONTROL_ANY);
-	static final KeyCombination SHORTCUT_REVEAL_IN_EXPLORER = new KeyCodeCombination(KeyCode.R, KeyCombination.ALT_DOWN,
-			KeyCombination.SHIFT_DOWN);
-
 	private static WelcomeController mWelcomeController;
-	private static Stage PrimaryStage;
+	private static Stage primaryStage;
 
 	public static enum ArgsType {
 		player, silent
 	}
 
 	@Override
-	public void start(Stage primaryStage) throws IOException {
-		PrimaryStage = primaryStage;
+	public void start(Stage primStage) throws IOException {
+		primaryStage = primStage;
 		Setting.loadSetting();
 		Parameters parameters = getParameters();
 
@@ -76,8 +45,8 @@ public class Main extends Application {
 
 		// ---------- Tracker Player action --player=playlistPath -----------------
 		boolean isSilentWithShutdown = true;
-		primaryStage.setScene(new Scene(new Label()));
-		primaryStage.centerOnScreen();
+		primStage.setScene(new Scene(new Label()));
+		primStage.centerOnScreen();
 		if (named.containsKey(ArgsType.player.toString())) {
 			File playlist = new File(named.get(ArgsType.player.toString()));
 			// initialize simple Primary stage so Dialog helper can be shown
@@ -134,60 +103,23 @@ public class Main extends Application {
 		Parent root = loader.getRoot();
 
 		mWelcomeController = loader.getController();
-		mWelcomeController.setStage(primaryStage);
 
 		Scene scene = new Scene(root);
 
 //		new JMetro(JMetro.Style.LIGHT).applyTheme(root);
 		scene.getStylesheets().add("/css/bootstrap3.css");
 
-		PrimaryStage.setScene(scene);
-		PrimaryStage.getIcons().add(new Image(Main.class.getResourceAsStream("/img/icon.png")));
+		primaryStage.setScene(scene);
+		primaryStage.getIcons().add(new Image(Main.class.getResourceAsStream("/img/icon.png")));
 
-		PrimaryStage.show();
-		scene.addEventFilter(KeyEvent.KEY_RELEASED, e -> {
-			if (SHORTCUT_DELETE.match(e)) {
-				mWelcomeController.delete();
-			} else if (SHORTCUT_NEW_FILE.match(e)) {
-				mWelcomeController.createFile();
-			} else if (SHORTCUT_NEW_DIRECTORY.match(e)) {
-				mWelcomeController.createDirectory();
-			} else if (SHORTCUT_RENAME.match(e)) {
-				mWelcomeController.rename();
-			} else if (SHORTCUT_COPY.match(e)) {
-				mWelcomeController.copy();
-			} else if (SHORTCUT_MOVE.match(e)) {
-				mWelcomeController.move();
-			} else if (SHORTCUT_OPEN_FAVORITE.match(e)) {
-				mWelcomeController.getToggleFavorite().fire();
-				mWelcomeController.getToggleFavorite().requestFocus();
-			} else if (SHORTCUT_FOCUS_VIEW.match(e)) {
-				mWelcomeController.focus_VIEW();
-			} else if (SHORTCUT_EASY_FOCUS_SWITCH_VIEW.match(e)) {
-				mWelcomeController.focus_Switch_VIEW();
-			} else if (SHORTCUT_SWITCH_NEXT_TABS.match(e)) {
-				mWelcomeController.switch_Next_Tabs();
-			} else if (SHORTCUT_CLOSE_CURRENT_TAB.match(e)) {
-				mWelcomeController.close_Current_Tab();
-			} else if (SHORTCUT_OPEN_NEW_TAB.match(e)) {
-				mWelcomeController.open_New_Tab();
-			} else if (SHORTCUT_SWITCH_PREVIOUS_TABS.match(e)) {
-				mWelcomeController.switch_Previous_Tab();
-			} else if (SHORTCUT_SEARCH.match(e)) {
-				mWelcomeController.focusSearchField();
-			} else if (SHORTCUT_SWITCH_RECURSIVE.match(e)) {
-				mWelcomeController.switchRecursive();
-			} else if (SHORTCUT_Clear_Search.match(e)) {
-				mWelcomeController.ClearSearchField();
-			} else if (SHORTCUT_REVEAL_IN_EXPLORER.match(e)) {
-				mWelcomeController.RevealINExplorer();
-			}
-		});
+		primaryStage.show();
 
-		PrimaryStage.setOnCloseRequest(new EventHandler<WindowEvent>() {
+		mWelcomeController.initializeViewStage(primaryStage, true);
+
+		primaryStage.setOnCloseRequest(new EventHandler<WindowEvent>() {
 			@Override
 			public void handle(WindowEvent t) {
-				primaryStage.hide();
+				primStage.hide();
 				mWelcomeController.saveSetting();
 				Platform.exit();
 				Setting.saveSetting();
@@ -238,46 +170,38 @@ public class Main extends Application {
 		}
 	}
 
-	public static void refreshWelcomeController(List<Path> paths) {
-		mWelcomeController.refreshWhenDetected(paths.toArray(new Path[paths.size()]));
-	}
-
-	public static void refreshWelcomeController(Path... paths) {
-		mWelcomeController.refreshWhenDetected(paths);
-	}
-
 	public static void showStage() {
-		PrimaryStage.show();
+		primaryStage.show();
 	}
 
 	public static void hideStage() {
-		PrimaryStage.hide();
+		primaryStage.hide();
 	}
 
 	public static Stage getPrimaryStage() {
-		return PrimaryStage;
+		return primaryStage;
 	}
 
 	private static String baseName;
 
 	public static void UpdateTitle(String toAdd) {
 		baseName = toAdd + " - Tracker Explorer";
-		PrimaryStage.setTitle(baseName);
+		primaryStage.setTitle(baseName);
 	}
 
 	public static void ResetTitle() {
-		PrimaryStage.setTitle(baseName);
+		primaryStage.setTitle(baseName);
 	}
 
 	private static char pr = '\\';
 
 	public static void ProcessTitle(String toAppend) {
 		pr = pr == '\\' ? '/' : '\\';
-		PrimaryStage.setTitle(" " + pr + toAppend);
+		primaryStage.setTitle(" " + pr + toAppend);
 	}
 
 	public static String GetTitle() {
-		return PrimaryStage.getTitle();
+		return primaryStage.getTitle();
 	}
 
 	// about deploying as package independent check this :

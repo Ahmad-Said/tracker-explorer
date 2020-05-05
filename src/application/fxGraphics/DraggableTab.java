@@ -1,7 +1,9 @@
 package application.fxGraphics;
 
 import java.io.File;
+import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 
 import application.model.SplitViewState;
@@ -37,7 +39,7 @@ public class DraggableTab extends Tab {
 
 	// my Program added
 	private boolean isEnteringAction = true;
-	private SplitViewState leftSplitViewState, rightSplitViewState;
+	private ArrayList<SplitViewState> splitViewStates;
 
 	private static final Set<TabPane> tabPanes = new HashSet<>();
 	private Label nameLabel;
@@ -63,10 +65,9 @@ public class DraggableTab extends Tab {
 	 *
 	 * @param text the text to appear on the tag label.
 	 */
-	public DraggableTab(String text, File leftDir, File rightDir) {
-
-		leftSplitViewState = new SplitViewState(leftDir);
-		rightSplitViewState = new SplitViewState(rightDir);
+	public DraggableTab(String text, List<File> splitDirectories) {
+		splitViewStates = new ArrayList<>();
+		splitDirectories.forEach(f -> splitViewStates.add(new SplitViewState(f)));
 
 		setTooltip(new Tooltip(text));
 		nameLabel = new Label(text);
@@ -309,11 +310,7 @@ public class DraggableTab extends Tab {
 		}
 	}
 
-	public SplitViewState getLeftSplitViewState() {
-		return leftSplitViewState;
-	}
-
-	public SplitViewState getRightSplitViewState() {
-		return rightSplitViewState;
+	public ArrayList<SplitViewState> getSplitViewStates() {
+		return splitViewStates;
 	}
 }

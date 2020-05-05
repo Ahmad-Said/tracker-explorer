@@ -152,10 +152,10 @@ public class Setting {
 					+ FavoritesLocations.getTitle().stream().map(s -> s).collect(Collectors.joining(";")));
 
 			p.println("FavoritesLeftLocations=" + FavoritesLocations.getLeftLoc().stream()
-					.map(s -> s.toFile().toURI().toString()).collect(Collectors.joining(";")));
+					.map(s -> s.toURI().toString()).collect(Collectors.joining(";")));
 
 			p.println("FavoritesRightLocations=" + FavoritesLocations.getRightLoc().stream()
-					.map(s -> s.toFile().toURI().toString()).collect(Collectors.joining(";")));
+					.map(s -> s.toURI().toString()).collect(Collectors.joining(";")));
 			p.close();
 		} catch (IOException e) {
 			e.printStackTrace();

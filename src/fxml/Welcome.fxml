@@ -1,319 +1,20 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<?import java.lang.String?>
 <?import javafx.geometry.Insets?>
 <?import javafx.scene.control.Button?>
-<?import javafx.scene.control.CheckBox?>
-<?import javafx.scene.control.Label?>
 <?import javafx.scene.control.Menu?>
 <?import javafx.scene.control.MenuBar?>
-<?import javafx.scene.control.MenuButton?>
 <?import javafx.scene.control.MenuItem?>
+<?import javafx.scene.control.SplitPane?>
 <?import javafx.scene.control.Tab?>
 <?import javafx.scene.control.TabPane?>
-<?import javafx.scene.control.TableColumn?>
-<?import javafx.scene.control.TableView?>
-<?import javafx.scene.control.TextField?>
-<?import javafx.scene.control.ToggleButton?>
-<?import javafx.scene.control.Tooltip?>
 <?import javafx.scene.layout.BorderPane?>
-<?import javafx.scene.layout.ColumnConstraints?>
-<?import javafx.scene.layout.GridPane?>
 <?import javafx.scene.layout.HBox?>
-<?import javafx.scene.layout.RowConstraints?>
 <?import javafx.scene.layout.VBox?>
 
-<BorderPane prefHeight="650.0" prefWidth="890.0" xmlns="http://javafx.com/javafx/8.0.171" xmlns:fx="http://javafx.com/fxml/1" fx:controller="application.controller.WelcomeController">
-   <top>
-      <MenuBar BorderPane.alignment="CENTER">
-        <menus>
-          <Menu fx:id="fileMenu" mnemonicParsing="false" text="File">
-            <items>
-                  <MenuItem fx:id="newWindow" mnemonicParsing="false" text="New Window" />
-              <MenuItem fx:id="newFile" mnemonicParsing="false" text="New File" />
-                  <MenuItem fx:id="newFolder" mnemonicParsing="false" text="New Folder" />
-                  <MenuItem fx:id="renameItem" mnemonicParsing="false" text="Rename" />
-                  <MenuItem fx:id="deleteItem" mnemonicParsing="false" text="Delete" />
-            </items>
-          </Menu>
-          <Menu fx:id="TrackerMenu" mnemonicParsing="false" text="Tracker">
-            <items>
-              <MenuItem fx:id="trackLeftRecusivlyMenuItem" mnemonicParsing="false" onAction="#leftTrackRecusivly" text="Track left view Recursivly" />
-                  <MenuItem mnemonicParsing="false" onAction="#AddToContextMenu" text="Add Tracker To Context Menu" />
-                  <MenuItem mnemonicParsing="false" onAction="#RemoveFromContextMenu" text="Remove Tracker From Context Menu" />
-                  <MenuItem mnemonicParsing="false" text="---------** Experimental Features **---------" />
-            </items>
-          </Menu>
-          <Menu mnemonicParsing="false" text="VLC">
-            <items>
-                  <MenuItem mnemonicParsing="false" onAction="#GetVLC" text="Get VLC" />
-                  <MenuItem mnemonicParsing="false" onAction="#ConfigureVLCPath" text="Configure VLC Path" />
-                  <MenuItem fx:id="bulkRemoveMenuItem" mnemonicParsing="false" onAction="#rightBulkRemoveIntro" text="Bulk Remove Intro Right View" />
-                  <MenuItem mnemonicParsing="false" onAction="#ControlVLC" text="Remote VLC" />
-                  <MenuItem mnemonicParsing="false" onAction="#ControlVLCAndroid" text="Android Remote App" />
-                  <MenuItem mnemonicParsing="false" onAction="#ControlVLCIOS" text="IOS Remote App" />
-                  <MenuItem mnemonicParsing="false" onAction="#GetMp3Tag" text="Get Mp3Tag" />
-                  <MenuItem mnemonicParsing="false" onAction="#GetBulkRenameUtility" text="Get Bulk Rename Utility" />
-            </items>
-          </Menu>
-            <Menu fx:id="cortanaMenu" mnemonicParsing="false" text="Cortana Shortcuts">
-               <items>
-                  <MenuItem mnemonicParsing="false" onAction="#openSettingTrackerPlayer" text="Setting" />
-                  <MenuItem mnemonicParsing="false" text="otherShortcut" />
-               </items>
-            </Menu>
-            <Menu fx:id="helpMenu" mnemonicParsing="false" text="Help">
-               <items>
-                  <MenuItem mnemonicParsing="false" onAction="#KeyBoardShortcut" text="Keyboard Shortcut" />
-                  <MenuItem mnemonicParsing="false" onAction="#Tutorial" text="Tutorial" />
-                  <MenuItem mnemonicParsing="false" onAction="#CheckForUpdate" text="Check For Update" />
-                  <MenuItem fx:id="aboutMenuItem" mnemonicParsing="false" text="About" />
-               </items>
-            </Menu>
-        </menus>
-      </MenuBar>
-   </top>
-   <center>
-      <GridPane BorderPane.alignment="CENTER">
-        <columnConstraints>
-          <ColumnConstraints hgrow="SOMETIMES" minWidth="10.0" prefWidth="100.0" />
-          <ColumnConstraints hgrow="SOMETIMES" minWidth="10.0" prefWidth="100.0" />
-        </columnConstraints>
-        <rowConstraints>
-          <RowConstraints maxHeight="178.0" minHeight="1.0" prefHeight="88.0" />
-            <RowConstraints maxHeight="151.0" minHeight="10.0" prefHeight="43.0" />
-          <RowConstraints maxHeight="1.7976931348623157E308" minHeight="10.0" prefHeight="378.0" vgrow="SOMETIMES" />
-        </rowConstraints>
-         <children>
-            <TableView fx:id="leftTable" prefHeight="200.0" prefWidth="200.0" tableMenuButtonVisible="true" GridPane.rowIndex="2">
-              <columns>
-                <TableColumn fx:id="leftIcon" maxWidth="500.0" minWidth="26.0" prefWidth="23.0" resizable="false" />
-                <TableColumn fx:id="leftName" maxWidth="1.7976931348623157E308" minWidth="-Infinity" prefWidth="267.0" text="Name" />
-                  <TableColumn fx:id="leftNote" maxWidth="1.7976931348623157E308" minWidth="75.0" prefWidth="-1.0" text="Notes" visible="false" />
-                  <TableColumn fx:id="leftSize" maxWidth="1.7976931348623157E308" minWidth="75.0" prefWidth="-1.0" text="Size(MB)" visible="false" />
-                  <TableColumn fx:id="lefthboxActions" maxWidth="200.0" minWidth="100.0" prefWidth="105.0" text="Action" />
-              </columns>
-               <GridPane.margin>
-                  <Insets bottom="5.0" left="10.0" right="10.0" />
-               </GridPane.margin>
-               <columnResizePolicy>
-                  <TableView fx:constant="CONSTRAINED_RESIZE_POLICY" />
-               </columnResizePolicy>
-            </TableView>
-            <TextField fx:id="leftPathInput" alignment="TOP_LEFT" GridPane.halignment="RIGHT" GridPane.rowIndex="1">
-               <GridPane.margin>
-                  <Insets left="130.0" right="43.0" />
-               </GridPane.margin></TextField>
-            <Button fx:id="leftBack" alignment="CENTER" mnemonicParsing="false" text="&lt;&lt;" GridPane.halignment="LEFT" GridPane.rowIndex="1">
-               <GridPane.margin>
-                  <Insets left="10.0" />
-               </GridPane.margin>
-               <styleClass>
-                  <String fx:value="first" />
-                  <String fx:value="btn" />
-               </styleClass>
-            </Button>
-            <TextField fx:id="leftSearchField" layoutX="85.0" layoutY="104.0" maxWidth="-Infinity" minWidth="-Infinity" prefHeight="31.0" prefWidth="160.0" promptText="Search..un..yes" GridPane.halignment="CENTER">
-               <GridPane.margin>
-                  <Insets left="20.0" right="75.0" top="50.0" />
-               </GridPane.margin>
-               <styleClass>
-                  <String fx:value="first" />
-                  <String fx:value="always-show-cross" />
-               </styleClass>
-            </TextField>
-            <Button fx:id="leftSearchButton" alignment="CENTER" layoutX="20.0" layoutY="104.0" mnemonicParsing="false" prefHeight="38.0" prefWidth="70.0" text="Refresh" GridPane.halignment="CENTER">
-               <GridPane.margin>
-                  <Insets left="175.0" top="50.0" />
-               </GridPane.margin>
-               <styleClass>
-                  <String fx:value="btn" />
-                  <String fx:value="last" />
-               </styleClass>
-               <tooltip>
-                  <Tooltip text="Try Scroll Up And Down On This Button !" />
-               </tooltip>
-            </Button>
-            <TableView fx:id="rightTable" layoutX="20.0" layoutY="141.0" prefHeight="200.0" prefWidth="200.0" tableMenuButtonVisible="true" GridPane.columnIndex="1" GridPane.rowIndex="2">
-               <columnResizePolicy>
-                  <TableView fx:constant="CONSTRAINED_RESIZE_POLICY" />
-               </columnResizePolicy>
-               <columns>
-                  <TableColumn fx:id="rightIcon" editable="false" maxWidth="500.0" minWidth="26.0" prefWidth="20.0" resizable="false" sortable="false" />
-                  <TableColumn fx:id="rightName" maxWidth="1.7976931348623157E308" minWidth="-Infinity" prefWidth="292.0" text="Name" />
-                  <TableColumn fx:id="rightNote" maxWidth="1.7976931348623157E308" minWidth="75.0" prefWidth="-1.0" text="Notes" visible="false" />
-                  <TableColumn fx:id="rightSize" maxWidth="1.7976931348623157E308" minWidth="75.0" prefWidth="-1.0" text="Size(MB)" visible="false" />
-                  <TableColumn fx:id="righthboxActions" maxWidth="200.0" minWidth="100.0" prefWidth="100.0" text="Action" />
-               </columns>
-               <GridPane.margin>
-                  <Insets bottom="5.0" right="10.0" />
-               </GridPane.margin>
-            </TableView>
-            <TextField fx:id="rightPathInput" alignment="TOP_LEFT" layoutX="85.0" layoutY="104.0" GridPane.columnIndex="1" GridPane.rowIndex="1">
-               <GridPane.margin>
-                  <Insets left="130.0" right="43.0" />
-               </GridPane.margin>
-            </TextField>
-            <Button fx:id="rightUp" alignment="CENTER" mnemonicParsing="false" text="Up" GridPane.columnIndex="1" GridPane.rowIndex="1">
-               <GridPane.margin>
-                  <Insets left="90.0" />
-               </GridPane.margin>
-               <styleClass>
-                  <String fx:value="last" />
-                  <String fx:value="btn" />
-               </styleClass>
-            </Button>
-            <TextField fx:id="rightSearchField" layoutX="108.0" layoutY="64.0" maxWidth="-Infinity" minWidth="-Infinity" prefHeight="31.0" prefWidth="160.0" promptText="Seach..un..yes" GridPane.columnIndex="1" GridPane.halignment="CENTER">
-               <GridPane.margin>
-                  <Insets left="10.0" right="75.0" top="50.0" />
-               </GridPane.margin>
-               <styleClass>
-                  <String fx:value="first" />
-                  <String fx:value="always-show-cross" />
-               </styleClass>
-            </TextField>
-            <Button fx:id="rightSearchButton" alignment="CENTER" layoutX="285.0" layoutY="64.0" mnemonicParsing="false" prefHeight="38.0" prefWidth="70.0" text="Refresh" GridPane.columnIndex="1" GridPane.halignment="CENTER">
-               <GridPane.margin>
-                  <Insets left="165.0" top="50.0" />
-               </GridPane.margin>
-               <styleClass>
-                  <String fx:value="last" />
-                  <String fx:value="btn" />
-               </styleClass>
-               <tooltip>
-                  <Tooltip text="Try Scroll Up And Down On This Button !" />
-               </tooltip>
-            </Button>
-            <Button fx:id="rightDominate" mnemonicParsing="false" onAction="#DominateLeft" styleClass="last" text="&lt;&lt;Dominate Left" GridPane.columnIndex="1" GridPane.halignment="LEFT">
-               <GridPane.margin>
-                  <Insets bottom="50.0" />
-               </GridPane.margin>
-            </Button>
-            <Button fx:id="leftDominate" layoutX="583.0" layoutY="29.0" mnemonicParsing="false" onAction="#DominateRight" styleClass="first" text="Dominate Right&gt;&gt;" GridPane.halignment="RIGHT">
-               <GridPane.margin>
-                  <Insets bottom="50.0" left="20.0" />
-               </GridPane.margin>
-            </Button>
-            <Button fx:id="GoDesktop" mnemonicParsing="false" text="Desktop">
-               <GridPane.margin>
-                  <Insets bottom="50.0" left="10.0" right="20.0" />
-               </GridPane.margin>
-            </Button>
-            <Button fx:id="rightExplorer" mnemonicParsing="false" text="Explorer" GridPane.columnIndex="1" GridPane.halignment="CENTER">
-               <GridPane.margin>
-                  <Insets bottom="50.0" left="70.0" />
-               </GridPane.margin>
-            </Button>
-            <Button fx:id="leftExplorer" layoutX="630.0" layoutY="14.0" mnemonicParsing="false" text="Explorer" GridPane.halignment="CENTER">
-               <GridPane.margin>
-                  <Insets bottom="50.0" left="30.0" />
-               </GridPane.margin>
-            </Button>
-            <Button fx:id="DeleteTracker" mnemonicParsing="false" onAction="#Deleteright" text="Wipe Track" GridPane.columnIndex="1" GridPane.halignment="CENTER">
-               <GridPane.margin>
-                  <Insets bottom="50.0" left="250.0" />
-               </GridPane.margin></Button>
-            <Button fx:id="leftUp" mnemonicParsing="false" text="Up" GridPane.rowIndex="1">
-               <GridPane.margin>
-                  <Insets left="90.0" />
-               </GridPane.margin>
-               <styleClass>
-                  <String fx:value="last" />
-                  <String fx:value="btn" />
-               </styleClass>
-            </Button>
-            <Button fx:id="leftNext" mnemonicParsing="false" text="&gt;&gt;" GridPane.rowIndex="1">
-               <GridPane.margin>
-                  <Insets left="50.0" />
-               </GridPane.margin>
-               <styleClass>
-                  <String fx:value="middle" />
-                  <String fx:value="btn" />
-               </styleClass>
-            </Button>
-            <MenuButton fx:id="rootsMenu" mnemonicParsing="false" prefHeight="27.0" prefWidth="79.0" text="Roots">
-               <GridPane.margin>
-                  <Insets left="10.0" top="20.0" />
-               </GridPane.margin>
-            </MenuButton>
-            <Button fx:id="rightNext" layoutX="60.0" layoutY="104.0" mnemonicParsing="false" text="&gt;&gt;" GridPane.columnIndex="1" GridPane.rowIndex="1">
-               <GridPane.margin>
-                  <Insets left="50.0" />
-               </GridPane.margin>
-               <styleClass>
-                  <String fx:value="middle" />
-                  <String fx:value="btn" />
-               </styleClass>
-            </Button>
-            <Button fx:id="rightBack" alignment="CENTER" layoutX="20.0" layoutY="104.0" mnemonicParsing="false" text="&lt;&lt;" GridPane.columnIndex="1" GridPane.rowIndex="1">
-               <GridPane.margin>
-                  <Insets left="10.0" />
-               </GridPane.margin>
-               <styleClass>
-                  <String fx:value="first" />
-                  <String fx:value="btn" />
-               </styleClass>
-            </Button>
-            <ToggleButton fx:id="autoExpand" mnemonicParsing="false" onAction="#toggleAutoExpand" text="&lt;&gt;" GridPane.halignment="RIGHT" GridPane.valignment="CENTER">
-               <GridPane.margin>
-                  <Insets top="20.0" />
-               </GridPane.margin>
-            </ToggleButton>
-            <MenuButton fx:id="FavoritesLocations" mnemonicParsing="false" text="Favorites">
-               <GridPane.margin>
-                  <Insets bottom="50.0" left="85.0" right="20.0" />
-               </GridPane.margin>
-            </MenuButton>
-            <CheckBox fx:id="rightRecusiveSearch" mnemonicParsing="false" text="Recusive" GridPane.columnIndex="1" GridPane.halignment="CENTER">
-               <GridPane.margin>
-                  <Insets left="330.0" top="50.0" />
-               </GridPane.margin>
-            </CheckBox>
-            <Button fx:id="SwapButton" mnemonicParsing="false" onAction="#SwapView" text="Swap" GridPane.columnIndex="1">
-               <GridPane.margin>
-                  <Insets bottom="50.0" left="140.0" />
-               </GridPane.margin>
-            </Button>
-            <Button fx:id="rightNavigateRecursive" mnemonicParsing="false" text="Navigate" GridPane.columnIndex="1" GridPane.halignment="CENTER">
-               <GridPane.margin>
-                  <Insets right="320.0" top="50.0" />
-               </GridPane.margin>
-            </Button>
-            <Button fx:id="leftNavigateRecursive" mnemonicParsing="false" prefHeight="31.0" prefWidth="34.0" text="N" GridPane.halignment="CENTER">
-               <GridPane.margin>
-                  <Insets right="250.0" top="50.0" />
-               </GridPane.margin>
-            </Button>
-            <CheckBox fx:id="leftRecusiveSearch" layoutX="759.0" layoutY="69.0" mnemonicParsing="false" text="R" GridPane.halignment="CENTER" GridPane.valignment="CENTER">
-               <GridPane.margin>
-                  <Insets left="290.0" top="50.0" />
-               </GridPane.margin>
-            </CheckBox>
-            <MenuButton fx:id="leftToolsMenu" alignment="CENTER_RIGHT" mnemonicParsing="false" prefHeight="31.0" prefWidth="28.0" GridPane.halignment="RIGHT" GridPane.rowIndex="1">
-               <GridPane.margin>
-                  <Insets right="10.0" />
-               </GridPane.margin>
-               <styleClass>
-                  <String fx:value="first" />
-                  <String fx:value="btn" />
-                  <String fx:value="last" />
-               </styleClass>
-            </MenuButton>
-            <MenuButton fx:id="rightToolsMenu" alignment="CENTER_RIGHT" mnemonicParsing="false" prefHeight="31.0" prefWidth="28.0" GridPane.columnIndex="1" GridPane.halignment="RIGHT" GridPane.rowIndex="1">
-               <GridPane.margin>
-                  <Insets right="10.0" />
-               </GridPane.margin>
-               <styleClass>
-                  <String fx:value="first" />
-                  <String fx:value="last" />
-                  <String fx:value="btn" />
-               </styleClass>
-            </MenuButton>
-         </children>
-      </GridPane>
-   </center>
+<BorderPane fx:id="borderPane" prefHeight="650.0" prefWidth="890.0" xmlns="http://javafx.com/javafx/8.0.171" xmlns:fx="http://javafx.com/fxml/1" fx:controller="application.controller.WelcomeController">
    <bottom>
-      <VBox prefHeight="60.0" prefWidth="100.0" BorderPane.alignment="CENTER">
+      <VBox BorderPane.alignment="CENTER">
          <children>
             <HBox prefHeight="24.0" prefWidth="890.0">
                <children>
@@ -332,30 +33,62 @@
                   </TabPane>
                </children>
             </HBox>
-            <GridPane prefHeight="100.0">
-              <columnConstraints>
-                <ColumnConstraints hgrow="SOMETIMES" minWidth="10.0" prefWidth="100.0" />
-                <ColumnConstraints hgrow="SOMETIMES" minWidth="10.0" prefWidth="100.0" />
-              </columnConstraints>
-              <rowConstraints>
-                <RowConstraints minHeight="-Infinity" prefHeight="39.0" vgrow="SOMETIMES" />
-              </rowConstraints>
-               <children>
-                  <CheckBox fx:id="FavoriteCheckBox" mnemonicParsing="false" text="Favorite View" GridPane.halignment="LEFT">
-                     <GridPane.margin>
-                        <Insets left="10.0" />
-                     </GridPane.margin>
-                  </CheckBox>
-                  <Label fx:id="leftLabelItemsNumber" text="leftLabelItemsNumber" GridPane.halignment="CENTER">
-                     <GridPane.margin>
-                        <Insets />
-                     </GridPane.margin></Label>
-                  <TextField fx:id="leftPredictNavigation" maxWidth="120.0" prefWidth="100.0" visible="false" GridPane.halignment="RIGHT" />
-                  <Label fx:id="rightLabelItemsNumber" text="rightLabelItemsNumber" GridPane.columnIndex="1" GridPane.halignment="CENTER" />
-                  <TextField fx:id="rightPredictNavigation" maxWidth="120.0" prefWidth="100.0" visible="false" GridPane.columnIndex="1" GridPane.halignment="RIGHT" />
-               </children>
-            </GridPane>
          </children>
       </VBox>
    </bottom>
+   <top>
+      <VBox BorderPane.alignment="CENTER">
+         <children>
+            <MenuBar>
+              <menus>
+                <Menu mnemonicParsing="false" text="File">
+                  <items>
+                        <Menu fx:id="newEmbedWindow" mnemonicParsing="false" text="New Embed Window" />
+                        <MenuItem fx:id="newWindow" mnemonicParsing="false" text="New Window" />
+                        <MenuItem fx:id="renameItem" mnemonicParsing="false" text="Rename Utility" />
+                  </items>
+                </Menu>
+                <Menu fx:id="TrackerMenu" mnemonicParsing="false" text="Tracker">
+                  <items>
+                    <MenuItem fx:id="trackLeftRecusivlyMenuItem" mnemonicParsing="false" onAction="#leftTrackRecusivly" text="Track left view Recursivly" />
+                        <MenuItem mnemonicParsing="false" onAction="#AddToContextMenu" text="Add Tracker To Context Menu" />
+                        <MenuItem mnemonicParsing="false" onAction="#RemoveFromContextMenu" text="Remove Tracker From Context Menu" />
+                        <MenuItem mnemonicParsing="false" text="---------** Experimental Features **---------" />
+                  </items>
+                </Menu>
+                <Menu mnemonicParsing="false" text="VLC">
+                  <items>
+                        <MenuItem mnemonicParsing="false" onAction="#GetVLC" text="Get VLC" />
+                        <MenuItem mnemonicParsing="false" onAction="#ConfigureVLCPath" text="Configure VLC Path" />
+                        <MenuItem fx:id="bulkRemoveMenuItem" mnemonicParsing="false" onAction="#rightBulkRemoveIntro" text="Bulk Remove Intro Right View" />
+                        <MenuItem mnemonicParsing="false" onAction="#ControlVLC" text="Remote VLC" />
+                        <MenuItem mnemonicParsing="false" onAction="#ControlVLCAndroid" text="Android Remote App" />
+                        <MenuItem mnemonicParsing="false" onAction="#ControlVLCIOS" text="IOS Remote App" />
+                        <MenuItem mnemonicParsing="false" onAction="#GetMp3Tag" text="Get Mp3Tag" />
+                        <MenuItem mnemonicParsing="false" onAction="#GetBulkRenameUtility" text="Get Bulk Rename Utility" />
+                  </items>
+                </Menu>
+                  <Menu fx:id="cortanaMenu" mnemonicParsing="false" text="Cortana Shortcuts">
+                     <items>
+                        <MenuItem mnemonicParsing="false" onAction="#openSettingTrackerPlayer" text="Setting" />
+                        <MenuItem mnemonicParsing="false" text="otherShortcut" />
+                     </items>
+                  </Menu>
+                  <Menu fx:id="helpMenu" mnemonicParsing="false" text="Help">
+                     <items>
+                        <MenuItem mnemonicParsing="false" onAction="#KeyBoardShortcut" text="Keyboard Shortcut" />
+                        <MenuItem mnemonicParsing="false" onAction="#Tutorial" text="Tutorial" />
+                        <MenuItem mnemonicParsing="false" onAction="#CheckForUpdate" text="Check For Update" />
+                        <MenuItem fx:id="aboutMenuItem" mnemonicParsing="false" text="About" />
+                     </items>
+                  </Menu>
+              </menus>
+            </MenuBar>
+            <HBox />
+         </children>
+      </VBox>
+   </top>
+   <center>
+      <SplitPane fx:id="allSplitViewPane" prefHeight="160.0" prefWidth="200.0" BorderPane.alignment="CENTER" />
+   </center>
 </BorderPane>

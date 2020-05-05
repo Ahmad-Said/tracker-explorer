@@ -23,7 +23,6 @@ public class SplitViewState {
 		File temp = curFile;
 		while (!temp.exists()) {
 			temp = temp.getParentFile();
-			System.out.println(temp);
 			if (temp == null) {
 				temp = File.listRoots()[0];
 				DialogHelper.showAlert(AlertType.ERROR, "Open Directory", "Location could not be reached!",

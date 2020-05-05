@@ -9,7 +9,6 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Set;
@@ -28,6 +27,7 @@ import javafx.beans.value.ChangeListener;
 import javafx.beans.value.ObservableValue;
 import javafx.concurrent.Task;
 import javafx.event.ActionEvent;
+import javafx.event.Event;
 import javafx.event.EventHandler;
 import javafx.geometry.Insets;
 import javafx.scene.Group;
@@ -61,7 +61,6 @@ public class FileHelper {
 		HashMap<Path, List<Path>> ParentTochildren;
 		// oldfile to newly created file
 		File LastCreatedFile;
-		HashSet<Path> SourceParentList;
 		int FilesCounts;
 		boolean isRuning;
 		Thread currentThread;
@@ -107,10 +106,6 @@ public class FileHelper {
 				thisOperation = this;
 			}
 
-			// parent list is used to update corresponding views in case if it should show
-			// those files
-			// since watch service is force turned off
-			SourceParentList = new HashSet<>();
 			isRuning = true;
 			// initialize view
 			DoOperationView();
@@ -176,7 +171,6 @@ public class FileHelper {
 						File targetDirFile = TargetDirLocList.get(0).toFile();
 						Path targetPathResolved = targetDirFile.toPath().resolve(srcPath.getFileName());
 						LastCreatedFile = targetPathResolved.toFile();
-						SourceParentList.add(srcPathParent);
 						updateProgress(updateMsgText(true), FilesCounts);
 
 						// target String resolve printing if targetdir was a root folder like D:\
@@ -274,6 +268,10 @@ public class FileHelper {
 							// Successful copy without interruption
 
 							// Transferring Data File Tracker if the file directly putted in target dir
+							// because on new files created a refresh view is triggered by
+							// watchServiceHelper so it may resolve conflict if all mapdetails are moved at
+							// once warning writing files a number of times equals to files sources size
+							// in initial sources directory
 							if (targetDirFile.toPath().equals(TargetDirectory)) {
 								FileTracker miniFileTracker = new FileTracker(TargetDirectory);
 								miniFileTracker.loadMap(TargetDirectory, true, false);
@@ -349,17 +347,7 @@ public class FileHelper {
 			// we do create multiple paths for src as in recursive mode they have differents
 			// parents
 			Main.ResetTitle();
-			// in normal case watch service do detect
-			SourceParentList.add(TargetDirectory);
-			if (Action.equals("Move")) {
-				// mean that source can be changed and also ensure the refresh of sender
-				// List<Path> paths = SourceParentList.stream().collect(Collectors.toList());
-				// Platform.runLater(() -> Main.refreshWelcomeController(paths));
-				Platform.runLater(() -> Main.refreshWelcomeController());
-			} else {
-				Platform.runLater(() -> Main.refreshWelcomeController(TargetDirectory));
-			}
-			SourceParentList.clear();
+			// in normal case watch service do detect refresh
 		}
 
 		private double updateMsgText(boolean asStarted) {
@@ -615,7 +603,7 @@ public class FileHelper {
 		DoThreadOperationsAllList();
 	}
 
-	public static boolean delete(List<Path> source) {
+	public static boolean delete(List<Path> source, EventHandler<Event> onFinishTask) {
 		if (source.size() == 0) {
 			return false;
 		}
@@ -657,7 +645,10 @@ public class FileHelper {
 						Platform.runLater(() -> DialogHelper.showAlert(Alert.AlertType.INFORMATION, sourceDirectory,
 								message, contectHelper));
 					}
-					Platform.runLater(() -> Main.ResetTitle());
+					Platform.runLater(() -> {
+						Main.ResetTitle();
+						onFinishTask.handle(null);
+					});
 				}
 			}.start();
 		}
@@ -770,6 +761,10 @@ public class FileHelper {
 
 	public static Set<Path> getParentsPaths(List<File> sonFiles) {
 		return sonFiles.stream().map(f -> f.getParentFile().toPath()).collect(Collectors.toSet());
+	}
+
+	public static Set<Path> getParentsPathsFromPath(List<Path> sonPaths) {
+		return sonPaths.stream().map(p -> p.getParent()).collect(Collectors.toSet());
 	}
 
 	/**

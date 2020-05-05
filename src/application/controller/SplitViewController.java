@@ -3,9 +3,9 @@ package application.controller;
 import java.awt.HeadlessException;
 import java.io.File;
 import java.io.IOException;
+import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.text.ParseException;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -17,6 +17,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.ResourceBundle;
 import java.util.Set;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadPoolExecutor;
@@ -26,7 +27,12 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import javax.xml.ws.Holder;
+
 import org.apache.commons.io.FilenameUtils;
+import org.jetbrains.annotations.Nullable;
+
+import com.sun.javafx.scene.control.skin.TableColumnHeader;
 
 import application.DialogHelper;
 import application.FileHelper;
@@ -44,12 +50,18 @@ import application.datatype.Setting;
 import application.model.SplitViewState;
 import application.model.TableViewModel;
 import javafx.application.Platform;
+import javafx.collections.FXCollections;
 import javafx.collections.ListChangeListener;
 import javafx.collections.ObservableList;
 import javafx.collections.transformation.FilteredList;
 import javafx.collections.transformation.SortedList;
 import javafx.event.ActionEvent;
+import javafx.event.Event;
 import javafx.event.EventHandler;
+import javafx.fxml.FXML;
+import javafx.fxml.FXMLLoader;
+import javafx.fxml.Initializable;
+import javafx.scene.Node;
 import javafx.scene.control.Alert.AlertType;
 import javafx.scene.control.Button;
 import javafx.scene.control.CheckBox;
@@ -64,6 +76,8 @@ import javafx.scene.control.TableView;
 import javafx.scene.control.TextField;
 import javafx.scene.control.ToggleButton;
 import javafx.scene.control.Tooltip;
+import javafx.scene.control.cell.PropertyValueFactory;
+import javafx.scene.image.ImageView;
 import javafx.scene.input.Clipboard;
 import javafx.scene.input.ClipboardContent;
 import javafx.scene.input.DataFormat;
@@ -77,8 +91,10 @@ import javafx.scene.input.MouseButton;
 import javafx.scene.input.MouseEvent;
 import javafx.scene.input.ScrollEvent;
 import javafx.scene.input.TransferMode;
+import javafx.scene.layout.GridPane;
 import javafx.scene.layout.HBox;
 import javafx.util.Pair;
+import mslinks.ShellLink;
 
 /**
  * For a structure view read
@@ -91,45 +107,131 @@ import javafx.util.Pair;
  * @author Ahmad Said
  *
  */
-public class SplitViewController {
+@SuppressWarnings("restriction")
+public class SplitViewController implements Initializable {
 
-	static final KeyCombination SHORTCUT_Clear_Search = new KeyCodeCombination(KeyCode.S, KeyCombination.CONTROL_DOWN);
+	static final KeyCombination SHORTCUT_REVEAL_IN_EXPLORER = new KeyCodeCombination(KeyCode.R, KeyCombination.ALT_DOWN,
+			KeyCombination.SHIFT_DOWN);
+
+	static final KeyCombination SHORTCUT_COPY = new KeyCodeCombination(KeyCode.C, KeyCombination.CONTROL_DOWN);
+	static final KeyCombination SHORTCUT_MOVE = new KeyCodeCombination(KeyCode.X, KeyCombination.CONTROL_DOWN);
+	public static final KeyCombination SHORTCUT_RENAME = new KeyCodeCombination(KeyCode.F2);
+	public static final KeyCombination SHORTCUT_DELETE = new KeyCodeCombination(KeyCode.DELETE);
+
+	public static final KeyCombination SHORTCUT_NEW_FILE = new KeyCodeCombination(KeyCode.N,
+			KeyCombination.SHORTCUT_DOWN);
+	public static final KeyCombination SHORTCUT_NEW_DIRECTORY = new KeyCodeCombination(KeyCode.N,
+			KeyCombination.SHORTCUT_DOWN, KeyCombination.SHIFT_DOWN);
+
 	static final KeyCombination SHORTCUT_FOCUS_TEXT_FIELD = new KeyCodeCombination(KeyCode.D,
 			KeyCombination.SHIFT_DOWN);
-	static final KeyCombination SHORTCUT_GO_BACK = new KeyCodeCombination(KeyCode.LEFT, KeyCombination.ALT_DOWN);
 
+	static final KeyCombination SHORTCUT_GO_BACK = new KeyCodeCombination(KeyCode.LEFT, KeyCombination.ALT_DOWN);
 	static final KeyCombination SHORTCUT_GO_NEXT = new KeyCodeCombination(KeyCode.RIGHT, KeyCombination.ALT_DOWN);
 	static final KeyCombination SHORTCUT_GO_UP = new KeyCodeCombination(KeyCode.UP, KeyCombination.ALT_DOWN);
+
 	static final KeyCombination SHORTCUT_RECURSIVE = new KeyCodeCombination(KeyCode.R, KeyCombination.CONTROL_DOWN);
+	static final KeyCombination SHORTCUT_CLEAR_SEARCH = new KeyCodeCombination(KeyCode.ESCAPE,
+			KeyCombination.CONTROL_ANY);
 	static final KeyCombination SHORTCUT_SEARCH = new KeyCodeCombination(KeyCode.F, KeyCombination.CONTROL_DOWN);
+
 	static final KeyCombination TOGGLE_FAVORITE = new KeyCodeCombination(KeyCode.F, KeyCombination.CONTROL_DOWN,
 			KeyCombination.SHIFT_DOWN);
+	static final KeyCombination SHORTCUT_OPEN_FAVORITE = new KeyCodeCombination(KeyCode.F, KeyCombination.SHIFT_DOWN);
 
-	private Button BackButton;
-	private Button NextButton;
-	private Button UpButton;
-	private Button Explorer;
+	static final String ON_DROP_CREATE_SHORTCUT_Key = "ON_DROP_CREATE_SHORTCUT";
+	@FXML
+	private GridPane viewPane;
 
-	private Label LabelItemsNumber;
+	@FXML
+	@Nullable
+	private Button goDesktopButton;
 
-	private TextField PathField;
-	private TextField PredictNavigation;
-	private TextField SearchField;
-	private Button RefreshButton;
+	@FXML
+	@Nullable
+	private MenuButton rootsMenu;
+	@FXML
+	@Nullable
+	private MenuButton favoritesLocations;
+	@FXML
+	@Nullable
+	private CheckBox favoriteCheckBox;
 
+	@FXML
+	private Button explorerButton;
+
+	@FXML
+	private Button leftDominate;
+
+	@FXML
+	@Nullable
+	private Button swapButton;
+
+	@FXML
+	@Nullable
+	private Button rightDominate;
+
+	@FXML
+	private Button navigateRecursive;
+	@FXML
+	private TextField searchField;
+	@FXML
+	private Button refreshButton;
+	@FXML
 	private CheckBox recursiveSearch;
-	private Button NavigateRecursive;
 
-	private MenuButton ToolsMenu;
+	@FXML
+	private ToggleButton autoExpand;
+	@FXML
+	private Button exitSplitButton;
+
+	@FXML
+	private Button backButton;
+	@FXML
+	private Button nextButton;
+	@FXML
+	private Button upButton;
+	@FXML
+	private TextField pathField;
+	@FXML
+	private MenuButton toolsMenu;
+
+	@FXML
+	private TableView<TableViewModel> table;
+	@FXML
+	private TableColumn<TableViewModel, ImageView> iconCol;
+	@FXML
+	private TableColumn<TableViewModel, String> nameCol;
+	@FXML
+	private TableColumn<TableViewModel, String> noteCol;
+	@FXML
+	private TableColumn<TableViewModel, Double> sizeCol;
+	@FXML
+	private TableColumn<TableViewModel, HBox> hBoxActionsCol;
+
+	@FXML
+	private Label labelItemsNumber;
+
+	@FXML
+	private TextField predictNavigation;
 
 	private WelcomeController parentWelcome;
 	private FileTracker mFileTracker;
 	private WatchServiceHelper mWatchServiceHelper = null;
 
-	private boolean OutOfTheBoxRecursive = false;
+	private boolean outOfTheBoxRecursive = false;
 	private boolean isOutOfTheBoxHelper = false;
 
 	private File mDirectory;
+
+	/**
+	 * On general Flow leftView do expand selected directory on rightView Check null
+	 * status before calling any of these
+	 */
+	@Nullable
+	private SplitViewController leftViewNeighbor = null;
+	@Nullable
+	private SplitViewController rightViewNeighbor = null;
 
 	/**
 	 * specify working current view position
@@ -142,97 +244,140 @@ public class SplitViewController {
 
 	private ObservableList<TableViewModel> DataTable;
 	SortedList<TableViewModel> sortedData;
-	private TableView<TableViewModel> Table;
 
 	public SplitViewController() {
 	}
 
 	// TableColumn<TableViewModel, ImageView> colIconTestResize;
-	public SplitViewController(Path path, Boolean isLeft, WelcomeController parent,
-			ObservableList<TableViewModel> dataTable, TextField pathField, Button upButton, TextField searchField,
-			Button refreshButton, TableView<TableViewModel> table, Button explorer,
-			TableColumn<TableViewModel, HBox> hBoxActions, Button backButton, Button nextButton,
-			TextField predictNavigation, CheckBox recursiveSearch, Label labelItemsNumber, Button navigateRecursive,
-			MenuButton toolsMenu, TableColumn<TableViewModel, String> noteColumn,
-			TableColumn<TableViewModel, String> nameColumn) {
-		super();
-		// colIconTestResize=colIcon;
+	public SplitViewController(Path path, Boolean isLeft, WelcomeController parent) {
+		DataTable = FXCollections.observableArrayList();
 		this.isLeft = isLeft;
-		DataTable = dataTable;
-		PathField = pathField;
-		UpButton = upButton;
-		NextButton = nextButton;
-		BackButton = backButton;
-		Explorer = explorer;
-		SearchField = searchField;
-		RefreshButton = refreshButton;
-		Table = table;
-		parentWelcome = parent;
-		PredictNavigation = predictNavigation;
-		this.recursiveSearch = recursiveSearch;
-		LabelItemsNumber = labelItemsNumber;
-		ToolsMenu = toolsMenu;
 		mDirectory = new File(path.toString());
 		truePathField = mDirectory.getAbsolutePath();
-		NavigateRecursive = navigateRecursive;
-		Table.getSelectionModel().setSelectionMode(SelectionMode.MULTIPLE);
 		mFileTracker = new FileTracker(this);
+		parentWelcome = parent;
+	}
+
+	@Override
+	public void initialize(URL location, ResourceBundle resources) {
+		predictNavigation.setVisible(false);
+
+		nameCol.setCellValueFactory(new PropertyValueFactory<TableViewModel, String>("Name"));
+		noteCol.setCellValueFactory(new PropertyValueFactory<TableViewModel, String>("NoteText"));
+		hBoxActionsCol.setCellValueFactory(new PropertyValueFactory<TableViewModel, HBox>("hboxActions"));
+		iconCol.setCellValueFactory(new PropertyValueFactory<TableViewModel, ImageView>("imgIcon"));
+		sizeCol.setCellValueFactory(new PropertyValueFactory<TableViewModel, Double>("FileSize"));
+
+		if (isLeft) {
+			noteCol.setVisible(Setting.getShowLeftNotesColumn());
+		} else {
+			noteCol.setVisible(Setting.getShowRightNotesColumn());
+		}
+		table.getSelectionModel().setSelectionMode(SelectionMode.MULTIPLE);
+		initializeTable();
 
 		initializePathField();
 		initializeSplitButton();
 
-		initializeTable();
-		// initialize column rule comparator
-		hBoxActions.setComparator(new Comparator<HBox>() {
+		initializeFavorites();
 
+		mWatchServiceHelper = new WatchServiceHelper(this);
+
+	}
+
+	private void initializeFavorites() {
+		if (favoritesLocations == null) {
+			return;
+		}
+		reloadFavorites();
+		favoriteCheckBox.setOnAction(new EventHandler<ActionEvent>() {
 			@Override
-			public int compare(HBox o1, HBox o2) {
-				// first children is button watch status
-				// TableRow<TableViewModel> row = (TableRow<TableViewModel>) o1.getParent();
-				// TODO this comparator doesn't work as i generate hbox with row factory for
-				// speed purpose if you want it to work just scroll and load all rows then it
-				// work just fine
-				if (o1.getChildren().size() == 0) {
-					return -1;
+			public void handle(ActionEvent event) {
+				if (favoriteCheckBox.isSelected()) {
+					// ask for title here
+					String hint = getDirectoryPath().toFile().getName().toString();
+					if (Setting.getFavoritesLocations().getLastRemoved() != null
+							&& Setting.getFavoritesLocations().getLastRemoved().getValue().equals(getDirectoryPath())) {
+						hint = Setting.getFavoritesLocations().getLastRemoved().getKey();
+					}
+					String title = DialogHelper.showTextInputDialog("Favorite Title",
+							"Please Enter the name of this Favorite View", "", hint);
+					if (title == null || title.trim().equals("")) {
+						favoriteCheckBox.setSelected(false);
+						return;
+					}
+					title = title.replaceAll(";", "_");
+					Path rightPath = getDirectoryPath();
+					if (rightViewNeighbor != null) {
+						rightPath = rightViewNeighbor.getDirectoryPath();
+					}
+					AddandPriorizethisMenu(title, getDirectoryPath(), rightPath);
+				} else {
+					removeFavorite(getDirectoryPath());
 				}
-				ToggleButton markSeen1 = (ToggleButton) o1.getChildren().get(0);
-				if (markSeen1.getText().equals("S")) {
-					return 1;
-				}
-				return 0;
 			}
 		});
-		noteColumn.setComparator(new WindowsExplorerComparator());
-		nameColumn.setComparator(new WindowsExplorerComparator());
+	}
 
-		// hBoxActions.setCellFactory(col -> new TableCell<TableViewModel, HBox>() {
-		//
-		// protected void updateItem(HBox item, boolean empty) {
-		// super.updateItem(item, empty);
-		// // TableViewModel t = (TableViewModel) this.getTableRow().getItem();
-		// // // if (item.getChildren().isEmpty())
-		// // if (t != null)
-		// // t.initializerRowFactory();
-		//
-		// }
-		// });
-		mWatchServiceHelper = new WatchServiceHelper(this);
+	private Map<String, MenuItem> allMenuFavoriteLocation = new HashMap<String, MenuItem>();
+
+	public void reloadFavorites() {
+		if (favoritesLocations == null) {
+			return;
+		}
+		favoritesLocations.getItems().clear();
+		allMenuFavoriteLocation.clear();
+		for (int i = Setting.getFavoritesLocations().size() - 1; i >= 0; i--) {
+			AddandPriorizethisMenu(Setting.getFavoritesLocations().getTitle().get(i),
+					Setting.getFavoritesLocations().getLeftLoc().get(i).toPath(),
+					Setting.getFavoritesLocations().getRightLoc().get(i).toPath());
+		}
+	}
+
+	public void clearFavorites() {
+		favoritesLocations.getItems().clear();
+		allMenuFavoriteLocation.clear();
+	}
+
+	private void AddandPriorizethisMenu(String title, Path leftPath, Path rightPath) {
+		if (allMenuFavoriteLocation.containsKey(title)) {
+			removeFavorite(title);
+		}
+		MenuItem mx = new MenuItem(title);
+		mx.setOnAction(e -> parentWelcome.openFavoriteLocation(title, leftPath, rightPath, this));
+		allMenuFavoriteLocation.put(title, mx);
+		if (!Setting.getFavoritesLocations().contains(title)) {
+			Setting.getFavoritesLocations().add(0, title, leftPath.toFile(), rightPath.toFile());
+		}
+		favoritesLocations.getItems().add(0, mx);
+	}
+
+	private void removeFavorite(Path FavoLeftPath) {
+		removeFavorite(Setting.getFavoritesLocations().getTitleByLeft(FavoLeftPath.toFile()));
+	}
+
+	private void removeFavorite(String FavoTitle) {
+		if (Setting.getFavoritesLocations().contains(FavoTitle)) {
+			Setting.getFavoritesLocations().remove(FavoTitle);
+			favoritesLocations.getItems().remove(allMenuFavoriteLocation.get(FavoTitle));
+			allMenuFavoriteLocation.remove(FavoTitle);
+		}
 	}
 
 	private void initializePathField() {
-		PathField.getStyleClass().removeAll("*.text-field>*.right-button>*.right-button-graphic");
-		PathField.setStyle("-fx-font-size: 14px;");
+		pathField.getStyleClass().removeAll("*.text-field>*.right-button>*.right-button-graphic");
+		pathField.setStyle("-fx-font-size: 14px;");
 
-		PathField.focusedProperty().addListener((obs, wasFocused, isNowFocused) -> {
+		pathField.focusedProperty().addListener((obs, wasFocused, isNowFocused) -> {
 			if (isNowFocused) {
-				Platform.runLater(() -> PathField.selectAll());
+				Platform.runLater(() -> pathField.selectAll());
 			}
 		});
-		PathField.setOnAction(new EventHandler<ActionEvent>() {
+		pathField.setOnAction(new EventHandler<ActionEvent>() {
 
 			@Override
 			public void handle(ActionEvent event) {
-				setPathFieldThenRefresh(PathField.getText());
+				setPathFieldThenRefresh(pathField.getText());
 			}
 		});
 	}
@@ -274,7 +419,7 @@ public class SplitViewController {
 							}
 						}
 						if (doSearchDelayed != null) {
-							SearchField.setText(doSearchDelayed);
+							searchField.setText(doSearchDelayed);
 							reloadSearchField();
 						}
 					} catch (Exception e) {
@@ -286,7 +431,7 @@ public class SplitViewController {
 				}
 			}
 		}
-		PathField.setText(truePathField);
+		this.pathField.setText(truePathField);
 	}
 
 	private Map<String, String> getQueryOptionsAsMap(String FullPathEmbed) {
@@ -312,7 +457,7 @@ public class SplitViewController {
 	}
 
 	private void addQueryOptionsPathField(String optionItem, String value) {
-		String text = PathField.getText();
+		String text = pathField.getText();
 		Map<String, String> options = getQueryOptionsAsMap(text);
 		// clean existing option
 		if (options == null) {
@@ -328,9 +473,9 @@ public class SplitViewController {
 	}
 
 	public void reloadSearchField() {
-		String temp = SearchField.getText();
-		SearchField.setText("");
-		SearchField.setText(temp);
+		String temp = searchField.getText();
+		searchField.setText("");
+		searchField.setText(temp);
 	}
 
 	private void resetForm() {
@@ -346,13 +491,16 @@ public class SplitViewController {
 	private void initializeSplitButton() {
 
 		initializeToolsMenu();
-		NavigateRecursive.setVisible(false);
 
-		NavigateRecursive.setOnAction(new EventHandler<ActionEvent>() {
+		initializeRootsMenu();
+
+		navigateRecursive.setVisible(false);
+
+		navigateRecursive.setOnAction(new EventHandler<ActionEvent>() {
 
 			@Override
 			public void handle(ActionEvent event) {
-				TableViewModel toNavigateFor = Table.getSelectionModel().getSelectedItem();
+				TableViewModel toNavigateFor = table.getSelectionModel().getSelectedItem();
 				Path path = toNavigateFor.getmFilePath().getParent();
 				navigate(path);
 				resetForm();
@@ -361,58 +509,58 @@ public class SplitViewController {
 		});
 		initializeRecursiveSearch();
 
-		UpButton.setOnAction(new EventHandler<ActionEvent>() {
+		upButton.setOnAction(new EventHandler<ActionEvent>() {
 
 			@Override
 			public void handle(ActionEvent event) {
 				goUpParent();
-				Table.requestFocus();
+				table.requestFocus();
 			}
 		});
 
-		BackButton.setDisable(true);
-		BackButton.setOnAction(new EventHandler<ActionEvent>() {
+		backButton.setDisable(true);
+		backButton.setOnAction(new EventHandler<ActionEvent>() {
 
 			@Override
 			public void handle(ActionEvent event) {
 				NextQueue.add(mDirectory);
-				NextButton.setDisable(false);
+				nextButton.setDisable(false);
 				File temp = BackQueue.removeLast();
 				if (temp.exists()) {
 					mDirectory = temp;
 				}
 				if (BackQueue.isEmpty()) {
-					BackButton.setDisable(true);
+					backButton.setDisable(true);
 				}
 				refresh(null);
 			}
 		});
 
-		NextButton.setDisable(true);
-		NextButton.setOnAction(new EventHandler<ActionEvent>() {
+		nextButton.setDisable(true);
+		nextButton.setOnAction(new EventHandler<ActionEvent>() {
 
 			@Override
 			public void handle(ActionEvent event) {
 				BackQueue.add(mDirectory);
-				BackButton.setDisable(false);
+				backButton.setDisable(false);
 				File temp = NextQueue.removeLast();
 				if (temp.exists()) {
 					mDirectory = temp;
 				}
 				if (NextQueue.isEmpty()) {
-					NextButton.setDisable(true);
+					nextButton.setDisable(true);
 				}
 				refresh(null);
 			}
 		});
 
-		Explorer.setOnAction(new EventHandler<ActionEvent>() {
+		explorerButton.setOnAction(new EventHandler<ActionEvent>() {
 
 			@Override
 			public void handle(ActionEvent event) {
 				if (!isOutOfTheBoxHelper || isOutOfTheBoxRecursive()) {
 					int index;
-					index = Table.getSelectionModel().getFocusedIndex();
+					index = table.getSelectionModel().getFocusedIndex();
 					if (index != -1) {
 						TableViewModel test = sortedData.get(index);
 
@@ -442,19 +590,19 @@ public class SplitViewController {
 
 		// https://code.makery.ch/blog/javafx-8-tableview-sorting-filtering/
 		FilteredList<TableViewModel> filteredData = new FilteredList<>(DataTable, p -> true);
-		SearchField.textProperty().addListener((observable, oldValue, newValue) -> {
-			PredictNavigation.setText("");
+		searchField.textProperty().addListener((observable, oldValue, newValue) -> {
+			predictNavigation.setText("");
 			filteredData.setPredicate(model -> {
 				// be aware of doing something here it apply on every item in list
 				return filterModel(newValue, model);
 			});
 			addQueryOptionsPathField("search", newValue);
-			LabelItemsNumber.setText(" #" + filteredData.size() + " items");
+			labelItemsNumber.setText(" #" + filteredData.size() + " items");
 		});
 
 		sortedData = new SortedList<>(filteredData);
-		sortedData.comparatorProperty().bind(Table.comparatorProperty());
-		Table.setItems(sortedData);
+		sortedData.comparatorProperty().bind(table.comparatorProperty());
+		table.setItems(sortedData);
 
 		DataTable.addListener((ListChangeListener<TableViewModel>) c -> {
 			while (c.next()) {
@@ -478,44 +626,42 @@ public class SplitViewController {
 			}
 		});
 
-		Table.getSelectionModel().selectedItemProperty().addListener((obs, oldSelection, newSelection) -> {
-			if (Table.getSelectionModel().getSelectedItems().size() > 1) {
+		table.getSelectionModel().selectedItemProperty().addListener((obs, oldSelection, newSelection) -> {
+			if (table.getSelectionModel().getSelectedItems().size() > 1) {
 				reloadColorLastRowSelected();
 			} else {
 				deColorLastRowSelected();
 			}
 			double totalSelectedSize = 0;
-			String formatSelect;
 			double totalAllSize = 0;
-			String formatAll;
-			for (TableViewModel t : Table.getSelectionModel().getSelectedItems()) {
+			for (TableViewModel t : table.getSelectionModel().getSelectedItems()) {
 				totalSelectedSize += t.getFileSize();
 			}
 			for (TableViewModel t : sortedData) {
 				totalAllSize += t.getFileSize();
 			}
 
-			LabelItemsNumber
-					.setText(" #" + Table.getSelectionModel().getSelectedItems().size() + "/" + sortedData.size()
+			labelItemsNumber
+					.setText(" #" + table.getSelectionModel().getSelectedItems().size() + "/" + sortedData.size()
 							+ (totalSelectedSize > 0.01
 									? " (" + StringHelper.getFormattedSizeFromMB(totalSelectedSize) + " / "
 											+ StringHelper.getFormattedSizeFromMB(totalAllSize) + ")"
 									: ""));
 		});
-		PredictNavigation.textProperty().addListener((observable, oldValue, newValue) -> {
+		predictNavigation.textProperty().addListener((observable, oldValue, newValue) -> {
 			deColorLastRowSelected();
-			Table.getSelectionModel().clearSelection();
+			table.getSelectionModel().clearSelection();
 			if (newValue.trim().isEmpty()) {
 				newValue = "";
 				rollerPrediction = 0;
-				PredictNavigation.setVisible(false);
+				predictNavigation.setVisible(false);
 				return;
 			}
 			if (!newValue.equals(newValue.toLowerCase())) {
-				PredictNavigation.setText(newValue.toLowerCase());
+				predictNavigation.setText(newValue.toLowerCase());
 				return;
 			}
-			PredictNavigation.setVisible(true);
+			predictNavigation.setVisible(true);
 			ArrayList<Pair<Integer, Integer>> toSelectList = new ArrayList<>();
 			for (TableViewModel t : sortedData) {
 				int where = t.getName().toLowerCase().indexOf(newValue);
@@ -533,7 +679,7 @@ public class SplitViewController {
 						String toSearchFor = oldValue + st + newValue.substring(newValue.length() - 1);
 						int where = t.getName().toLowerCase().indexOf(toSearchFor);
 						if (where >= 0) {
-							PredictNavigation.setText(toSearchFor);
+							predictNavigation.setText(toSearchFor);
 							return;
 						}
 					}
@@ -545,12 +691,12 @@ public class SplitViewController {
 					if (newValue.substring(0, 1).equals(oldValue.substring(0, 1)) || newValue
 							.substring(newValue.length() - 1).equals(oldValue.substring(oldValue.length() - 1))) {
 						// Table.getSelectionModel().getSelectedItems()
-						Table.getSelectionModel().clearSelection(sortedData.indexOf(Table.getSelectionModel()
-								.getSelectedItems().get(Table.getSelectionModel().getSelectedItems().size() - 1)));
-						Table.getSelectionModel().select(Table.getSelectionModel().getSelectedItems()
-								.get(Table.getSelectionModel().getSelectedItems().size() - 2));
+						table.getSelectionModel().clearSelection(sortedData.indexOf(table.getSelectionModel()
+								.getSelectedItems().get(table.getSelectionModel().getSelectedItems().size() - 1)));
+						table.getSelectionModel().select(table.getSelectionModel().getSelectedItems()
+								.get(table.getSelectionModel().getSelectedItems().size() - 2));
 						rollerPrediction++;
-						PredictNavigation.setText(oldValue);
+						predictNavigation.setText(oldValue);
 						return;
 
 					}
@@ -582,11 +728,11 @@ public class SplitViewController {
 				// https://stackoverflow.com/questions/960431/how-to-convert-listinteger-to-int-in-java
 				int[] toSelect = toSelectList.stream().mapToInt(i -> i.getValue()).toArray();
 				int lastIndexToBeSelected = toSelectList.get(toSelectList.size() - 1).getValue();
-				Table.scrollTo(smartScrollIndex(lastIndexToBeSelected));
-				Table.getSelectionModel().selectIndices(-1, toSelect);
+				table.scrollTo(smartScrollIndex(lastIndexToBeSelected));
+				table.getSelectionModel().selectIndices(-1, toSelect);
 				colorLastRowSelected();
 			} else {
-				PredictNavigation.setText(oldValue);
+				predictNavigation.setText(oldValue);
 			}
 
 		});
@@ -594,26 +740,52 @@ public class SplitViewController {
 		// the search field
 
 		// https://stackoverflow.com/questions/29735651/mouse-scrolling-in-java-fx
-		RefreshButton.setOnScroll((ScrollEvent event) -> {
+		refreshButton.setOnScroll((ScrollEvent event) -> {
 			// Adjust the zoom factor as per your requirement
 			double deltaY = event.getDeltaY();
 			if (deltaY < 0) {
-				SearchField.setText("un");
+				searchField.setText("un");
 			} else {
-				SearchField.setText("yes");
+				searchField.setText("yes");
 			}
 		});
-		RefreshButton.setOnMouseClicked(m -> {
+		refreshButton.setOnMouseClicked(m -> {
 			if (!m.getButton().equals(MouseButton.PRIMARY)) {
-				SearchField.setText(SearchField.getText() + rollerSearchKey.get(rollerSearchIndex));
+				searchField.setText(searchField.getText() + rollerSearchKey.get(rollerSearchIndex));
 				rollerSearchIndex = (rollerSearchIndex + 1) % rollerSearchKey.size();
 				m.consume();
 			}
 		});
 
-		RefreshButton.setOnAction(e -> {
+		refreshButton.setOnAction(e -> {
 			resetForm();
 		});
+	}
+
+	private void initializeRootsMenu() {
+		if (rootsMenu != null) {
+			EventHandler<Event> eventHandler = e -> {
+				rootsMenu.getItems().clear();
+				File[] roots = File.listRoots();
+				// check https://www.geeksforgeeks.org/javafx-menubutton/
+				for (File temp : roots) {
+					MenuItem mx = new MenuItem(temp.toString());
+					mx.setOnAction(new EventHandler<ActionEvent>() {
+
+						@Override
+						public void handle(ActionEvent event) {
+							setmDirectoryThenRefresh(temp);
+						}
+					});
+					rootsMenu.getItems().add(mx);
+				}
+				rootsMenu.show();
+			};
+			rootsMenu.setOnMouseReleased(eventHandler);
+			rootsMenu.setOnTouchReleased(eventHandler);
+			// load roots Menu for one time
+			eventHandler.handle(null);
+		}
 	}
 
 	private void reloadColorLastRowSelected() {
@@ -630,24 +802,53 @@ public class SplitViewController {
 	}
 
 	private void colorLastRowSelected() {
-		lastRowSelected = rowMap.get(Table.getSelectionModel().getSelectedItem());
+		lastRowSelected = rowMap.get(table.getSelectionModel().getSelectedItem());
 		if (lastRowSelected != null) {
 			lastRowSelected.getStyleClass().add("lastRowSelected");
 		}
 	}
 
 	/**
-	 * {@link SplitViewController#UpButton this is link example}
+	 * {@link SplitViewController#upButton this is link example}
 	 *
 	 */
+	// SuppressWarnings Discouraged access: The type 'TableColumnHeader' is not API
+	@SuppressWarnings("restriction")
 	public void initializeTable() {
+		table.addEventFilter(Event.ANY, event -> {
+			if (event.getTarget() instanceof TableColumnHeader) {
+				event.consume();
+			}
+		});
+		// initialize column rule comparator
+		hBoxActionsCol.setComparator(new Comparator<HBox>() {
 
-		Table.setOnKeyPressed(key -> {
-			String test = PredictNavigation.getText().trim();
-			TableViewModel lastSelectedTemp = Table.getSelectionModel().getSelectedItem();
+			@Override
+			public int compare(HBox o1, HBox o2) {
+				// first children is button watch status
+				// TableRow<TableViewModel> row = (TableRow<TableViewModel>) o1.getParent();
+				// TODO this comparator doesn't work as i generate hbox with row factory for
+				// speed purpose if you want it to work just scroll and load all rows then it
+				// work just fine
+				if (o1.getChildren().size() == 0) {
+					return -1;
+				}
+				ToggleButton markSeen1 = (ToggleButton) o1.getChildren().get(0);
+				if (markSeen1.getText().equals("S")) {
+					return 1;
+				}
+				return 0;
+			}
+		});
+		noteCol.setComparator(new WindowsExplorerComparator());
+		nameCol.setComparator(new WindowsExplorerComparator());
+
+		table.setOnKeyPressed(key -> {
+			String test = predictNavigation.getText().trim();
+			TableViewModel lastSelectedTemp = table.getSelectionModel().getSelectedItem();
 			switch (key.getCode()) {
 			case ENTER:
-				if (Table.isFocused()) {
+				if (table.isFocused()) {
 					if (lastSelectedTemp != null) {
 						navigate(lastSelectedTemp.getmFilePath());
 					}
@@ -659,7 +860,7 @@ public class SplitViewController {
 				} else {
 					if (!test.isEmpty()) {
 						test = test.substring(0, test.length() - 1);
-						PredictNavigation.setText(test);
+						predictNavigation.setText(test);
 					} else {
 						executor.execute(EnableMisBack);
 					}
@@ -683,9 +884,9 @@ public class SplitViewController {
 					if (tempPath == null) {
 						break;
 					}
-					parentWelcome.SynctoLeft(tempPath.toString());
-					if (!getSelectedItem().getmFilePath().toFile().isDirectory()) {
-						parentWelcome.getLeftView().NavigateForNameAndScrollTo(lastSelectedTemp);
+					synctoLeft(tempPath.toString());
+					if (!getSelectedItem().getmFilePath().toFile().isDirectory() && leftViewNeighbor != null) {
+						leftViewNeighbor.NavigateForNameAndScrollTo(lastSelectedTemp);
 					}
 				}
 				break;
@@ -695,14 +896,14 @@ public class SplitViewController {
 					if (tempPath2 == null) {
 						break;
 					}
-					parentWelcome.SynctoRight(tempPath2.toString());
-					if (!getSelectedItem().getmFilePath().toFile().isDirectory()) {
-						parentWelcome.getRightView().NavigateForNameAndScrollTo(lastSelectedTemp);
+					synctoRight(tempPath2.toString());
+					if (!getSelectedItem().getmFilePath().toFile().isDirectory() && rightViewNeighbor != null) {
+						rightViewNeighbor.NavigateForNameAndScrollTo(lastSelectedTemp);
 					}
 				}
 				break;
 			case ESCAPE:
-				PredictNavigation.setText("");
+				predictNavigation.setText("");
 				break;
 			case CONTEXT_MENU:
 				showContextMenu();
@@ -710,15 +911,15 @@ public class SplitViewController {
 			// TODO check declaration there is a lot of key to define
 			default:
 				// ignore special character
-				String newText = PredictNavigation.getText();
+				String newText = predictNavigation.getText();
 				// detect special character event
 				if (key.isControlDown() || key.isAltDown()) {
 					if (key.getText().toLowerCase().equals("a")) {
-						int i = Table.getSelectionModel().getSelectedIndex();
-						Table.getSelectionModel().clearSelection();
-						Table.getSelectionModel().selectAll();
-						Table.getSelectionModel().clearSelection(i);
-						Table.getSelectionModel().select(i);
+						int i = table.getSelectionModel().getSelectedIndex();
+						table.getSelectionModel().clearSelection();
+						table.getSelectionModel().selectAll();
+						table.getSelectionModel().clearSelection(i);
+						table.getSelectionModel().select(i);
 					}
 					break;
 				}
@@ -731,10 +932,10 @@ public class SplitViewController {
 					}
 					break;
 				}
-				if (newText.equals(PredictNavigation.getText())) {
+				if (newText.equals(predictNavigation.getText())) {
 					newText += key.getText();
 				}
-				PredictNavigation.setText(newText.toLowerCase());
+				predictNavigation.setText(newText.toLowerCase());
 
 				doBack = false;
 				break;
@@ -742,7 +943,7 @@ public class SplitViewController {
 		});
 
 		// handle drag and drop events
-		Table.setOnDragOver(new EventHandler<DragEvent>() {
+		table.setOnDragOver(new EventHandler<DragEvent>() {
 
 			@Override
 			public void handle(DragEvent event) {
@@ -753,13 +954,31 @@ public class SplitViewController {
 			}
 		});
 		// https://stackoverflow.com/questions/32534113/javafx-drag-and-drop-a-file-into-a-program
-		Table.setOnDragDropped(new EventHandler<DragEvent>() {
+		table.setOnDragDropped(new EventHandler<DragEvent>() {
 
 			@Override
 			public void handle(DragEvent event) {
 				Dragboard db = event.getDragboard();
 				// System.out.println(db.getContentTypes());
-				if (db.hasFiles()) {
+				if (db.hasContent(DataFormat.PLAIN_TEXT) && db.getString().equals(ON_DROP_CREATE_SHORTCUT_Key)) {
+					ContextMenu mn = new ContextMenu();
+					MenuItem createShortcutHere = new MenuItem("Create Shortcut here");
+					if (!db.hasFiles()) {
+						return;
+					}
+					Holder<File> originalFile = new Holder<File>(db.getFiles().get(0));
+					createShortcutHere.setOnAction(e -> {
+						File shotcutFile = getmDirectory().toPath()
+								.resolve(originalFile.value.getName() + " - Shortcut.lnk").toFile();
+						try {
+							ShellLink.createLink(originalFile.value.toString()).saveTo(shotcutFile.toString());
+						} catch (IOException e1) {
+							e1.printStackTrace();
+						}
+					});
+					mn.getItems().add(createShortcutHere);
+					mn.show(parentWelcome.getStage(), event.getScreenX(), event.getScreenY());
+				} else if (db.hasFiles()) {
 					// TODO later resolve if drag and drop occurs in same node
 					// temp solution:
 					List<Path> ToOperatePath = new ArrayList<>();
@@ -875,39 +1094,62 @@ public class SplitViewController {
 
 		// on drag put selected files to drag Most PowerFull external application
 		// interaction
-		Table.setOnDragDetected(new EventHandler<MouseEvent>() {
+		table.setOnDragDetected(new EventHandler<MouseEvent>() {
 
 			@Override
 			public void handle(MouseEvent event) {
-				Dragboard db = Table.startDragAndDrop(TransferMode.ANY);
+				Dragboard db = table.startDragAndDrop(TransferMode.ANY);
 				ClipboardContent cb = new ClipboardContent();
 				List<File> selectedFiles = new ArrayList<>();
-				getSelection().forEach(x -> selectedFiles.add(x.toFile()));
+				if (!event.isSecondaryButtonDown()) {
+					getSelection().forEach(x -> selectedFiles.add(x.toFile()));
+				} else {
+					cb.putString(ON_DROP_CREATE_SHORTCUT_Key);
+					selectedFiles.add(getSelectedItem().getmFilePath().toFile());
+				}
 				cb.putFiles(selectedFiles);
 				db.setContent(cb);
 			}
 		});
 
-		Table.addEventFilter(KeyEvent.KEY_RELEASED, e -> {
-			if (SHORTCUT_FOCUS_TEXT_FIELD.match(e)) {
-				PathField.requestFocus();
-			} else if (SHORTCUT_SEARCH.match(e)) {
-				focusSearchField();
-			} else if (SHORTCUT_Clear_Search.match(e)) {
-				clearSearchField();
+		viewPane.addEventFilter(KeyEvent.KEY_RELEASED, e -> {
+			if (SHORTCUT_REVEAL_IN_EXPLORER.match(e)) {
+				RevealINExplorer();
+			} else if (SHORTCUT_COPY.match(e)) {
+				copy();
+			} else if (SHORTCUT_MOVE.match(e)) {
+				move();
+			} else if (SHORTCUT_RENAME.match(e)) {
+				rename();
+			} else if (SHORTCUT_DELETE.match(e)) {
+				delete();
+			} else if (SHORTCUT_NEW_FILE.match(e)) {
+				createFile();
+			} else if (SHORTCUT_NEW_DIRECTORY.match(e)) {
+				createDirectory();
+			} else if (SHORTCUT_FOCUS_TEXT_FIELD.match(e)) {
+				pathField.requestFocus();
+			} else if (SHORTCUT_GO_BACK.match(e)) {
+				backButton.fire();
+			} else if (SHORTCUT_GO_NEXT.match(e)) {
+				nextButton.fire();
 			} else if (SHORTCUT_GO_UP.match(e)) {
 				goUpParent();
+			} else if (SHORTCUT_RECURSIVE.match(e)) {
+				recursiveSearch.fire();
+			} else if (SHORTCUT_SEARCH.match(e)) {
+				focusSearchField();
+			} else if (SHORTCUT_CLEAR_SEARCH.match(e)) {
+				clearSearchField();
 			} else if (TOGGLE_FAVORITE.match(e)) {
-				parentWelcome.ToogleFavorite();
-			} else if (SHORTCUT_GO_BACK.match(e)) {
-				BackButton.fire();
-			} else if (SHORTCUT_GO_NEXT.match(e)) {
-				NextButton.fire();
+				toogleFavorite();
+			} else if (SHORTCUT_OPEN_FAVORITE.match(e)) {
+				toogleFavorite();
 			}
 		});
 
-		Table.setOnMouseClicked(m -> {
-			TableViewModel t = Table.getSelectionModel().getSelectedItem();
+		table.setOnMouseClicked(m -> {
+			TableViewModel t = table.getSelectionModel().getSelectedItem();
 			if (m.getButton().equals(MouseButton.SECONDARY)) {
 				showContextMenu();
 				m.consume();
@@ -921,19 +1163,46 @@ public class SplitViewController {
 			if (m.getButton().equals(MouseButton.PRIMARY) && m.getClickCount() == 2) {
 				navigate(t.getmFilePath());
 				if (!isLeft && Setting.isBackSync() && tempIsDirectory) {
-					parentWelcome.SynctoLeftParent();
+					synctoLeftParent();
 				}
-			} else if (isLeft && m.getButton().equals(MouseButton.PRIMARY) && parentWelcome.isAutoExpandToRight()) {
-				if (tempIsDirectory) {
-					parentWelcome.SynctoRight(t.getmFilePath().toString());
-				} else if (isOutOfTheBoxHelper()) {
-					parentWelcome.SynctoRight(getSelectedPathIfDirectory().toString());
-					parentWelcome.getRightView().NavigateForNameAndScrollTo(t);
+			} else if (m.getButton().equals(MouseButton.PRIMARY) && autoExpand.isSelected()) {
+				if (rightViewNeighbor != null) {
+					// double check if it was a directory
+					File tempDir = WindowsShortcut.getRealFileIfDirectory(t.getmFilePath().toFile());
+					if (tempDir.isDirectory()) {
+						synctoRight(t.getmFilePath().toString());
+					} else if (isOutOfTheBoxHelper()) {
+						synctoRight(getSelectedPathIfDirectory().toString());
+						rightViewNeighbor.NavigateForNameAndScrollTo(t);
+					}
 				}
 			}
 		});
 
 		initializeTableRowFactory();
+	}
+
+	private void toogleFavorite() {
+		favoriteCheckBox.fire();
+	}
+
+	private void synctoLeftParent() {
+		File parent = getmDirectory().getParentFile();
+		if (leftViewNeighbor != null && parent.exists()) {
+			leftViewNeighbor.setPathFieldThenRefresh(parent.toString());
+		}
+	}
+
+	public void synctoRight(String pathField) {
+		if (rightViewNeighbor != null) {
+			rightViewNeighbor.setPathFieldThenRefresh(pathField);
+		}
+	}
+
+	private void synctoLeft(String pathField) {
+		if (leftViewNeighbor != null) {
+			leftViewNeighbor.setPathFieldThenRefresh(pathField);
+		}
 	}
 
 	// TableView use handle pattern so in fact only few (13) TableRow is created
@@ -946,7 +1215,7 @@ public class SplitViewController {
 	 */
 	private void initializeTableRowFactory() {
 		// https://stackoverflow.com/questions/26220896/showing-tooltips-in-javafx-at-specific-row-position-in-the-tableview
-		Table.setRowFactory(tv -> new TableRow<TableViewModel>() {
+		table.setRowFactory(tv -> new TableRow<TableViewModel>() {
 			@Override
 			public void updateItem(TableViewModel t, boolean empty) {
 				super.updateItem(t, empty);
@@ -955,12 +1224,6 @@ public class SplitViewController {
 				} else {
 					t.initializerRowFactory();
 					rowMap.put(t, this);
-					// is XSPF start the file directly with custom argument
-					if (VLC.isPlaylist(t.getName())) {
-						t.getOpenVLC().setOnMouseClicked(m -> {
-							VLC.startXSPFInOrder(t.getmFilePath());
-						});
-					}
 					// on row hover
 					String rowtooltipPreText = "Name:\t" + t.getName();
 					if (!t.getmFilePath().toFile().isDirectory()) {
@@ -970,11 +1233,15 @@ public class SplitViewController {
 					if (key != null) {
 						try {
 							updateVisualSeenButton(key, t);
-
 						} catch (Exception e) {
 							// fileTracker MapDetails return null for this key!
 							// Even when printed it contain it.. but the good thing later on scroll do not
 							// cause any problem and show status correctly.
+							// this happen on move/copy operation when the file is tracked and try to load
+							// larger selection of files while file tracker only containing an outdated
+							// version of mapDetails and resolve conflict is necessary but this done on
+							// later refresh and resolving conflict in map details
+							System.out.println("I'm Left View " + isLeft);
 							System.out.println("i entered as wrong key ");
 							System.out.println(key);
 						}
@@ -1006,12 +1273,12 @@ public class SplitViewController {
 								}
 								// ensure > is not used
 								note = note.replace('>', '<');
-								if (!OutOfTheBoxRecursive) {
-									mFileTracker.setTooltipsTexts(Table.getSelectionModel().getSelectedItems(), note);
+								if (!outOfTheBoxRecursive) {
+									mFileTracker.setTooltipsTexts(table.getSelectionModel().getSelectedItems(), note);
 									mFileTracker.setTooltipText(t.getName(), note);
 								} else {
 									mFileTracker.OutofTheBoxsetTooltipsTexts(
-											Table.getSelectionModel().getSelectedItems(), t, note);
+											table.getSelectionModel().getSelectedItems(), t, note);
 								}
 								refreshTableWithSameData();
 							}
@@ -1026,7 +1293,7 @@ public class SplitViewController {
 						});
 
 						// exclusive to normal view
-						if (!OutOfTheBoxRecursive) {
+						if (!outOfTheBoxRecursive) {
 							if (VLC.isVLCMediaExt(t.getName())) {
 								t.getOpenVLC().setOnMouseClicked(m -> {
 									Path path = getDirectoryPath().resolve(t.getName());
@@ -1085,6 +1352,12 @@ public class SplitViewController {
 						}
 					}
 					// Common stuff
+					// is XSPF start the file directly with custom argument
+					if (VLC.isPlaylist(t.getName())) {
+						t.getOpenVLC().setOnMouseClicked(m -> {
+							VLC.startXSPFInOrder(t.getmFilePath());
+						});
+					}
 					setTooltip(getHoverTooltip(rowtooltipPreText));
 				}
 			}
@@ -1116,9 +1389,17 @@ public class SplitViewController {
 			// refresh state
 			parentWelcome.UpdateTitle(truePathField);
 		} else {
-			OutOfTheBoxRecursive = false;
+			try {
+				mWatchServiceHelper.changeObservableDirectory(mDirectory.toPath());
+			} catch (IOException e) {
+				e.printStackTrace();
+				showToastMessage(e.getClass() + "\n" + e.getMessage());
+				back();
+				return;
+			}
+			outOfTheBoxRecursive = false;
 			recursiveSearch.setSelected(false);
-			NavigateRecursive.setVisible(false);
+			navigateRecursive.setVisible(false);
 			addQueryOptionsPathField("recursive", null);
 			truePathField = mDirectory.getAbsolutePath() + getQueryOptions();
 			// PathField.setText(mDirectory.getAbsolutePath());
@@ -1126,7 +1407,6 @@ public class SplitViewController {
 			refreshIsOutOfTheBox();
 			mFileTracker.loadMap(getDirectoryPath(), true, false);
 			mFileTracker.resolveConflict();
-			mWatchServiceHelper.changeObservableDirectory(mDirectory.toPath());
 			showList(getCurrentFilesList());
 			reloadSearchField();
 			String stageTitle = mDirectory.getName();
@@ -1136,12 +1416,21 @@ public class SplitViewController {
 			parentWelcome.UpdateTitle(stageTitle);
 		}
 		if (isLeft) {
-			parentWelcome.updateFavoriteCheckBox(isOutOfTheBoxHelper);
+			updateFavoriteCheckBox(isOutOfTheBoxHelper);
 		}
-		PathField.setText(truePathField);
+		pathField.setText(truePathField);
 
-		LabelItemsNumber.setText(" #" + DataTable.size() + " items");
+		labelItemsNumber.setText(" #" + DataTable.size() + " items");
 
+	}
+
+	private void updateFavoriteCheckBox(boolean isOutOfTheBoxHelper) {
+		if (isOutOfTheBoxHelper) {
+			favoriteCheckBox.setVisible(false);
+		} else {
+			favoriteCheckBox.setVisible(true);
+			favoriteCheckBox.setSelected(Setting.getFavoritesLocations().contains(getDirectoryPath().toFile()));
+		}
 	}
 
 	private static List<String> SpecialPath = Arrays.asList("/", "?", "&", "|");
@@ -1233,7 +1522,7 @@ public class SplitViewController {
 			BackQueue.removeLast();
 		}
 		if (BackQueue.isEmpty()) {
-			BackButton.setDisable(true);
+			backButton.setDisable(true);
 		}
 	}
 
@@ -1241,7 +1530,7 @@ public class SplitViewController {
 		// prevent redundant successive items
 		if (BackQueue.isEmpty() || BackQueue.peekLast().compareTo(mDirectory) != 0) {
 			BackQueue.add(file);
-			BackButton.setDisable(false);
+			backButton.setDisable(false);
 		}
 	}
 
@@ -1251,8 +1540,8 @@ public class SplitViewController {
 	 */
 	private void back() {
 		// when back button is disabled mean that recent directory queue is empty
-		if (!doUp && !BackButton.isDisabled()) {
-			BackButton.fire();
+		if (!doUp && !backButton.isDisabled()) {
+			backButton.fire();
 			if (!doUp) {
 				doUp = true;
 				executor.execute(doUpThreadOff);
@@ -1264,7 +1553,7 @@ public class SplitViewController {
 
 	// go up directory until reaching root
 	private void goUpParent() {
-		PredictNavigation.setText("");
+		predictNavigation.setText("");
 		File parent = mDirectory.getParentFile();
 		File oldmDirectory = mDirectory;
 		if (parent != null) {
@@ -1285,12 +1574,12 @@ public class SplitViewController {
 	// TODO separate this from resetting form only reset search !
 	public void clearSearchField() {
 
-		TableViewModel selected = Table.getSelectionModel().getSelectedItem();
+		TableViewModel selected = table.getSelectionModel().getSelectedItem();
 
 		// addQueryOptionsPathField("search", null); already done in listener
-		SearchField.setText("");
-		Table.getSelectionModel().clearSelection(); // to prevent mis scroll
-		Table.getSelectionModel().select(selected);
+		searchField.setText("");
+		table.getSelectionModel().clearSelection(); // to prevent mis scroll
+		table.getSelectionModel().select(selected);
 
 		// for better view item like centralize view it on escape
 		// Table.getSelectionModel().select(DataTable.indexOf(selected));
@@ -1363,7 +1652,7 @@ public class SplitViewController {
 				Path dir = getDirectoryPath();
 				mFileTracker.getMapDetails().clear();
 				Platform.runLater(() -> DataTable.clear());
-				OutOfTheBoxRecursive = true;
+				outOfTheBoxRecursive = true;
 				boolean doSort = false;
 
 				// TODO check UTF Validity
@@ -1380,7 +1669,18 @@ public class SplitViewController {
 
 				try {
 					// StringHelper.startTimer();
-					Files.walkFileTree(dir, r);
+					List<Path> selectionsPath = getSelection();
+					if (selectionsPath.size() > 1) {
+						selectionsPath.stream().filter(p -> p.toFile().isDirectory()).forEach(p -> {
+							try {
+								Files.walkFileTree(p, r);
+							} catch (IOException e1) {
+								e1.printStackTrace();
+							}
+						});
+					} else {
+						Files.walkFileTree(dir, r);
+					}
 					if (r.getFilesCount() > Setting.getMaxLimitFilesRecursive()) {
 						doSort = true;
 					}
@@ -1459,7 +1759,7 @@ public class SplitViewController {
 
 	private void EmptyNextQueue() {
 		NextQueue.clear();
-		NextButton.setDisable(true);
+		nextButton.setDisable(true);
 	}
 
 	/**
@@ -1564,7 +1864,7 @@ public class SplitViewController {
 	}
 
 	public void focusSearchField() {
-		SearchField.requestFocus();
+		searchField.requestFocus();
 	}
 
 	// this to update pathField also
@@ -1576,15 +1876,15 @@ public class SplitViewController {
 	// }
 
 	public void focusTable() {
-		if (Table.getSelectionModel().getSelectedCells().size() <= 0) {
+		if (table.getSelectionModel().getSelectedCells().size() <= 0) {
 			// Table.getSelectionModel().select(0);
-			Table.getSelectionModel().selectFirst();
+			table.getSelectionModel().selectFirst();
 		}
-		Table.requestFocus();
+		table.requestFocus();
 	}
 
 	public Button getBackButton() {
-		return BackButton;
+		return backButton;
 	}
 
 	public ArrayList<File> getCurrentFilesList() {
@@ -1640,7 +1940,7 @@ public class SplitViewController {
 	}
 
 	public Button getNextButton() {
-		return NextButton;
+		return nextButton;
 	}
 
 	public WelcomeController getParentWelcome() {
@@ -1648,7 +1948,7 @@ public class SplitViewController {
 	}
 
 	public TextField getPathField() {
-		return PathField;
+		return pathField;
 	}
 
 	private String getQueryOptions() {
@@ -1661,11 +1961,11 @@ public class SplitViewController {
 	}
 
 	public TableViewModel getSelectedItem() {
-		return Table.getSelectionModel().getSelectedItem();
+		return table.getSelectionModel().getSelectedItem();
 	}
 
 	private Path getSelectedPathIfDirectory() {
-		TableViewModel t = Table.getSelectionModel().getSelectedItem();
+		TableViewModel t = table.getSelectionModel().getSelectedItem();
 		if (t == null) {
 			return null;
 		}
@@ -1679,10 +1979,13 @@ public class SplitViewController {
 	// so only call when really need to update state
 
 	// for recursive mode use OutOfTheBoxRecursive
-
+	/**
+	 *
+	 * @return all files paths of selected items
+	 */
 	public List<Path> getSelection() {
 		List<Path> selection = new ArrayList<>();
-		for (TableViewModel item : Table.getSelectionModel().getSelectedItems()) {
+		for (TableViewModel item : table.getSelectionModel().getSelectedItems()) {
 			selection.add(item.getmFilePath());
 		}
 		return selection;
@@ -1699,11 +2002,11 @@ public class SplitViewController {
 						return;
 					}
 					addQueryOptionsPathField("recursive", "true");
-					NavigateRecursive.setVisible(true);
+					navigateRecursive.setVisible(true);
 					doRecursiveSearch();
 				} else {
 					addQueryOptionsPathField("recursive", null);
-					NavigateRecursive.setVisible(false);
+					navigateRecursive.setVisible(false);
 					setPathFieldThenRefresh(truePathField);
 				}
 			}
@@ -1746,11 +2049,11 @@ public class SplitViewController {
 		MenuItem newFolderAction = new MenuItem("Create New Folder");
 		MenuItem newTrackerPlayerPlaylist = new MenuItem("Create New Cortana Playlist");
 		MenuItem newTrackerPlayerAny = new MenuItem("Create New Cortana Shortcut");
-		ToolsMenu.getItems().addAll(copyBaseNames, pasteBaseNames, undoLastPasteNames, renameAction, newFileAction,
+		toolsMenu.getItems().addAll(copyBaseNames, pasteBaseNames, undoLastPasteNames, renameAction, newFileAction,
 				newFolderAction, newTrackerPlayerPlaylist, newTrackerPlayerAny);
 
 		newTrackerPlayerAny.setOnAction(e -> {
-			TableViewModel t = Table.getSelectionModel().getSelectedItem();
+			TableViewModel t = table.getSelectionModel().getSelectedItem();
 			if (t == null) {
 				DialogHelper.showAlert(AlertType.INFORMATION, "Cortana Shortcut", "Select an item from Table first",
 						"");
@@ -1761,7 +2064,7 @@ public class SplitViewController {
 		});
 		newTrackerPlayerPlaylist.setOnAction(e -> {
 			List<Path> files = new ArrayList<>();
-			for (TableViewModel t : Table.getSelectionModel().getSelectedItems()) {
+			for (TableViewModel t : table.getSelectionModel().getSelectedItems()) {
 				File tFile = t.getmFilePath().toFile();
 				if (VLC.isVLCMediaExt(tFile.getName()) || tFile.isDirectory()) {
 					files.add(t.getmFilePath());
@@ -1790,15 +2093,15 @@ public class SplitViewController {
 		});
 		renameAction.setOnAction(e -> {
 			requestFocus();
-			parentWelcome.rename();
+			rename();
 		});
 		newFileAction.setOnAction(e -> {
 			requestFocus();
-			parentWelcome.createFile();
+			createFile();
 		});
 		newFolderAction.setOnAction(e -> {
 			requestFocus();
-			parentWelcome.createDirectory();
+			createDirectory();
 		});
 		undoLastPasteNames.setDisable(true);
 
@@ -1811,8 +2114,8 @@ public class SplitViewController {
 			public void handle(ActionEvent arg0) {
 				ObservableList<TableViewModel> toWorkWith = null;
 				String warningAlert = "";
-				if (Table.getSelectionModel().getSelectedItems().size() > 0) {
-					toWorkWith = Table.getSelectionModel().getSelectedItems();
+				if (table.getSelectionModel().getSelectedItems().size() > 0) {
+					toWorkWith = table.getSelectionModel().getSelectedItems();
 				} else {
 					toWorkWith = sortedData;
 					warningAlert = "- You can also make a selection Source First from the Table!\n";
@@ -1850,8 +2153,8 @@ public class SplitViewController {
 					String fullAlertReport = "";
 					String warningAlert = "";
 					ObservableList<TableViewModel> toWorkWith = null;
-					if (Table.getSelectionModel().getSelectedItems().size() > 0) {
-						toWorkWith = Table.getSelectionModel().getSelectedItems();
+					if (table.getSelectionModel().getSelectedItems().size() > 0) {
+						toWorkWith = table.getSelectionModel().getSelectedItems();
 					} else {
 						toWorkWith = sortedData;
 						warningAlert = "\nYou can also make a selection Target First from the Table!";
@@ -2005,11 +2308,24 @@ public class SplitViewController {
 	}
 
 	public boolean isFocused() {
-		return Table.isFocused() || UpButton.isFocused() || RefreshButton.isFocused() || SearchField.isFocused();
+		return table.isFocused() || upButton.isFocused() || refreshButton.isFocused() || searchField.isFocused()
+				|| viewPane.isFocused();
 	}
 
 	public boolean isFocusedTable() {
-		return Table.isFocused();
+		return table.isFocused();
+	}
+
+	public boolean isFocusedSearchField() {
+		return searchField.isFocused() || refreshButton.isFocused();
+	}
+
+	public void setAutoExpand(boolean isAutoExpand) {
+		autoExpand.setSelected(isAutoExpand);
+	}
+
+	public boolean isAutoExpand() {
+		return autoExpand.isSelected();
 	}
 
 	public boolean isOutOfTheBoxHelper() {
@@ -2018,7 +2334,7 @@ public class SplitViewController {
 
 	/**
 	 * Only use for {@link FileTracker#FileTracker(Path)}
-	 * 
+	 *
 	 * @param value
 	 */
 	public void setIsOutOfTheBoxHelper(boolean value) {
@@ -2026,12 +2342,12 @@ public class SplitViewController {
 	}
 
 	public boolean isOutOfTheBoxRecursive() {
-		return OutOfTheBoxRecursive;
+		return outOfTheBoxRecursive;
 	}
 
 	// return the correct key to be used in map details
 	public String keyMapperToString(TableViewModel t) {
-		if (OutOfTheBoxRecursive) {
+		if (outOfTheBoxRecursive) {
 			if (mFileTracker.isTrackedOutFolder(t.getmFilePath().getParent())) {
 				// the key is the full path
 				return t.getmFilePath().toFile().toURI().toString();
@@ -2047,32 +2363,27 @@ public class SplitViewController {
 		return null;
 	}
 
-	// true if the navigate was a directory
+	/**
+	 *
+	 * @param filePath
+	 * @return true if the navigate was a directory
+	 */
 	public boolean navigate(Path filePath) {
 		File selectedFile = filePath.toFile();
 		boolean isDirectory = selectedFile.isDirectory();
-		try {
-			WindowsShortcut test = null;
-			if (!isDirectory && WindowsShortcut.isPotentialValidLink(selectedFile)) {
-				test = new WindowsShortcut(selectedFile);
-			}
-			if (test != null) {
-				selectedFile = new File(test.getRealFilename());
-			}
-		} catch (IOException | ParseException e1) {
-			e1.printStackTrace();
+		// double check in case of fixed shortcut
+		if (!isDirectory) {
+			selectedFile = WindowsShortcut.getRealFileIfDirectory(selectedFile);
 		}
 
-		// double check in case of fixed shortcut
 		if (selectedFile.isDirectory()) {
 			setmDirectoryThenRefresh(selectedFile);
-			isDirectory = true;
 		} else {
 			try {
 				if (VLC.isWellSetup() && VLC.isVLCMediaExt(filePath.toFile().getName())
-						&& Table.getSelectionModel().getSelectedItems().size() != 1) {
+						&& table.getSelectionModel().getSelectedItems().size() != 1) {
 					String files = " --playlist-enqueue --loop";
-					for (TableViewModel t : Table.getSelectionModel().getSelectedItems()) {
+					for (TableViewModel t : table.getSelectionModel().getSelectedItems()) {
 						if (VLC.isVLCMediaExt(t.getName())) {
 							files += " " + t.getmFilePath().toUri();
 						}
@@ -2089,7 +2400,7 @@ public class SplitViewController {
 					// deal other types of files
 					if (StringHelper.getExtention(selectedFile.getName()).equals("PDF")) {
 						// open bunch of PDF
-						StringHelper.openFiles(Table.getSelectionModel().getSelectedItems().stream()
+						StringHelper.openFiles(table.getSelectionModel().getSelectedItems().stream()
 								.map(p -> p.getmFilePath().toFile())
 								.filter(p -> StringHelper.getExtention(p.getName()).equals("PDF"))
 								.collect(Collectors.toList()));
@@ -2097,7 +2408,7 @@ public class SplitViewController {
 						// open bunch of Image or an image
 					} else if (PhotoViewerController.ArrayIMGExt
 							.contains(StringHelper.getExtention(selectedFile.getName()))) {
-						new PhotoViewerController(Table.getSelectionModel().getSelectedItems().stream()
+						new PhotoViewerController(table.getSelectionModel().getSelectedItems().stream()
 								.map(p -> p.getmFilePath().toFile())
 								.filter(p -> PhotoViewerController.ArrayIMGExt
 										.contains(StringHelper.getExtention(p.getName())))
@@ -2118,7 +2429,7 @@ public class SplitViewController {
 				DialogHelper.showException(e);
 			}
 		}
-		PredictNavigation.setText("");
+		predictNavigation.setText("");
 		doBack = true;
 		return isDirectory;
 	}
@@ -2135,10 +2446,13 @@ public class SplitViewController {
 	}
 
 	public void selectIndex(int index) {
+		if (index < 0 && index >= sortedData.size()) {
+			return;
+		}
 		TableViewModel found = sortedData.get(index);
 		if (found != null) {
-			Table.getSelectionModel().select(found);
-			Table.scrollTo(smartScrollIndex(sortedData.indexOf(found)));
+			table.getSelectionModel().select(found);
+			table.scrollTo(smartScrollIndex(sortedData.indexOf(found)));
 		}
 	}
 
@@ -2147,8 +2461,8 @@ public class SplitViewController {
 		if (found == null) {
 			return;
 		}
-		Table.getSelectionModel().select(found);
-		Table.scrollTo(smartScrollIndex(sortedData.indexOf(found)));
+		table.getSelectionModel().select(found);
+		table.scrollTo(smartScrollIndex(sortedData.indexOf(found)));
 	}
 
 	/**
@@ -2213,7 +2527,7 @@ public class SplitViewController {
 		}
 	};
 	// https://howtodoinjava.com/java/multi-threading/java-thread-pool-executor-example/
-	ThreadPoolExecutor executor = (ThreadPoolExecutor) Executors.newCachedThreadPool();
+	ThreadPoolExecutor executor = (ThreadPoolExecutor) Executors.newFixedThreadPool(1);
 
 	private List<TableViewModel> RecursiveHelperGetData() {
 		// DataTable.clear();
@@ -2243,17 +2557,31 @@ public class SplitViewController {
 	}
 
 	private void recursiveHelperSetBlocked(boolean state) {
-		RefreshButton.setDisable(state);
-		Table.setDisable(state);
-		NavigateRecursive.setDisable(state);
-		PathField.setDisable(state);
-		UpButton.setDisable(state);
-		BackButton.setDisable(state);
-		NextButton.setDisable(state);
-		Explorer.setDisable(state);
-		SearchField.setDisable(state);
-		parentWelcome.RecursiveHelpersetBlocked(state);
+		refreshButton.setDisable(state);
+		table.setDisable(state);
+		navigateRecursive.setDisable(state);
+		pathField.setDisable(state);
+		upButton.setDisable(state);
+		backButton.setDisable(state);
+		nextButton.setDisable(state);
+		explorerButton.setDisable(state);
+		searchField.setDisable(state);
+		// TODO
+//		parentWelcome.recursiveHelperSetBlockedAlso(state);
+	}
 
+	public void recursiveHelperSetBlockedAlso(boolean state) {
+		if (state == true) {
+			autoExpand.setSelected(false);
+		} else {
+			autoExpand.setSelected(Setting.isAutoExpand());
+		}
+		rightDominate.setDisable(state);
+		leftDominate.setDisable(state);
+		autoExpand.setDisable(state);
+		favoritesLocations.setDisable(state);
+		rootsMenu.setDisable(state);
+		goDesktopButton.setDisable(state);
 	}
 
 	private void RecursiveHelperUpdateTitle(String message) {
@@ -2261,19 +2589,25 @@ public class SplitViewController {
 		parentWelcome.ResetTitle();
 		refresh(truePathField);
 		recursiveHelperSetBlocked(false);
-		Table.requestFocus();
+		table.requestFocus();
 		// to refresh selection number and select the first one
-		Table.getSelectionModel().select(0);
+		table.getSelectionModel().select(0);
 	}
 
-	private ContextMenu showToastMessage(String message) {
+	public ContextMenu showToastMessage(String message) {
 		ContextMenu mn = new ContextMenu();
 		MenuItem mnChild = new MenuItem(message);
 		mn.getItems().add(mnChild);
 		mn.getStyleClass().addAll("lastRowSelected");
 		mnChild.getStyleClass().addAll("lastRowSelected");
-		double xLoc = parentWelcome.getStage().getX() + Table.getLayoutX() + Table.getWidth() * 0.1;
-		double yLoc = parentWelcome.getStage().getY() + Table.getLayoutY() + Table.getHeight() + 70;
+		Node test = table;
+		double xLoc = parentWelcome.getStage().getX() + table.getWidth() * 0.1;
+		double yLoc = parentWelcome.getStage().getY() + table.getHeight() + 70;
+		while (test != null) {
+			xLoc += test.getLayoutX();
+			yLoc += test.getLayoutY();
+			test = test.getParent();
+		}
 		mn.show(parentWelcome.getStage(), xLoc, yLoc);
 		return mn;
 	}
@@ -2299,21 +2633,23 @@ public class SplitViewController {
 		// reserve selection before refreshing the table
 		// be aware that if initialized spaces more than needed so table will contain 0
 		// and first row get selected even when it's not
-		int[] toSelect = new int[Table.getSelectionModel().getSelectedItems().size()];
+		int[] toSelect = new int[table.getSelectionModel().getSelectedItems().size()];
 		int j = 0;
-		for (int i : Table.getSelectionModel().getSelectedIndices()) {
+		for (int i : table.getSelectionModel().getSelectedIndices()) {
 			toSelect[j++] = i;
 		}
 		DataTable.clear();
 		DataTable.addAll(Copy);
 		// restore reserve
-		Table.getSelectionModel().selectIndices(-1, toSelect);
-		Table.requestFocus();
+		table.getSelectionModel().selectIndices(-1, toSelect);
+		table.requestFocus();
 	}
 
+	/**
+	 * Focus on table View
+	 */
 	public void requestFocus() {
-		Table.requestFocus();
-
+		table.requestFocus();
 	}
 
 	private void restoreLastSelectAndScroll() {
@@ -2321,10 +2657,10 @@ public class SplitViewController {
 	}
 
 	public void RevealINExplorer() {
-		if (Table.getSelectionModel().getSelectedItem() != null) {
+		if (table.getSelectionModel().getSelectedItem() != null) {
 			// https://stackoverflow.com/questions/7357969/how-to-use-java-code-to-open-windows-file-explorer-and-highlight-the-specified-f
 			StringHelper.RunRuntimeProcess(new String[] { "explorer.exe", "/select,",
-					Table.getSelectionModel().getSelectedItem().getmFilePath().toString() });
+					table.getSelectionModel().getSelectedItem().getmFilePath().toString() });
 			// TODO
 			// later do make it multiple selection not working as follow
 			// List<Path> paths = getSelection();
@@ -2336,14 +2672,118 @@ public class SplitViewController {
 			// e.printStackTrace();
 			// }
 		} else {
-			Explorer.fire();
+			explorerButton.fire();
+		}
+	}
+
+	public void delete() {
+		List<Path> source = getSelection();
+		int lastKnownIndex = indexOfName(getSelectedItem().getName());
+		if (!FileHelper.delete(source, e -> parentWelcome.refreshUnExistingViewsDir())) {
+			return;
+		}
+		refreshAsPathField();
+		selectIndex(lastKnownIndex);
+	}
+
+	private void copy() {
+		if (isLeft) {
+			if (rightViewNeighbor == null) {
+				return;
+			}
+			List<Path> source = getSelection();
+			Path target = rightViewNeighbor.getDirectoryPath();
+			FileHelper.copy(source, target);
+		} else {
+			if (leftViewNeighbor != null) {
+				return;
+			}
+			List<Path> source = getSelection();
+			Path target = leftViewNeighbor.getDirectoryPath();
+			FileHelper.copy(source, target);
+		}
+	}
+
+	public void rename() {
+		List<Path> selection = getSelection();
+		if (selection.size() == 1) {
+			Path src = selection.get(0);
+			if (src.getNameCount() == 0) {
+				return;
+			}
+			Path target = FileHelper.rename(src, false);
+			if (target == null) {
+				return;
+			}
+			// file tracker operation update
+			getMfileTracker().operationUpdate(target, src.toFile().getName(), target.toFile().getName());
+			// refresh directory is satisfied by watch service
+
+			// scroll to renamed item in any view
+			Thread tempScroll = new Thread() {
+
+				@Override
+				public void run() {
+					try {
+						TimeUnit.MILLISECONDS.sleep(100);
+						Platform.runLater(() -> ScrollToName(target.getFileName().toString()));
+					} catch (InterruptedException e) {
+						e.printStackTrace();
+					}
+				}
+			};
+			tempScroll.start();
+		} else {
+			new RenameUtilityController(selection);
+		}
+	}
+
+	public void move() {
+		if (isLeft) {
+			if (rightViewNeighbor == null) {
+				return;
+			}
+			List<Path> source = getSelection();
+			Path target = rightViewNeighbor.getDirectoryPath();
+			FileHelper.move(source, target);
+		} else {
+			if (leftViewNeighbor != null) {
+				return;
+			}
+			List<Path> source = getSelection();
+			Path target = leftViewNeighbor.getDirectoryPath();
+			FileHelper.move(source, target);
+		}
+	}
+
+	public void createDirectory() {
+		FileHelper.createDirectory(getDirectoryPath(), this);
+	}
+
+	public void createFile() {
+		FileHelper.createFile(getDirectoryPath());
+	}
+
+	public void wipeFileTracker() {
+		if (!getMfileTracker().isTracked()) {
+			DialogHelper.showAlert(AlertType.INFORMATION, "Delete Tracker Data", "This is already Untracked folder",
+					"Are you kidding me.");
+			return;
+		}
+		boolean ans = DialogHelper.showConfirmationDialog("Delete Tracker Data",
+				"Are you Sure You want to wipe tracker data?",
+				"Note: this have nothing to do with your files, it just delete .tracker_explorer.txt"
+						+ " >>And so set all item to untracked.\nThis cannot be undone!");
+		if (ans) {
+			getMfileTracker().deleteFile();
+			refreshAsPathField();
 		}
 	}
 
 	private TableViewModel LastSelectedToScroll;
 
 	private void saveLastSelectToScroll() {
-		LastSelectedToScroll = Table.getSelectionModel().getSelectedItem();
+		LastSelectedToScroll = table.getSelectionModel().getSelectedItem();
 	}
 
 	// is this function causing the warning ?
@@ -2356,18 +2796,14 @@ public class SplitViewController {
 		if (regex.startsWith("*")) {
 			regex = "." + regex;
 		}
-		Table.getSelectionModel().clearSelection();
+		table.getSelectionModel().clearSelection();
 		for (int i = 0; i < DataTable.size(); ++i) {
 			TableViewModel model = DataTable.get(i);
 			String item = model.getName();
 			if (item.matches(regex) || StringHelper.containsWord(item, regex)) {
-				Table.getSelectionModel().select(model);
+				table.getSelectionModel().select(model);
 			}
 		}
-	}
-
-	public void setBackButton(Button backButton) {
-		BackButton = backButton;
 	}
 
 	// special use like for rename and do not Queue
@@ -2379,22 +2815,18 @@ public class SplitViewController {
 	// and enqueue it to back button..
 	// and so adding old directory to queue and so on
 	public void setmDirectoryThenRefresh(File mDirectory) {
-		PredictNavigation.setText("");
+		predictNavigation.setText("");
 		if (mDirectory.compareTo(this.mDirectory) != 0) {
 			AddToQueue(this.mDirectory);
 			EmptyNextQueue();
 		}
 		this.mDirectory = mDirectory;
 		refresh(null);
-		Table.scrollTo(0);
+		table.scrollTo(0);
 	}
 
 	public void setMfileTracker(FileTracker mfileTracker) {
 		mFileTracker = mfileTracker;
-	}
-
-	public void setNextButton(Button nextButton) {
-		NextButton = nextButton;
 	}
 
 	public void setParentWelcome(WelcomeController parentWelcome) {
@@ -2402,14 +2834,14 @@ public class SplitViewController {
 	}
 
 	public void setPredictNavigation(String predictNavigation) {
-		PredictNavigation.setText(predictNavigation);
+		this.predictNavigation.setText(predictNavigation);
 	}
 
 	private void showContextMenu() {
-		TableViewModel t = Table.getSelectionModel().getSelectedItem();
+		TableViewModel t = table.getSelectionModel().getSelectedItem();
 		if (t != null) {
 			ArrayList<Path> toShow = new ArrayList<>();
-			for (TableViewModel temp : Table.getSelectionModel().getSelectedItems()) {
+			for (TableViewModel temp : table.getSelectionModel().getSelectedItems()) {
 				toShow.add(temp.getmFilePath());
 			}
 			RunMenu.showMenu(toShow);
@@ -2424,11 +2856,11 @@ public class SplitViewController {
 	}
 
 	private void ToggleSeenHelper(TableViewModel clicked) {
-		if (!OutOfTheBoxRecursive) {
-			mFileTracker.toggleSelectionSeen(Table.getSelectionModel().getSelectedItems(),
+		if (!outOfTheBoxRecursive) {
+			mFileTracker.toggleSelectionSeen(table.getSelectionModel().getSelectedItems(),
 					xspfRelatedWithSelection(clicked), clicked);
 		} else {
-			mFileTracker.OutofTheBoxtoggleSelectionSeen(Table.getSelectionModel().getSelectedItems(), clicked);
+			mFileTracker.OutofTheBoxtoggleSelectionSeen(table.getSelectionModel().getSelectedItems(), clicked);
 		}
 		// when toggle seen if yes or un is in search field do update
 		reloadSearchField();
@@ -2437,7 +2869,7 @@ public class SplitViewController {
 	private boolean untrackedBehavior(TableViewModel t) {
 		boolean ans;
 		// returned false
-		if (OutOfTheBoxRecursive || isOutOfTheBoxHelper) {
+		if (outOfTheBoxRecursive || isOutOfTheBoxHelper) {
 			ans = DialogHelper.showConfirmationDialog("Track new Folder[Recursive Mode]", "Ready to Be Stunned ?",
 					"Tracking a new Folder will create a hidden file .tracker_explorer.txt"
 							+ " in the folder to save data tracker !"
@@ -2446,7 +2878,7 @@ public class SplitViewController {
 				return ans;
 			}
 
-			Set<Path> paths = Table.getSelectionModel().getSelectedItems().stream()
+			Set<Path> paths = table.getSelectionModel().getSelectedItems().stream()
 					.map(selection -> selection.getmFilePath().getParent()).collect(Collectors.toSet());
 			paths.add(t.getmFilePath().getParent());
 			mFileTracker.OutofTheBoxTrackFolder(paths);
@@ -2477,7 +2909,7 @@ public class SplitViewController {
 		if (truePathField.endsWith("?")) {
 			truePathField = truePathField.replace("?", "");
 		}
-		PathField.setText(truePathField);
+		pathField.setText(truePathField);
 	}
 
 	public void updateVisualSeenButton(String key, TableViewModel t) {
@@ -2498,7 +2930,7 @@ public class SplitViewController {
 		// to include clicked in below for loop
 		// Table.getSelectionModel().select(DataTable.indexOf(clicked));
 		ArrayList<TableViewModel> tempOver = new ArrayList<>();
-		tempOver.addAll(Table.getSelectionModel().getSelectedItems());
+		tempOver.addAll(table.getSelectionModel().getSelectedItems());
 		tempOver.add(clicked);
 
 		for (TableViewModel t : tempOver) {
@@ -2514,8 +2946,8 @@ public class SplitViewController {
 				mFileTracker.setSeen(tSearch.getName(), mFileTracker.getSeen(mapAllXSPF.get(tBase)), tSearch);
 				// first if -> to force toggle if only video is selected and clicked on XSPF
 				// second if ->to prevent double toggle
-				if (Table.getSelectionModel().getSelectedItems().size() == 1
-						|| !Table.getSelectionModel().getSelectedItems().contains(tSearch)) {
+				if (table.getSelectionModel().getSelectedItems().size() == 1
+						|| !table.getSelectionModel().getSelectedItems().contains(tSearch)) {
 					allRelated.add(tSearch);
 				}
 			}
@@ -2529,10 +2961,10 @@ public class SplitViewController {
 	public void saveStateToSplitState(SplitViewState state) {
 		// Save current state view to state
 		state.setmDirectory(getmDirectory());
-		state.setSearchKeyword(SearchField.getText());
+		state.setSearchKeyword(searchField.getText());
 
-		state.setSelectedIndices(Table.getSelectionModel().getSelectedIndices());
-		state.setScrollTo(Table.getSelectionModel().getSelectedIndex());
+		state.setSelectedIndices(table.getSelectionModel().getSelectedIndices());
+		state.setScrollTo(table.getSelectionModel().getSelectedIndex());
 	}
 
 	public void restoreSplitViewState(SplitViewState state) {
@@ -2545,11 +2977,128 @@ public class SplitViewController {
 			RemoveLastFalseQueue();
 		}
 		// restore search keyword
-		SearchField.setText(state.getSearchKeyword());
+		searchField.setText(state.getSearchKeyword());
 
 		// restore selections
-		Table.getSelectionModel().clearSelection();
-		Table.getSelectionModel().selectIndices(-1, state.getSelectedIndices());
-		Table.scrollTo(smartScrollIndex(state.getScrollTo()));
+		table.getSelectionModel().clearSelection();
+		table.getSelectionModel().selectIndices(-1, state.getSelectedIndices());
+		table.scrollTo(smartScrollIndex(state.getScrollTo()));
+	}
+
+	/**
+	 * @return the leftViewNeighbor
+	 */
+	@Nullable
+	public SplitViewController getLeftViewNeighbor() {
+		return leftViewNeighbor;
+	}
+
+	/**
+	 * @param leftViewNeighbor the leftViewNeighbor to set
+	 */
+	public void setLeftViewNeighbor(SplitViewController leftViewNeighbor) {
+		this.leftViewNeighbor = leftViewNeighbor;
+	}
+
+	/**
+	 * @return the rightViewNeighbor
+	 */
+	@Nullable
+	public SplitViewController getRightViewNeighbor() {
+		return rightViewNeighbor;
+	}
+
+	/**
+	 * @param rightViewNeighbor the rightViewNeighbor to set
+	 */
+	public void setRightViewNeighbor(SplitViewController rightViewNeighbor) {
+		this.rightViewNeighbor = rightViewNeighbor;
+	}
+
+	@FXML
+	private void goDesktop(ActionEvent event) {
+		setmDirectoryThenRefresh(new File(System.getProperty("user.home") + File.separator + "Desktop"));
+		requestFocus();
+	}
+
+	@FXML
+	private void dominateLeft() {
+		if (leftViewNeighbor != null) {
+			leftViewNeighbor.setPathFieldThenRefresh(getPathField().getText());
+		}
+	}
+
+	@FXML
+	private void swapWithleft() {
+		if (leftViewNeighbor != null) {
+			String temp = leftViewNeighbor.getPathField().getText();
+			dominateLeft();
+			setPathFieldThenRefresh(temp);
+		}
+	}
+
+	@FXML
+	private void dominateRight() {
+		if (rightViewNeighbor != null) {
+			rightViewNeighbor.setPathFieldThenRefresh(getPathField().getText());
+		}
+	}
+
+	public void RecursiveHelpersetBlocked(boolean state) {
+		if (state == true) {
+			autoExpand.setSelected(false);
+		} else {
+			autoExpand.setSelected(Setting.isAutoExpand());
+		}
+		rightDominate.setDisable(state);
+		leftDominate.setDisable(state);
+		autoExpand.setDisable(state);
+		favoritesLocations.setDisable(state);
+		rootsMenu.setDisable(state);
+		goDesktopButton.setDisable(state);
+	}
+
+	public ToggleButton getAutoExpand() {
+		return autoExpand;
+	}
+
+	public GridPane getViewPane() {
+		return viewPane;
+	}
+
+	/**
+	 *
+	 * @param leftViewController
+	 * @return FXMLLoader loader of FXML
+	 * @throws IOException
+	 */
+	public static FXMLLoader loadFXMLViewAsLeft(SplitViewController leftViewController) throws IOException {
+		FXMLLoader loader = new FXMLLoader();
+		loader.setLocation(SplitViewController.class.getResource("/fxml/SplitViewLeft.fxml"));
+		loader.setController(leftViewController);
+		loader.load();
+		return loader;
+	}
+
+	/**
+	 *
+	 * @param rightViewController
+	 * @return FXMLLoader loader of FXML
+	 * @throws IOException
+	 */
+	public static FXMLLoader loadFXMLViewAsRight(SplitViewController rightViewController) throws IOException {
+		FXMLLoader loader = new FXMLLoader();
+		loader.setLocation(SplitViewController.class.getResource("/fxml/SplitViewRight.fxml"));
+		loader.setController(rightViewController);
+		loader.load();
+		return loader;
+	}
+
+	public boolean isNoteColumnVisible() {
+		return noteCol.isVisible();
+	}
+
+	public Button getExitSplitButton() {
+		return exitSplitButton;
 	}
 }

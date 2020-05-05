@@ -308,6 +308,32 @@ public class WindowsShortcut {
 		return bytesToWord(bytes, off + 2) << 16 | bytesToWord(bytes, off);
 	}
 
+	// ----------------------------- Custom Section -----------------------------
+	/**
+	 *
+	 * @param shortcutFile
+	 * @return The same file if it is a normal file<br>
+	 *         A directory File if it point to a shortcut file
+	 *
+	 */
+	public static File getRealFileIfDirectory(File shortcutFile) {
+		if (shortcutFile.isDirectory() || !StringHelper.getExtention(shortcutFile.getName()).equals("LNK")) {
+			return shortcutFile;
+		}
+		WindowsShortcut test = null;
+		try {
+			if (WindowsShortcut.isPotentialValidLink(shortcutFile)) {
+				test = new WindowsShortcut(shortcutFile);
+			}
+		} catch (IOException | ParseException e1) {
+			e1.printStackTrace();
+		}
+		if (test != null) {
+			shortcutFile = new File(test.getRealFilename());
+		}
+		return shortcutFile;
+	}
+
 	// ----------------------------- Mslinks Section -----------------------------
 
 	// ---------------------- Internet Shortcut Section ----------------------

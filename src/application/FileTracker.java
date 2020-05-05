@@ -743,7 +743,8 @@ public class FileTracker {
 			// ensure refresh for both pages case where they are in the same folder
 			if (!virtualSplitView) {
 				if (isEasy && doRefresh[0]) {
-					mSplitViewController.getParentWelcome().refreshBothViews(mSplitViewController);
+					mSplitViewController.getParentWelcome()
+							.refreshAllSplitViewsIfMatch(mSplitViewController.getmDirectory(), mSplitViewController);
 				} else {
 					// was always entering here: in case on one view there is mark seen yes
 					// and the other no
@@ -752,7 +753,8 @@ public class FileTracker {
 					// the other view doesn't detect since watchable service is turned off
 					// so we do refresh the other view if the same directory in both view :)
 					if (doRefresh.length == 1 || doRefresh[1] == true) {
-						mSplitViewController.getParentWelcome().refreshTheOtherView(mSplitViewController);
+						mSplitViewController.getParentWelcome().refreshAllSplitViewsIfMatch(
+								mSplitViewController.getmDirectory(), mSplitViewController);
 					}
 				}
 			}

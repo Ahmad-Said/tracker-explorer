@@ -213,7 +213,7 @@ public class VLC {
 			} else // this to generate the file next to media
 			{
 				// WatchServiceHelper.setRuning(false); // prevent overload
-				String name = mediaName.replace(StringHelper.getExtention(path.toString()), "[Filtered].xspf");
+				String name = StringHelper.getBaseName(mediaName) + "[Filtered].xspf";
 				tempFile = path.getParent().resolve(name).toFile();
 				mediaLocation = path.toUri().toString().substring(path.toUri().toString().lastIndexOf('/') + 1);
 			}
