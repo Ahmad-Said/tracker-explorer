@@ -37,6 +37,7 @@ import javafx.scene.control.Alert.AlertType;
 import javafx.scene.control.Button;
 import javafx.scene.control.CheckBox;
 import javafx.scene.control.ComboBox;
+import javafx.scene.control.Label;
 import javafx.scene.control.SelectionMode;
 import javafx.scene.control.Slider;
 import javafx.scene.control.SplitMenuButton;
@@ -272,6 +273,7 @@ public class RenameUtilityController {
 	}
 
 	private void initializeTable() {
+		tableRename.setPlaceholder(new Label("Drag And Drop Files here To Begin!"));
 		tableRename.getSelectionModel().setSelectionMode(SelectionMode.MULTIPLE);
 		NewNameColumn.maxWidthProperty().bind(tableRename.widthProperty().subtract(60).divide(2));
 		OriginalNameColumn.maxWidthProperty().bind(tableRename.widthProperty().subtract(60).divide(2));

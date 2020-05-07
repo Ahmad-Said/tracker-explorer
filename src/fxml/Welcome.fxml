@@ -45,7 +45,6 @@
                   <items>
                         <Menu fx:id="newEmbedWindow" mnemonicParsing="false" text="New Embed Window" />
                         <MenuItem fx:id="newWindow" mnemonicParsing="false" text="New Window" />
-                        <MenuItem fx:id="renameItem" mnemonicParsing="false" text="Rename Utility" />
                   </items>
                 </Menu>
                 <Menu fx:id="TrackerMenu" mnemonicParsing="false" text="Tracker">
@@ -56,6 +55,13 @@
                         <MenuItem mnemonicParsing="false" text="---------** Experimental Features **---------" />
                   </items>
                 </Menu>
+                  <Menu mnemonicParsing="false" text="View">
+                     <items>
+                        <Menu fx:id="themeSelection" mnemonicParsing="false" text="Change Theme (Experimental)" />
+                        <MenuItem fx:id="showOperationStage" mnemonicParsing="false" text="File Operations" />
+                        <MenuItem fx:id="renameItem" mnemonicParsing="false" text="Rename Utility" />
+                     </items>
+                  </Menu>
                 <Menu mnemonicParsing="false" text="VLC">
                   <items>
                         <MenuItem mnemonicParsing="false" onAction="#GetVLC" text="Get VLC" />
@@ -68,7 +74,7 @@
                         <MenuItem mnemonicParsing="false" onAction="#GetBulkRenameUtility" text="Get Bulk Rename Utility" />
                   </items>
                 </Menu>
-                  <Menu fx:id="cortanaMenu" mnemonicParsing="false" text="Cortana Shortcuts">
+                  <Menu fx:id="cortanaMenu" mnemonicParsing="false" text="Cortana">
                      <items>
                         <MenuItem mnemonicParsing="false" onAction="#openSettingTrackerPlayer" text="Setting" />
                         <MenuItem mnemonicParsing="false" text="otherShortcut" />

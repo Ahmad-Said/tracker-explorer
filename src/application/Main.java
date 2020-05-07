@@ -127,7 +127,7 @@ public class Main extends Application {
 			}
 		});
 
-		FileHelper.initializeView();
+		FileHelperGUIOperation.initializeView();
 	}
 
 	public static void main(String[] args) {

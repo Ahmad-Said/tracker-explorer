@@ -81,7 +81,7 @@
     -fx-text-fill: text_disabled_color;
     -fx-prompt-text-fill: text_disabled_color;
 }
-
+/* from some other JMetroLightTheme css */
 /*******************************************************************************
  *                                                                             *
  * Text Field (and PasswordField)                                              *
@@ -89,6 +89,7 @@
  ******************************************************************************/
 
 .text-field{
+	/* Here class assignment does work */
     -fx-skin: "impl.jfxtras.styles.jmetro8.TextFieldSkin";
 }
 

@@ -25,6 +25,7 @@ import org.jetbrains.annotations.Nullable;
 
 import application.DialogHelper;
 import application.FileHelper;
+import application.FileHelperGUIOperation;
 import application.FileTracker;
 import application.Main;
 import application.RecursiveFileWalker;
@@ -70,6 +71,7 @@ import javafx.scene.layout.GridPane;
 import javafx.stage.FileChooser;
 import javafx.stage.Stage;
 import javafx.util.Duration;
+import jfxtras.styles.jmetro8.JMetro;
 
 public class WelcomeController implements Initializable {
 	static final KeyCombination SHORTCUT_OPEN_NEW_TAB = new KeyCodeCombination(KeyCode.T, KeyCombination.CONTROL_DOWN);
@@ -101,8 +103,6 @@ public class WelcomeController implements Initializable {
 	@FXML
 	private MenuItem newFolder;
 	@FXML
-	private MenuItem renameItem;
-	@FXML
 	private MenuItem deleteItem;
 
 	// Tracker SubMenus
@@ -114,6 +114,14 @@ public class WelcomeController implements Initializable {
 
 	@FXML
 	private MenuItem aboutMenuItem;
+
+	// View SubMenus
+	@FXML
+	private Menu themeSelection;
+	@FXML
+	private MenuItem showOperationStage;
+	@FXML
+	private MenuItem renameItem;
 
 	@FXML
 	private MenuItem bulkRemoveMenuItem;
@@ -560,10 +568,43 @@ public class WelcomeController implements Initializable {
 			}
 		});
 
+		/**
+		 * set up Operation Stage
+		 */
+		MenuItem oldFashionedNoThemStyle = new MenuItem("old fashioned");
+		MenuItem bootStrapThem = new MenuItem("Bootstrap V3");
+		MenuItem micosoftWindowsLight = new MenuItem("Windows 10 Theme light");
+		MenuItem micosoftWindowsDark = new MenuItem("Windows 10 Theme Dark");
+		oldFashionedNoThemStyle.setOnAction(e -> stage.getScene().getStylesheets().clear());
+		bootStrapThem.setOnAction(e -> {
+			stage.getScene().getStylesheets().clear();
+			stage.getScene().getStylesheets().add("/css/bootstrap3.css");
+		});
+		micosoftWindowsLight.setOnAction(e -> {
+			// need restart application under to work
+			if (stage.getScene().getStylesheets().contains("JMetroLightTheme.css")) {
+				// need restart application under to work
+			} else {
+				stage.getScene().getStylesheets().clear();
+				new JMetro(JMetro.Style.LIGHT).applyTheme(stage.getScene());
+			}
+		});
+		micosoftWindowsDark.setOnAction(e -> {
+			if (stage.getScene().getStylesheets().contains("JMetroDarkTheme.css")) {
+				// need restart application under to work
+			} else {
+				stage.getScene().getStylesheets().clear();
+				new JMetro(JMetro.Style.DARK).applyTheme(stage.getScene());
+			}
+		});
+		themeSelection.getItems().addAll(oldFashionedNoThemStyle, bootStrapThem, micosoftWindowsLight,
+				micosoftWindowsDark);
+
+		showOperationStage.setOnAction(e -> FileHelperGUIOperation.showOperationStage());
 		renameItem.setOnAction(e -> new RenameUtilityController(new ArrayList<>()));
 
 		/**
-		 * set up FileTracker Menu TODO
+		 * set up FileTracker Menu
 		 */
 		// check http://tutorials.jenkov.com/javafx/menubar.html
 		// Menus :

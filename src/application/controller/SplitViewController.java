@@ -2449,7 +2449,7 @@ public class SplitViewController implements Initializable {
 		if (index < 0 && index >= sortedData.size()) {
 			return;
 		}
-		TableViewModel found = sortedData.get(index);
+		TableViewModel found = sortedData.get(index < sortedData.size() ? index : 0);
 		if (found != null) {
 			table.getSelectionModel().select(found);
 			table.scrollTo(smartScrollIndex(sortedData.indexOf(found)));
@@ -2888,6 +2888,7 @@ public class SplitViewController implements Initializable {
 			ans = mFileTracker.getAns();
 			if (ans) {
 				mFileTracker.trackNewFolder();
+				refreshTableWithSameData();
 			}
 		}
 		return ans;
