@@ -212,13 +212,16 @@ public class VLC {
 				mediaLocation = path.toUri().toString();
 			} else // this to generate the file next to media
 			{
-				// WatchServiceHelper.setRuning(false); // prevent overload
-				String name = StringHelper.getBaseName(mediaName) + "[Filtered].xspf";
+				String name = StringHelper.getBaseName(mediaName) + " [Filtered].xspf";
 				tempFile = path.getParent().resolve(name).toFile();
 				mediaLocation = path.toUri().toString().substring(path.toUri().toString().lastIndexOf('/') + 1);
 			}
 			if (tempFile.exists()) {
 				tempFile.delete();
+			}
+			if (!isFullPath) {
+				FileTracker.appendTrackerData(tempFile.toPath(), new FileTrackerHolder(tempFile.getName())
+						.setTimeToLiveDefaultMax().setSeen(false).setNoteText(list.size() + " Filtered Scene"), false);
 			}
 			OutputStreamWriter p = new OutputStreamWriter(new FileOutputStream(tempFile), StandardCharsets.UTF_8);
 			// initialize things: template
@@ -275,10 +278,8 @@ public class VLC {
 				startXSPFInOrder(tempFile.toPath());
 				tempFile.deleteOnExit();
 			}
-			// else
-			// WatchServiceHelper.setRuning(true); // </prevent overload
 		} catch (IOException e) {
-			// e.printStackTrace();
+			e.printStackTrace();
 		}
 		return tempFile;
 	}

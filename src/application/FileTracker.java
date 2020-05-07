@@ -3,15 +3,14 @@ package application;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
-import java.io.UnsupportedEncodingException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -19,12 +18,41 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
-import application.controller.SplitViewController;
+import javax.xml.ws.Holder;
+
+import org.jetbrains.annotations.Nullable;
+
+import application.FileHelper.ActionOperation;
+import application.controller.splitview.SplitViewController;
 import application.datatype.Setting;
-import application.model.TableViewModel;
+import javafx.scene.control.Alert.AlertType;
 
+/**
+ *
+ * Print in file tracker list conventions (entry separated by >):<br>
+ * 0 >> name same as key (path.getFilename) when is the box<br>
+ * 1 >> boolean isSeen status<br>
+ * 2 >> String ToolTip details<br>
+ * other tracker data:<br>
+ * VLC filter data section as many triplet<br>
+ * ----------------<br>
+ * 3* >> start time<br>
+ * 4* >> end time<br>
+ * 5* >> Description of removal<br>
+ * ----------------<br>
+ * after first found of pipe command options '|'<br>
+ * 6* >> optionsCommand (key)<br>
+ * 7* >> value<br>
+ *
+ */
 public class FileTracker {
+
+	// ---------------------- Static Section ----------------------
+	private static final String FIRST_LINE_TRACKER = "/This is a generated file by "
+			+ "Tracker Explorer to store track data of files, --Version=" + Setting.getVersion() + "\r\n";
 
 	private static final String BaseName = ".tracker_explorer";
 	// conflict log will discard creating new File/Folder operations
@@ -71,330 +99,251 @@ public class FileTracker {
 		UserFileName = getFileName(userName);
 	}
 
-	// name of file to options of files separated by >
-	// (string) name > (int)1or0 watched or not > other later for vlc use resume
-	// start > [ remove start > remove end ] mean as alot
-	// to options contain the the above line splitted at < and name as key
-	// list conventions index:
-	// 0 >> name same as key (path.getFilename)
-	// 1 >> boolean isSeen status
-	// 2 >> String ToolTip details
-	// if exist:
-	// 3 >> start time
-	// 4 >> end time
-	// 5 >> Description of removal
-	private Map<String, List<String>> mapDetails;
-
-	private SplitViewController mSplitViewController;
-
-	// this variable was created just to minimize converting dir file to
-	// path in general it always = mSplitViewController.getDirectoryPath();
-	// the question is does it worth to do ??
-	private Path mWorkingDirPath;
-
-	public Path getWorkingDir() {
-		return mWorkingDirPath;
+	/**
+	 * New Options structure From Version 5+, value should not contain any '>'
+	 *
+	 * <pre>
+	 * character Format In Order: <br>
+	 * 		'|' (CommandOption) '>' (value)
+	 * Example:<br>
+	 * 		|TimeToLive>43>Udemy>0>
+	 * </pre>
+	 */
+	public enum CommandOption {
+		TimeToLive
 	}
 
-	public void setWorkingDir(Path p) {
-		mWorkingDirPath = p;
+	// Used when doing a file operation and need to clear map immediately
+	// so when TimeToLive reach 0 it git ignored
+	public final static int TIME_TO_LIVE_MAX = 64;
+
+	// ---------------------- Initializing Section ----------------------
+
+	private HashMap<Path, FileTrackerHolder> mapDetailsRevolved;
+
+	public Map<Path, FileTrackerHolder> getMapDetailsRevolved() {
+		return mapDetailsRevolved;
+	}
+
+	private Path workingDirPath;
+	/**
+	 * Changed to true when loading files that are not brothers,<br>
+	 * so to be aware how to write map and {@link #commitTrackerDataChange(Path)}
+	 * <br>
+	 * value updated in:
+	 *
+	 * {@link #loadMap(Path, boolean)}<br>
+	 * {@link #loadResolvedMapOrEmpty(Path)}
+	 */
+	private boolean isLoadedOtherThanWorkingDir;
+
+	/**
+	 * Main working directory, see {@link #isLoadedOtherThanWorkingDir}
+	 *
+	 * @return
+	 */
+	public Path getWorkingDir() {
+		return workingDirPath;
 	}
 
 	/**
-	 * this is used to define a virtual miniFileTracker if you wish to use Full URI
-	 * path for loadMap do change use {@link #setVirtualModeToFullURIPathKey()} to
-	 * true
 	 *
-	 * @param workingPath
+	 * @param <P>
 	 */
-	public FileTracker(Path workingPath) {
-		mapDetails = new HashMap<String, List<String>>();
-		mSplitViewController = new SplitViewController();
-		mWorkingDirPath = workingPath;
-		mSplitViewController.setmDirectory(workingPath.toFile());
+	public interface OnWriteMapFinishCallBack<P extends Path> {
+		void handle(P path);
 	}
 
-	public void setVirtualModeToFullURIPathKey() {
-		mSplitViewController.setIsOutOfTheBoxHelper(true);
+	private OnWriteMapFinishCallBack<Path> onWriteMapAction;
+
+	public OnWriteMapFinishCallBack<Path> getOnWriteMapAction() {
+		return onWriteMapAction;
 	}
 
-	public FileTracker(SplitViewController splitViewController) {
-		mSplitViewController = splitViewController;
-		mapDetails = new HashMap<String, List<String>>();
-		// in case of definition of virtual minifiletracker we do use
-		// just the same as initial value as calling resolve conflict do need it
-		mWorkingDirPath = mSplitViewController.getDirectoryPath();
+	public void setOnWriteMapAction(OnWriteMapFinishCallBack<Path> onWriteMapAction) {
+		this.onWriteMapAction = onWriteMapAction;
 	}
 
-	public void deleteFile() {
-		File file = new File(mWorkingDirPath.resolve(UserFileName).toString());
+	/**
+	 * General WorkFlow:<br>
+	 * -> {@link #trackNewFolder()} <br>
+	 * -> {@link #loadMap(Path, boolean)}<br>
+	 * -> {@link #resolveConflict()}<br>
+	 * -> {@link #getTrackerData(Path)} do some change<br>
+	 * -> {@link #commitTrackerDataChange(Path)}<br>
+	 *
+	 * @param workingPath      can be null
+	 * @param onWriteMapAction action to be triggered when writing map at specific
+	 *                         Path<br>
+	 *                         can be null
+	 */
+	public FileTracker(Path workingPath, OnWriteMapFinishCallBack<Path> onWriteMapAction) {
+		mapDetailsRevolved = new HashMap<Path, FileTrackerHolder>();
+		// ensure no null workingDir for later comparison
+		workingDirPath = workingPath == null ? Paths.get("/") : workingPath;
+		this.onWriteMapAction = onWriteMapAction;
+	}
+
+	// ---------------------- Loading/Writing Section ----------------------
+
+	/**
+	 *
+	 * @param pathToDir
+	 * @return a resolved path for file tracker in directory provided.<br>
+	 *         null if null paramter was send
+	 */
+	@Nullable
+	public static Path getTrackerFileIn(Path pathToDir) {
+		if (pathToDir == null) {
+			return null;
+		}
+		return pathToDir.resolve(getUserFileName());
+	}
+
+	@Nullable
+	public Path getTrackerFileInWorkingDir() {
+		return getTrackerFileIn(workingDirPath);
+	}
+
+	public void deleteTrackerFile() {
+		File file = getTrackerFileInWorkingDir().toFile();
 		if (file.exists()) {
 			file.delete();
 		}
 	}
 
-	public boolean getAns() {
+	public static boolean getAns() {
 		return DialogHelper.showConfirmationDialog("Track new Folder", "Ready to Be Stunned ?",
 				"Tracking a new Folder will create a hidden file .tracker_explorer.txt in the folder :) !"
 						+ "so nothing dangerous just a file !");
 	}
 
-	public Map<String, List<String>> getMapDetails() {
-		return mapDetails;
-	}
-
-	/**
-	 * in normal case key is {@link TableViewModel#getName()} Other wise is out of
-	 * the box it is {@link TableViewModel#getmFilePath()}
-	 */
-	public String getNoteTooltipText(String key) {
-		if (!mapDetails.containsKey(key)) {
-			return "";
-		}
-		String ans = mapDetails.get(key).get(2);
-		return ans.equals(" ") ? "" : ans;
-	}
-
-	public String getSeen(String key) {
-		return mapDetails.get(key).get(1);
-	}
-
-	public String getSeen(TableViewModel t) {
-		return getSeen(t.getName());
-	}
-
-	public boolean isSeen(String key) {
-		return getSeen(key).equals("0") ? false : true;
+	public static boolean getAnsForMultipleFiles(HashSet<Path> unTrackedList) {
+		return DialogHelper.showExpandableConfirmationDialog("Track new Folder [Multiple Mode]",
+				"Ready to Be Stunned ?",
+				"Tracking a new Folder will create a hidden file .tracker_explorer.txt"
+						+ " in the folder to save data tracker !"
+						+ "\nIn Multiple mode the creation will trigger on all needed Items.",
+				"Following Directories will be tracked:\n"
+						+ unTrackedList.stream().map(p -> "- " + p.toString()).collect(Collectors.joining("\n")));
 	}
 
 	public boolean isTracked() {
-		File tracker = new File(mWorkingDirPath.resolve(UserFileName).toString());
-		return tracker.exists();
-	}
-
-	public boolean isTrackedOutFolder(Path Dirto) {
-		File tracker = new File(Dirto.resolve(UserFileName).toString());
-		return tracker.exists();
-	}
-
-	private boolean isVirtual() {
-		boolean virtualSplitView = false;
-		if (mSplitViewController.getmWatchServiceHelper() == null) {
-			virtualSplitView = true;
+		if (workingDirPath == null) {
+			return false;
 		}
-		return virtualSplitView;
+		File tracker = new File(workingDirPath.resolve(UserFileName).toString());
+		return tracker.exists();
 	}
 
-	public void loadMap(Path Dirpath, boolean doclear, boolean doFullpath) {
-		String line = "";
+	/**
+	 * Just Check if tracker data exist in specified directory<br>
+	 * In case for multiple folder do use {@link #filterTrackedFolder(Set)}
+	 *
+	 * @param dirToCheck
+	 * @return
+	 */
+	public static boolean isTrackedOutFolder(Path dirToCheck) {
+		File tracker = new File(dirToCheck.resolve(UserFileName).toString());
+		return tracker.exists();
+	}
+
+	public void loadMap(Path dirPath, boolean doclear) {
+		if (doclear) {
+			mapDetailsRevolved.clear();
+		}
 		// every time get the new path before loading in normal case
-		mWorkingDirPath = mSplitViewController.getDirectoryPath();
-		File file = Dirpath.resolve(UserFileName).toFile();
+		if (mapDetailsRevolved.size() != 0 && !dirPath.equals(workingDirPath)) {
+			isLoadedOtherThanWorkingDir = true;
+		} else {
+			isLoadedOtherThanWorkingDir = false;
+		}
+		workingDirPath = dirPath;
+		File file = dirPath.resolve(UserFileName).toFile();
 		if (!file.exists()) {
 			return;
 		}
 		BufferedReader in = null;
+		String line = "";
 		try {
 			in = new BufferedReader(new InputStreamReader(new FileInputStream(file), "UTF8"));
-		} catch (UnsupportedEncodingException | FileNotFoundException e1) {
-			// TODO Auto-generated catch block
-			Setting.printStackTrace(e1);
-		}
-
-		if (doclear) {
-			mapDetails.clear();
-		}
-
-		try {
 			in.readLine(); // to ignore first comment line
 			while ((line = in.readLine()) != null) {
-				List<String> options;
-				// we can also use arraylist if indeed:
-				// allWords.addAll(Arrays.asList(strTemp.toLowerCase().split("\\s+")));
-				// @addinhere
-				options = Arrays.asList(line.split(">"));
-				// by default the key of the map is the name which is saved to map
-				// other wise if full path key is the URI path of the file
-				String keyInMap = options.get(0);
-				try {
-					if (doFullpath) {
-						// Add here unsupported character
-						if (options.get(0).contains("?")) {
-							continue;
-						}
-						try {
-							Path test = Dirpath.resolve(options.get(0));
-							keyInMap = test.toFile().toURI().toString();
-						} catch (java.nio.file.InvalidPathException e) {
-							// if path is valid
-							Setting.printStackTrace(e);
-							continue;
-						}
+				FileTrackerHolder optionsItem;
+				String lineSplit[] = line.split(">");
+				// Minimum allowed length of split line is name/isSeen/note
+				if (lineSplit.length >= 2) {
+					optionsItem = new FileTrackerHolder(lineSplit[0]);
+					optionsItem.setSeen(Integer.parseInt(lineSplit[1]) == 1);
+					// when note is empty it's not sliced as new element in basic array
+					// name/isSeen/note
+					if (lineSplit.length >= 3) {
+						optionsItem.setNoteText(lineSplit[2].trim());
 					}
-					if (options.size() >= 3) {
-						mapDetails.put(keyInMap, options);
+				} else {
+					continue;
+				}
+				for (int i = 3; i < lineSplit.length; i++) {
+					if (!lineSplit[i].isEmpty() && lineSplit[i].charAt(0) == '|') {
+						if (i + 1 < lineSplit.length) {
+							switch (CommandOption.valueOf(lineSplit[i].substring(1))) {
+							case TimeToLive:
+								optionsItem.setTimeToLive(Integer.parseInt(lineSplit[++i]) - 1);
+								break;
+
+							default:
+								break;
+							}
+						}
 					} else {
-						mapDetails.put(keyInMap, Arrays.asList(options.get(0), "0", " "));
+						// Filter VLC Stuff
+						if (i + 2 < lineSplit.length) {
+							optionsItem.concatMediaCutDataUnPrased(
+									">" + lineSplit[i] + ">" + lineSplit[++i] + ">" + lineSplit[++i]);
+						}
 					}
-				} catch (Exception e) {
-					// if anything goes wrong in parsing do nothing about it
-					Setting.printStackTrace(e);
+				}
+				Path keyInMap = dirPath.resolve(optionsItem.getName());
+				// Force biggest time to live to be overridden
+				// in case of 2 concurrent file operation the last one
+				// will remain
+				// this allow file operation enough time to exist
+				if (!mapDetailsRevolved.containsKey(keyInMap)
+						|| optionsItem.getTimeToLive() >= mapDetailsRevolved.get(keyInMap).getTimeToLive()) {
+					mapDetailsRevolved.put(keyInMap, optionsItem);
 				}
 			}
 			in.close();
 		} catch (IOException e1) {
-			// TODO Auto-generated catch block
 			e1.printStackTrace();
+			Setting.printStackTrace(e1);
 		}
-	}
-
-	// this similar to trackNewFolder but the folder isn't opened in the view
-	// return false if nothing is changed
-	public boolean NewOutFolder(Path DirtoTrack) {
-		// it is uncessary to put file in the file
-		// because they will be resolved in conflict check later
-		File tracker = new File(DirtoTrack.resolve(UserFileName).toString());
-		if (tracker.exists()) {
-			return false;// prevent wipe old data
-		}
-		return writeMapDir(DirtoTrack, false, false);
-	}
-
-	public void updateMapDetailsUponRename(String oldKey, String newKey, String newFileName) {
-		List<String> options = mapDetails.get(oldKey);
-		mapDetails.remove(oldKey);
-		options.set(0, newFileName);
-		mapDetails.put(newKey, options);
 	}
 
 	/**
-	 * when doing a copy or move operations: The purpose is to preserve the tracker
-	 * data when copying or moving and in case of delete do not track change in
-	 * conflict log
-	 *
-	 * "this" fileTracker is the one who receiving the files noting also the
-	 * Receiver always do receive in the box
+	 * If specified directory is tracked, will load its map in specified directory,
+	 * resolve conflict and add it to current map <br>
+	 * <p>
+	 * Other wise will load empty map of directory after listing it
 	 *
 	 *
-	 * @param keyChangedSender is the final path considered as the target file his
-	 *                         parent can stand for the sender file tracker who
-	 *                         sending the files in case of delete or move we need
-	 *                         to remove the key can be null in case of rename in
-	 *                         case of rename it just the new file in same directory
-	 *
-	 * @param args             Arrays of string arguments in case of:<br>
-	 *                         rename:<br>
-	 *                         * 0 ->> is The original name <br>
-	 *                         *1 ->> is to be the new key <br>
-	 *                         <br>
-	 *
-	 *                         * 0 ->> otherwise "action" -> "copy","move","delete"
-	 *                         // note get the original name from path keyChanged
+	 * @param Dirto specified directory to load even when it's not tracked
 	 */
-	public void operationUpdate(Path keyChangedSender, String... args) {
-		if (!isTrackedOutFolder(keyChangedSender.getParent())) {
-			return;
-		}
-		if (args.length > 1) {
-			// rename action
-			if (!mSplitViewController.isOutOfTheBoxHelper()) {
-				updateMapDetailsUponRename(args[0], args[1], args[1]);
-				writeMapDir(mWorkingDirPath, false);
-			} else {
-				updateMapDetailsUponRename(keyChangedSender.toFile().toURI().toString(),
-						keyChangedSender.getParent().resolve(args[1]).toFile().toURI().toString(), args[1]);
-				OutofTheBoxWriteMap(keyChangedSender.getParent(), null, args);
-				// additional refresh in case of change isn't the same as root
-				// directory in case
-				if (!keyChangedSender.getParent().equals(mWorkingDirPath) && !isVirtual()) {
-					mSplitViewController.refreshAsPathField();
-				}
-			}
-			// will auto detect by watch service
-			// mSplitViewController.refreshAsPathField();
-			return;
-		}
-		// case of delete
-		// TODO at the moment operations aren't removed from conflict log
-		if (args[0].equals("delete")) {
-			return;
-		}
-		// case of copy and move:
-		if (!isTrackedOutFolder(keyChangedSender.getParent())) {
-			return;
-		}
-		// System.out.println(mapDetails);
-		String keyName = keyChangedSender.toFile().getName();
-		// getting the sender data
-		FileTracker senderfileTracker = new FileTracker(keyChangedSender.getParent());
-		senderfileTracker.loadMap(keyChangedSender.getParent(), true, false);
-
-		// overwriting current data
-		mapDetails.put(keyName, senderfileTracker.getMapDetails().get(keyName));
-		writeMapDir(mWorkingDirPath, false, false);
-	}
-
-	/**
-	 * Copy_Move_Delete_Operations only
-	 *
-	 * When doing a copy or move operations: It is necessary to preserve the tracker
-	 * data, and in case of delete do nothing about it. But clearing from conflict
-	 * log is optional
-	 *
-	 * "this" fileTracker is the one who receiving the files
-	 *
-	 * @param source
-	 * @param otherfileTracker who sending the files
-	 */
-	public void OperationUpdate(List<Path> source, FileTracker otherfileTracker, String operation) {
-		if (otherfileTracker.mSplitViewController.isOutOfTheBoxHelper()) {
-			// System.out.println("i;m out of the box");
-			// TODO update item after finishing copy or move of every file in file helper
-
-			return;
-		}
-		mSplitViewController.setPredictNavigation("");
-		if (!isTracked() || otherfileTracker != null && !otherfileTracker.isTracked()) {
-			// care of your own busniss
-			// there is 2 refresh now one from here and other from file helper
-			// mSplitViewController.getParentWelcome().refreshBothViewsAsPathField(null);
-			return;
-		}
-		if (operation.equals("delete")) {
-			for (Path src : source) {
-				String key = src.getFileName().toString();
-				mapDetails.remove(key);
-			}
-		} else {
-			for (Path src : source) {
-				String key = src.getFileName().toString();
-				mapDetails.put(key, otherfileTracker.getMapDetails().get(key));
-				if (operation.equals("move")) {
-					otherfileTracker.mapDetails.remove(key);
-				}
-			}
-		}
-
-		// will do refresh after moving all files
-		// these write will make them undetectable by resolve conflict
-		writeMapDir(mWorkingDirPath, false, false);
-		if (otherfileTracker != null) {
-			otherfileTracker.writeMapDir(otherfileTracker.mWorkingDirPath, false, false);
-		}
-	}
-
-	public void OutofTheBoxAddToMapRecusive(Path Dirto) {
+	public void loadResolvedMapOrEmpty(Path Dirto) {
 		File tracker = new File(Dirto.resolve(UserFileName).toString());
+		if (!Dirto.equals(workingDirPath)) {
+			isLoadedOtherThanWorkingDir = true;
+		}
 		if (tracker.exists()) {
-			// SplitViewController minisplit = new SplitViewController();
-			// minisplit.setmDirectory(Dirto.toFile());
-			FileTracker miniFileTracker = new FileTracker(Dirto);
+			FileTracker miniFileTracker = new FileTracker(Dirto, null);
 			// loading the original map to resolve conflict -> detecting new files..
-			// this will use easy call in write map
-			miniFileTracker.loadMap(Dirto, true, false);
-			miniFileTracker.resolveConflict();
-			loadMap(Dirto, false, true);
-			// TODO clean recursively and track recursively do refresh folders alot
+			miniFileTracker.loadMap(Dirto, true);
+			try {
+				miniFileTracker.resolveConflict();
+				mapDetailsRevolved.putAll(miniFileTracker.mapDetailsRevolved);
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
 		} else {
 			// add untracked data folder here require listing dir again
 			File allFiles[] = Dirto.toFile().listFiles(file -> !file.isHidden());
@@ -409,8 +358,7 @@ public class FileTracker {
 					if (f.getName().contains("?")) {
 						continue;
 					}
-
-					mapDetails.put(f.toURI().toString(), Arrays.asList(f.getName(), "0", ""));
+					mapDetailsRevolved.put(f.toPath(), new FileTrackerHolder(f.getName()));
 				} catch (Exception e) {
 					// checking that path contain legal character other wise skip them
 					Setting.printStackTrace(e);
@@ -420,298 +368,29 @@ public class FileTracker {
 		}
 	}
 
-	private void OutofTheBoxChangeHelper(List<TableViewModel> list, TableViewModel clicked, String Operation,
-			String optionalArg) {
-		// map from each directory path to it's corresponding element
-		// the list of table view model contain name
-		Map<Path, List<TableViewModel>> toUpdate = new HashMap<>();
-		// including clicked into the list
-		Set<TableViewModel> Alllist = new HashSet<>(list);
-		if (Alllist.size() == 1) {
-			Alllist.clear();
-		}
-		if (!Alllist.contains(clicked)) {
-			Alllist.add(clicked);
-		}
-
-		Boolean ans = null;
-		for (TableViewModel t : Alllist) {
-			Path parent = t.getmFilePath().getParent();
-			if (parent == null) {
-				continue;
-			}
-			if (!isTrackedOutFolder(parent)) {
-				if (ans == null) {
-					ans = DialogHelper.showConfirmationDialog("Recursive Operation", "Untracked Files Selection",
-							"We have detetected some Untracked Files in selection,\nDo you want To Track Them and include In The operation ?");
-				}
-				if (ans) {
-					NewOutFolder(parent);
-				}
-			}
-			String key = t.generateKeyURI();
-			if (Operation.equals("toogle_seen")) {
-				toggleSingleSeenItem(key, t);
-			} else if (Operation.equals("set_tooltip")) {
-				OutofTheBoxsetsetTooltipTextHelper(t, key, optionalArg);
-			}
-
-			List<TableViewModel> TList = toUpdate.get(parent);
-
-			// if list does not exist create it
-			if (TList == null) {
-				TList = new ArrayList<TableViewModel>();
-				TList.add(t);
-				toUpdate.put(parent, TList);
-			} else {
-				// optional additional check
-				// add if item is not already in list
-				if (!TList.contains(t)) {
-					TList.add(t);
-				}
-			}
-		}
-		for (Path path : toUpdate.keySet()) {
-			OutofTheBoxWriteMap(path, toUpdate.get(path));
-		}
-		// mSplitViewController.setPathFieldThenRefresh(mSplitViewController.getPathField().getText());
-		// restore later when exit the recursive search
-		// mSplitViewController.getmWatchServiceHelper().RestoreObservableDirectory();
-
+	/**
+	 * Write Current {@link #mapDetailsRevolved} tracker data into file in
+	 * {@link #workingDirPath}, <br>
+	 *
+	 * will call On Finish writing map {@link #onWriteMapAction}
+	 *
+	 * @return true if writing occur without any problem and file write access is
+	 *         Guaranteed
+	 */
+	public boolean writeMap() {
+		return writeMapDir(workingDirPath, true);
 	}
 
-	private void OutofTheBoxsetsetTooltipTextHelper(TableViewModel t, String key, String note) {
-		t.setNoteText(note);
-		mapDetails.get(key).set(2, note);
-	}
-
-	public void OutofTheBoxsetTooltipsTexts(List<TableViewModel> list, TableViewModel clicked, String note) {
-		OutofTheBoxChangeHelper(list, clicked, "set_tooltip", note);
-	}
-
-	public void OutofTheBoxtoggleSelectionSeen(List<TableViewModel> list, TableViewModel clicked) {
-		OutofTheBoxChangeHelper(list, clicked, "toogle_seen", null);
-	}
-
-	public void OutofTheBoxTrackFolder(Set<Path> paths) {
-		for (Path path : paths) {
-			if (NewOutFolder(path)) {
-				loadMap(path, false, true);
-			}
-		}
-	}
-
-	// this is called if any change have committed to the dirto
-	// toUpdate is used if action on any Visual Button like toggleseen or note..
-	// NameChanger is used in operation update in case of rename to perserve data
 	/**
 	 *
 	 *
-	 * @param Dirto    The working directory containing the list of TableViewModel
-	 *                 files
-	 * @param toUpdate List to take in consideration that their status
-	 *                 seen/note..<br>
-	 *                 can be null if only use of "args" parameter
-	 * @param args     Used for rename/copy/move operation check more at
-	 *                 {@link #operationUpdate(Path, String...)}
+	 * @param DirtoTrack         target directory to write tracker data to
+	 * @param callOnFinishAction if set to true, on finish writing map
+	 *                           {@link #onWriteMapAction} will be called
+	 * @return
 	 */
-	public void OutofTheBoxWriteMap(Path Dirto, List<TableViewModel> toUpdate, String... args) {
-		// the idea is to create another filetracker with another
-		// splitviewcontroller defining only mdirectory
-		// with some function in restricted mode
-		// do collect all corresponding parent directory of items in map
-		// then write map like above with the new generated map
-		// refresh is forbidden
-
-		// initializing temporary corresponding file Tracker
-		FileTracker miniFileTracker = new FileTracker(Dirto);
-		if (!miniFileTracker.isTracked()) {
-			return;
-		}
-		// loading the original map
-		// this will use easy call in write map
-		miniFileTracker.loadMap(Dirto, true, false);
-		// Do update name before resloving conflict
-		if (args.length > 0) {
-			// this miniFileTracker must be virtual using names as key otherwise
-			// it will enter in endless loop so if a virtual with fullURI key (outofthebox)
-			// call this function, then it create a miniOne this variable to help him
-			// writing maps with ease
-			miniFileTracker.operationUpdate(Dirto.resolve(args[0]), args);
-		} else {
-			// in case of Concurrent rename it may delete the old key
-			/**
-			 * Check PhotoViewerController#renameImage()
-			 */
-			miniFileTracker.resolveConflict();
-		}
-		if (toUpdate != null) {
-			toUpdate.forEach(p -> {
-				String keyName = p.getName();
-				String keyURI = p.generateKeyURI();
-				List<String> OptionsCopy = new ArrayList<>(mapDetails.get(keyURI));
-				miniFileTracker.getMapDetails().put(keyName, OptionsCopy);
-			});
-		}
-
-		miniFileTracker.writeMapDir(Dirto, false);
-	}
-
-	// if some changes happened to directory this function
-	// will clear all useless data in file
-	// so files are tracked as long as there is files in the directory
-	// this is called in refresh function after new directory is loaded
-	// and before button get theirs properties
-	// this resolve is bidirectional that mean for each in directroy list
-	// if not exist add to file
-	// and for each in map not in directory list remove from the file
-	public void resolveConflict() {
-		if (!isTracked()) {
-			return;
-		}
-		String currentConflict = "";
-		ArrayList<String> toremove = new ArrayList<>();
-		List<String> dirList = mSplitViewController.getCurrentFilesListName();
-		for (String s : dirList) {
-			if (!mapDetails.containsKey(s)) {
-				// @addinhere
-				currentConflict = "  - New \t" + s + "\n" + currentConflict;
-				mapDetails.put(s, Arrays.asList(s, "0", " "));
-			}
-		}
-
-		for (String key : mapDetails.keySet()) {
-			if (!dirList.contains(key)) {
-				currentConflict = "  - Del \t" + key + "\n" + currentConflict;
-				toremove.add(key);
-			}
-		}
-		for (String string : toremove) {
-			mapDetails.remove(string);
-		}
-		if (!currentConflict.isEmpty()) {
-			ConflictLog = "\n\n* " + Setting.getActiveUser() + " <<>> " + mWorkingDirPath.toString() + "\n"
-					+ currentConflict + ConflictLog;
-		}
-		if (!currentConflict.isEmpty()) {
-			writeMapDir(mWorkingDirPath, false, false);
-			// writeMapDir(mWorkingDirPath, false);
-		}
-
-		// this.writeMap();
-		// this writeMap enter in infinite loop since it gonna refresh after deleting
-		// file in write map so since we have missing name in map it isn't dangerous to
-		// wait till user commit a refresh by doing something :)
-	}
-
-	public void saveIndexFile() {
-		// TODO Auto-generated method stub
-
-	}
-
-	public void setMapDetails(Map<String, List<String>> mapDetails) {
-		this.mapDetails = mapDetails;
-	}
-
-	public void setSeen(String key, String status, TableViewModel t) {
-		mapDetails.get(key).set(1, status);
-		if (t != null) {
-			mSplitViewController.updateVisualSeenButton(key, t);
-		}
-	}
-
-	public void setTooltipsTexts(List<TableViewModel> list, String note) {
-		if (isTracked()) {
-			for (TableViewModel t : list) {
-				mapDetails.get(t.getName()).set(2, note);
-			}
-		}
-	}
-
-	public void setTooltipText(String key, String note) {
-		if (isTracked()) {
-			mapDetails.get(key).set(2, note);
-		}
-		writeMapDir(mWorkingDirPath, false);
-	}
-
-	public void toggleSelectionSeen(List<TableViewModel> list, List<TableViewModel> xspfList, TableViewModel clicked) {
-		if (!isTracked()) {
-			boolean ans = getAns();
-			if (ans) {
-				if (!trackNewFolder()) {
-					// is something went wrong like access denied
-					clicked.getMarkSeen().setSelected(false);
-					return;
-				}
-			} else {
-				clicked.getMarkSeen().setSelected(false);
-				return;
-			}
-		}
-		toggleSingleSeenItem(clicked.getName(), clicked);
-		if (list.size() > 1) {
-			for (TableViewModel t : list) {
-				if (t != clicked) {
-					toggleSingleSeenItem(t.getName(), t);
-				}
-			}
-		}
-		if (xspfList != null) {
-			for (TableViewModel t : xspfList) {
-				toggleSingleSeenItem(t.getName(), t);
-			}
-		}
-		writeMapDir(mWorkingDirPath, false);
-	}
-
-	public void toggleSingleSeenItem(String key, TableViewModel t) {
-		Integer intSeen = Integer.parseInt(getSeen(key));
-		Integer invertSeen = intSeen == 0 ? 1 : 0;
-		setSeen(key, invertSeen.toString(), t);
-	}
-
-	// this initialize all files in the view folder to 0 watched
-	// and save it on map and file
-	public boolean trackNewFolder() {
-		if (isTracked()) {
-			return true; // prevent wipe old data
-		}
-		for (String string : mSplitViewController.getCurrentFilesListName()) {
-			// name, notSeen, empty ToolTip String
-			mapDetails.put(string, Arrays.asList(string, "0", " "));
-		}
-		return writeMap();
-		// this is use less because watchable service will detect creating a new file
-		// and will refresh automatically
-		// mSplitViewController.refresh();
-	}
-
-	// easy access write map
-	// this method is just to easy call write map for the current view
-	public boolean writeMap() {
-		return writeMapDir(mWorkingDirPath, true);
-	}
-
-	// important calling this function is dangerous since it delete a file in
-	// current directroy
-	// at same time there is a thread watching change in it so be aware to enter in
-	// loop
-	// @return boolean to confirm that the path is now tracked sometimes there is
-	// write permission access
-	// doRefresh[] :
-	// 0 ---> do refresh this view that call the function
-	// 1 ---> if exist the status of the other view, if not (default do refresh)
-	public boolean writeMapDir(Path DirtoTrack, boolean... doRefresh) {
+	public boolean writeMapDir(Path DirtoTrack, boolean callOnFinishAction) {
 		try {
-			// this is not the returned value it just to separate it this
-			// function is called using writeMap() easy access
-			boolean isEasy = DirtoTrack.equals(mWorkingDirPath);
-			// WatchServiceHelper.setRuning(false);
-
-			// to prevent forbidden access if split was send from recursive view writemap
-			boolean virtualSplitView = isVirtual();
-
 			File file = new File(DirtoTrack.resolve(UserFileName).toString());
 			// https://howtodoinjava.com/java/io/java-write-to-file/
 			if (file.exists()) {
@@ -719,61 +398,646 @@ public class FileTracker {
 			}
 			// resolve all character
 			// https://stackoverflow.com/questions/1001540/how-to-write-a-utf-8-file-with-java
-			// Always use UTF_8 for writing reading tracker files so no confilict occur when
+			// Always use UTF_8 for writing reading tracker files so no conflict occur when
 			// running under different environment
 			OutputStreamWriter writer = new OutputStreamWriter(new FileOutputStream(file), StandardCharsets.UTF_8);
+
 			// check https://www.baeldung.com/java-string-newline
-			String content = "/This is a generated file by Tracker Explorer to store track data of files\r\n";
-			if (isEasy) {
-				for (String key : mapDetails.keySet()) {
-					content += String.join(">", String.join(">", mapDetails.get(key))) + "\r\n";
-				}
-			} else {
-				File[] listFiles = DirtoTrack.toFile().listFiles(outfile -> !outfile.isHidden());
-				for (File listFile : listFiles) {
-					if (!listFile.getName().equals(UserFileName)) {
-						content += String.join(">", Arrays.asList(listFile.getName(), "0", " ")) + "\r\n";
-					}
-				}
+			String content = FIRST_LINE_TRACKER;
+
+			for (Path path : mapDetailsRevolved.keySet()) {
+				content += mapDetailsRevolved.get(path).toString();
 			}
 			Files.setAttribute(file.toPath(), "dos:hidden", true);
 			writer.write(content);
 			writer.close();
-
-			// ensure refresh for both pages case where they are in the same folder
-			if (!virtualSplitView) {
-				if (isEasy && doRefresh[0]) {
-					mSplitViewController.getParentWelcome()
-							.refreshAllSplitViewsIfMatch(mSplitViewController.getmDirectory(), mSplitViewController);
-				} else {
-					// was always entering here: in case on one view there is mark seen yes
-					// and the other no
-					// when updating markseen action (toggleseenhelper) seen without writing the map
-					// with refresh
-					// the other view doesn't detect since watchable service is turned off
-					// so we do refresh the other view if the same directory in both view :)
-					if (doRefresh.length == 1 || doRefresh[1] == true) {
-						mSplitViewController.getParentWelcome().refreshAllSplitViewsIfMatch(
-								mSplitViewController.getmDirectory(), mSplitViewController);
-					}
-				}
+			if (callOnFinishAction && onWriteMapAction != null) {
+				onWriteMapAction.handle(DirtoTrack);
 			}
-			// TODO old approach ... it is safe now since no refresh will trigger on write
-			// from conflict parameter is to prevent call function that called this function
-			// and get loop
-			// refresh -> resolve conflict -> write map ..<<??
-			// WatchServiceHelper.setRuning(true);
 			return true;
 		} catch (IOException e) {
-			// DialogHelper.showException(e);
-			if (Setting.isDebugMode()) {
-				e.printStackTrace();
-			}
-			// DialogHelper.showAlert(AlertType.ERROR, "New Tracker", "SomeThing Went
-			// Wrong",
-			// "Possible reason: - This may be a system protected Folder, Running this
-			// application with admin right may fix the problem(depreciated)");
+			e.printStackTrace();
 			return false;
 		}
+	}
+
+	/**
+	 * Write Default map In Specified Directory<br>
+	 * If directory already tracked do nothing
+	 *
+	 * <p>
+	 * done in following sequence :<br>
+	 * -> do list files in directory<br>
+	 * -> generate tracker data with default options name/unseen/empty_note <br>
+	 * -> call onFinishAction parameter
+	 *
+	 * @param DirtoTrack     Directory to track
+	 * @param onFinishAction to do after finish writing map, can be null
+	 *
+	 * @return <code>true</code> if write was successful<br>
+	 *         <code>false</code> if tracker data already exist
+	 * @throws IOException
+	 */
+	private static boolean writeNewDefaultMap(Path DirtoTrack, OnWriteMapFinishCallBack<Path> onFinishAction)
+			throws IOException {
+		File file = new File(DirtoTrack.resolve(UserFileName).toString());
+		if (file.exists()) {
+			return false;
+		}
+		OutputStreamWriter writer = new OutputStreamWriter(new FileOutputStream(file), StandardCharsets.UTF_8);
+		String content = FIRST_LINE_TRACKER;
+		File[] listFiles = DirtoTrack.toFile().listFiles(outfile -> !outfile.isHidden());
+		for (File listFile : listFiles) {
+			if (!listFile.getName().equals(UserFileName)) {
+				content += String.join(">", Arrays.asList(listFile.getName(), "0", " ")) + "\r\n";
+			}
+		}
+		Files.setAttribute(file.toPath(), "dos:hidden", true);
+		writer.write(content);
+		writer.close();
+		if (onFinishAction != null) {
+			onFinishAction.handle(DirtoTrack);
+		}
+		return true;
+	}
+
+	/**
+	 * -> Track a new Folder with default option <br>
+	 * -> Load tracker data into current map<br>
+	 * <br>
+	 * More Details about initial data saved at<br>
+	 * {@link #writeNewDefaultMap(Path, OnWriteMapFinishCallBack)}
+	 *
+	 * @return true if successfully write data
+	 * @throws IOException
+	 */
+	public boolean trackNewFolder() throws IOException {
+		// prevent wipe is checked in write
+		boolean isSuccess = writeNewDefaultMap(workingDirPath, onWriteMapAction);
+		if (isSuccess) {
+			loadMap(workingDirPath, true);
+		}
+		return isSuccess;
+	}
+
+	/**
+	 * If directory already tracked do nothing <br>
+	 * if you wish to load map after folder being tracked call
+	 * {@link #loadMap(Path, boolean)} <br>
+	 *
+	 * More Details about initial data saved at<br>
+	 * {@link #writeNewDefaultMap(Path, OnWriteMapFinishCallBack)}
+	 *
+	 * @param DirtoTrack
+	 * @return <code>true</code> if write was successful<br>
+	 *         <code>false</code> if tracker data already exist
+	 * @throws IOException
+	 */
+	public boolean trackNewOutFolder(Path DirtoTrack) throws IOException {
+		// write prevent wipe old data is done in the call
+		return writeNewDefaultMap(DirtoTrack, null);
+	}
+
+	/**
+	 * -> Track every untracked Folder with default option <br>
+	 * -> Load tracker data into current map<br>
+	 * -> ignore any failed track<br>
+	 * <br>
+	 * More Details about initial data saved at<br>
+	 * {@link #writeNewDefaultMap(Path, OnWriteMapFinishCallBack)}
+	 *
+	 * @param DirstoTrack
+	 * @param showDialogError if any fails in tracking folder an error dialog will
+	 *                        appear
+	 * @return FileTrackerReturn<br>
+	 *         {@link FileTrackerMultipleReturn#trackedList} as list of tracked
+	 *         paths as Key pair<br>
+	 *         {@link FileTrackerMultipleReturn#unTrackedList} as list of failed to
+	 *         track paths as value<br>
+	 *         {@link FileTrackerMultipleReturn#didTrackNewFolder} as if any newly
+	 *         tracked path
+	 */
+	public FileTrackerMultipleReturn trackNewMultipleFolder(Set<Path> DirstoTrack, boolean showDialogError) {
+		FileTrackerMultipleReturn toReturn = new FileTrackerMultipleReturn();
+		String error = "";
+		for (Path path : DirstoTrack) {
+			try {
+				if (trackNewOutFolder(path)) {
+					loadMap(path, false);
+					toReturn.didTrackNewFolder = true;
+				}
+				toReturn.trackedList.add(path);
+			} catch (IOException e) {
+				e.printStackTrace();
+				toReturn.unTrackedList.add(path);
+				if (showDialogError) {
+					error += e.toString();
+				}
+			}
+		}
+		if (showDialogError && !error.isEmpty()) {
+			DialogHelper.showExpandableAlert(AlertType.ERROR, "Tracker New Folder", "Some Files weren't Tracked!",
+					"Check logs", error);
+		}
+		return toReturn;
+	}
+
+	/**
+	 *
+	 * @param dirsToCheck
+	 * @return list of tracked paths as Key pair<br>
+	 *         list of untracked paths as value
+	 */
+	public static FileTrackerMultipleReturn filterTrackedFolder(Set<Path> dirsToCheck) {
+		FileTrackerMultipleReturn toReturn = new FileTrackerMultipleReturn();
+		for (Path d : dirsToCheck) {
+			if (isTrackedOutFolder(d)) {
+				toReturn.trackedList.add(d);
+			} else {
+				toReturn.unTrackedList.add(d);
+			}
+		}
+		return toReturn;
+	}
+
+	/**
+	 * If any of paths is untracked will ask for it, then track all of them<br>
+	 * <br>
+	 * and call {@link #trackNewMultipleFolder(Set, boolean)}
+	 *
+	 * @param paths           to work with
+	 * @param showDialogError if any fails in tracking folder an error dialog will
+	 *                        appear
+	 * @return list of tracked paths as Key pair<br>
+	 *         list of failed to track paths as value
+	 */
+	public FileTrackerMultipleReturn trackNewMultipleAndAsk(Set<Path> paths, boolean showDialogError) {
+		boolean ans = true;
+		FileTrackerMultipleReturn allPaths = filterTrackedFolder(paths);
+
+		if (allPaths.unTrackedList.size() != 0) {
+			// there is untracked Path!
+			if (allPaths.unTrackedList.size() == 1) {
+				ans = FileTracker.getAns();
+			} else {
+				ans = FileTracker.getAnsForMultipleFiles(allPaths.unTrackedList);
+			}
+			if (ans) {
+				allPaths = trackNewMultipleFolder(paths, showDialogError);
+			}
+		}
+		return allPaths;
+	}
+
+	/**
+	 * if some changes happened to directory this function will clear all useless
+	 * data (moved/deleted files) also add new created files.<br>
+	 * Just a note {@link SplitViewController#refresh(String)} do call this function
+	 * after loading map {@link #loadMap(Path, boolean)} and before loading views
+	 * stuff
+	 *
+	 * @throws IOException
+	 */
+	public void resolveConflict() throws IOException {
+		if (!isTracked()) {
+			return;
+		}
+		String currentConflict = "";
+		ArrayList<Path> toremove = new ArrayList<>();
+		Set<Path> dirList = FileHelper.getListPathsNoHidden(workingDirPath);
+		for (Path p : dirList) {
+			if (!mapDetailsRevolved.containsKey(p)) {
+				// @addinhere
+				currentConflict = "  - New \t" + p.getFileName() + "\n" + currentConflict;
+				mapDetailsRevolved.put(p, new FileTrackerHolder(p.getFileName().toString()));
+			}
+		}
+
+		for (Path key : mapDetailsRevolved.keySet()) {
+
+			if (mapDetailsRevolved.get(key).getTimeToLive() > 0) {
+				// File can stay maybe it's coming in some operation
+				// but if it exist in directory do clear TimeToLive
+				if (dirList.contains(key)) {
+					mapDetailsRevolved.get(key).setTimeToLive(-1);
+				}
+				continue;
+			} else if (!dirList.contains(key)) {
+				if (mapDetailsRevolved.get(key).getTimeToLive() != 0) {
+					currentConflict = "  - Del \t" + key + "\n" + currentConflict;
+				}
+				toremove.add(key);
+			}
+		}
+		for (Path key : toremove) {
+			mapDetailsRevolved.remove(key);
+		}
+		if (!currentConflict.isEmpty()) {
+			ConflictLog = "\n\n* " + Setting.getActiveUser() + " <<>> " + workingDirPath.toString() + "\n"
+					+ currentConflict + ConflictLog;
+		}
+		if (!currentConflict.isEmpty()) {
+			writeMapDir(workingDirPath, false);
+		}
+	}
+
+	// ---------------------- File Operation (Copy..) Section ----------------------
+
+	/**
+	 * When doing a copy or move operations: It is necessary to preserve the tracker
+	 * data, and in case of delete do nothing about it. But clearing from conflict
+	 * log is optional
+	 *
+	 * @param sources   sources file that get changed, null key will be ignored
+	 * @param targets   targets file the new file location path, null are ignored
+	 *
+	 * @param operation Check {@link ActionOperation} <br>
+	 *                  Note: MOVE operation cannot be used for rename
+	 * @throws IndexOutOfBoundsException in case both list weren't the same size
+	 * @return MapDetails containing all new updated sources, empty in case of
+	 *         delete
+	 */
+	public static Map<Path, FileTrackerHolder> operationUpdateAsList(List<Path> sources, List<Path> targets,
+			ActionOperation operation) throws IndexOutOfBoundsException {
+		if (sources.size() != targets.size()) {
+			throw new IndexOutOfBoundsException("Sources list and Target list parameter must be same size");
+		}
+		// All key changed map
+		Map<Path, FileTrackerHolder> allUpdatedSources = new HashMap<Path, FileTrackerHolder>();
+		if (sources.size() == 0) {
+			return allUpdatedSources;
+		}
+		// a map from a (target) directory to sources that have common target
+		// directory
+		HashMap<Path, List<Path>> targetDirToSources = new HashMap<>();
+		for (int i = 0; i < sources.size(); i++) {
+			if (sources.get(i) == null || targets.get(i) == null) {
+				continue;
+			}
+			Path targetParent = targets.get(i).getParent();
+			if (!targetDirToSources.containsKey(targets.get(i).getParent())) {
+				targetDirToSources.put(targetParent, new ArrayList<Path>());
+			}
+			targetDirToSources.get(targetParent).add(sources.get(i));
+		}
+		switch (operation) {
+		case COPY:
+		case MOVE:
+		case DELETE:
+			// to create function in format of operationUpdate(source,targetDir,operation)
+			targetDirToSources.forEach(
+					(target, miniSources) -> allUpdatedSources.putAll(operationUpdate(miniSources, target, operation)));
+			break;
+		case RENAME:
+			// to create function in format of operationUpdate(source,targetDir,operation)
+			// Get all source Tracker Data Holders
+			Set<Path> allSrcParent = FileHelper.getParentsPathsFromPath(sources);
+			FileTracker miniFileTracker = new FileTracker(null, null);
+			allSrcParent.forEach(parentSrc -> {
+				miniFileTracker.loadMap(parentSrc, false);
+			});
+			// append MAXIMUM time to live option in target directory files of targets list
+			// Path
+			HashMap<Path, Path> srcToTarget = new HashMap<>();
+			for (int i = 0; i < sources.size(); i++) {
+				if (sources.get(i) == null || targets.get(i) == null) {
+					continue;
+				}
+				srcToTarget.put(sources.get(i), targets.get(i));
+			}
+			targetDirToSources.forEach((target, miniSources) -> {
+				Holder<OutputStreamWriter> writer = new Holder<>();
+				try {
+					File trackerFile = FileTracker.getTrackerFileIn(target).toFile();
+					// appending data to end with time to live
+					writer.value = new OutputStreamWriter(new FileOutputStream(trackerFile, true),
+							StandardCharsets.UTF_8);
+					for (Path src : miniSources) {
+						if (miniFileTracker.getMapDetailsRevolved().containsKey(src)) {
+							writer.value.write(miniFileTracker.getTrackerData(src)
+									.setName(srcToTarget.get(src).getFileName().toString())
+									.setTimeToLive(TIME_TO_LIVE_MAX).toString());
+							allUpdatedSources.put(srcToTarget.get(src), miniFileTracker.getTrackerData(src));
+						}
+					}
+				} catch (IOException e) {
+					e.printStackTrace();
+				}
+				if (writer.value != null) {
+					try {
+						writer.value.close();
+					} catch (IOException e) {
+						e.printStackTrace();
+					}
+				}
+			});
+
+		default:
+			break;
+		}
+		return allUpdatedSources;
+	}
+
+	/**
+	 * Copy_Move_Delete_Operations only <br>
+	 * For rename use
+	 *
+	 * When doing a copy or move operations: It is necessary to preserve the tracker
+	 * data, and in case of delete do nothing about it. But clearing from conflict
+	 * log is optional
+	 *
+	 * @param source    The list of path to copy/move/delete
+	 * @param targetDir The target directory where these path are copied/moved<br>
+	 *                  Can be null in case of delete, will auto get parent from
+	 *                  source
+	 * @param operation check {@link ActionOperation}
+	 * @return MapDetails containing all new updated sources, empty in case of
+	 *         delete
+	 */
+	public static Map<Path, FileTrackerHolder> operationUpdate(List<Path> source, Path targetDir,
+			ActionOperation operation) {
+		// get parent to son map to deal with each list of son brother together
+		HashMap<Path, List<Path>> parentToFiles = FileHelper.getParentTochildren(source);
+		// All key changed map
+		Map<Path, FileTrackerHolder> allUpdatedSources = new HashMap<Path, FileTrackerHolder>();
+		if (source.size() == 0) {
+			return allUpdatedSources;
+		}
+		// instance of file tracker to read/write tracker data
+		FileTracker senderFileTracker = new FileTracker(null, null);
+
+		try {
+			File trackerFile = null;
+			Holder<OutputStreamWriter> writer = new Holder<OutputStreamWriter>(null);
+			if (operation.equals(ActionOperation.DELETE)) {
+				// will open stream file for each list of son
+				targetDir = null;// to prevent further access
+			} else {
+				trackerFile = new File(targetDir.resolve(UserFileName).toString());
+				if (!trackerFile.exists()) {
+					writeNewDefaultMap(targetDir, null);
+				}
+				writer.value = new OutputStreamWriter(new FileOutputStream(trackerFile, true), StandardCharsets.UTF_8);
+			}
+			parentToFiles.forEach((parent, brotherList) -> {
+				senderFileTracker.workingDirPath = parent;
+				if (senderFileTracker.isTracked()) {
+					// parent Tracker file exist -> Data sources exist
+					senderFileTracker.loadMap(parent, true);
+					try {
+						// Append Data to parent Tracker file with some time to live
+						if (operation.equals(ActionOperation.DELETE)) {
+							if (writer.value != null) {
+								writer.value.close();
+							}
+							writer.value = new OutputStreamWriter(
+									new FileOutputStream(senderFileTracker.getTrackerFileInWorkingDir().toFile(), true),
+									StandardCharsets.UTF_8);
+						}
+						brotherList.forEach(son -> {
+							try {
+								if (operation.equals(ActionOperation.DELETE)) {
+									writer.value
+											.write(senderFileTracker.getTrackerData(son).setTimeToLive(5).toString());
+								} else {
+									writer.value.write(senderFileTracker.getTrackerData(son)
+											.setTimeToLive(TIME_TO_LIVE_MAX).toString());
+									allUpdatedSources.put(son, senderFileTracker.getTrackerData(son));
+								}
+							} catch (IOException e) {
+								// sons try catch
+								e.printStackTrace();
+							}
+						});
+					} catch (IOException e) {
+						// parent try catch
+						e.printStackTrace();
+					}
+				}
+			});
+			writer.value.close();
+		} catch (IOException e) {
+			// all function try catch
+			e.printStackTrace();
+		}
+		return allUpdatedSources;
+	}
+
+	// ---------------------- File Tracker Holder Section ----------------------
+
+	/**
+	 *
+	 * @param key Path
+	 * @return {@link FileTrackerHolder}
+	 */
+	@Nullable
+	public FileTrackerHolder getTrackerData(Path key) {
+		return mapDetailsRevolved.get(key);
+	}
+
+	/**
+	 *
+	 * @param paths
+	 * @return stream of paths existing in map details
+	 */
+	private Stream<FileTrackerHolder> getExistingPathInMap(List<Path> paths) {
+		return paths.stream().filter(p -> mapDetailsRevolved.containsKey(p)).map(p -> mapDetailsRevolved.get(p));
+	}
+
+	/**
+	 *
+	 * @param key
+	 * @return null if not in map, Seen Status otherwise
+	 */
+	@Nullable
+	public Boolean isSeen(Path key) {
+		return getTrackerData(key) == null ? null : getTrackerData(key).isSeen();
+	}
+
+	/**
+	 * Does not write map, to do so use {@link #commitTrackerDataChange(Path)}
+	 *
+	 * @param path
+	 * @param isSeen
+	 */
+	public void setSeen(Path path, Boolean isSeen) {
+		if (mapDetailsRevolved.containsKey(path)) {
+			mapDetailsRevolved.get(path).setSeen(isSeen);
+		}
+	}
+
+	/**
+	 * Does not write map, to do so use {@link #commitTrackerDataChange(Path)}
+	 *
+	 * @param paths
+	 * @param isSeen
+	 */
+	public void setSeen(List<Path> paths, Boolean isSeen) {
+		getExistingPathInMap(paths).forEach(tData -> tData.setSeen(isSeen));
+	}
+
+	/**
+	 * Does not write map, to do so use {@link #commitTrackerDataChange(Path)}
+	 *
+	 * @param path
+	 */
+	public void toggleSeen(Path path) {
+		if (mapDetailsRevolved.containsKey(path)) {
+			mapDetailsRevolved.get(path).toggleSeen();
+		}
+	}
+
+	/**
+	 * Does not write map, to do so use {@link #commitTrackerDataChange(Path)}
+	 *
+	 * @param keyPath
+	 */
+	public void toggleSeen(List<Path> paths) {
+		getExistingPathInMap(paths).forEach(tData -> tData.toggleSeen());
+	}
+
+	/**
+	 *
+	 * @param path
+	 * @return note text if exist, empty String otherwise
+	 */
+	public String getNoteText(Path path) {
+		if (!mapDetailsRevolved.containsKey(path)) {
+			return "";
+		}
+		String ans = mapDetailsRevolved.get(path).getNoteText();
+		return ans.equals(" ") ? "" : ans;
+	}
+
+	/**
+	 * Does not write map, to do so use {@link #commitTrackerDataChange(Path)}
+	 *
+	 * @param path
+	 * @param note
+	 */
+	public void setNoteText(Path path, String note) {
+		if (mapDetailsRevolved.containsKey(path)) {
+			mapDetailsRevolved.get(path).setNoteText(note);
+		}
+	}
+
+	/**
+	 * Ask for note via
+	 * {@link DialogHelper#showTextInputDialog(String, String, String, String)} <br>
+	 * Not to worry about filtering note.
+	 *
+	 * @return null if operation is cancelled, the string otherwise
+	 */
+	@Nullable
+	public static String askForNoteText(String hint) {
+		String note = DialogHelper.showTextInputDialog("Quick Note Editor", "Add Note To see on hover",
+				"Old note Was:\n" + hint, hint);
+		// if null set it to space like it was
+		if (note == null) {
+			return null; // keep note unchanged
+		}
+		return note.replaceAll(">", "_");
+	}
+
+	/**
+	 * Does not write map, to do so use {@link #commitTrackerDataChange(Path)}
+	 *
+	 * @param paths
+	 * @param note
+	 */
+	public void setNoteText(List<Path> paths, String note) {
+		getExistingPathInMap(paths).forEach(tData -> tData.setNoteText(note));
+	}
+
+	/**
+	 * Write map to file into working directory <br>
+	 * {@link #onWriteMapAction} will be called
+	 */
+	public void commitTrackerDataChange() {
+		if (!isLoadedOtherThanWorkingDir) {
+			writeMapDir(workingDirPath, true);
+		}
+	}
+
+	/**
+	 * Write map for specific Path
+	 *
+	 * @param path
+	 */
+	public void commitTrackerDataChange(Path path) {
+		if (!isLoadedOtherThanWorkingDir) {
+			writeMapDir(workingDirPath, true);
+		} else {
+			// creating a new file tracker is indeed
+			FileTracker miniFileTracker = new FileTracker(null, onWriteMapAction);
+			miniFileTracker.loadMap(path.getParent(), true);
+			miniFileTracker.getMapDetailsRevolved().put(path, getTrackerData(path));
+			miniFileTracker.commitTrackerDataChange(path);
+		}
+	}
+
+	/**
+	 * Do write map for list of Paths
+	 */
+	public void commitTrackerDataChange(List<Path> paths) {
+		if (!isLoadedOtherThanWorkingDir) {
+			writeMapDir(workingDirPath, true);
+		} else {
+			// creating a new file tracker is indeed
+			FileTracker miniFileTracker = new FileTracker(null, onWriteMapAction);
+			FileHelper.getParentTochildren(paths).forEach((parent, sons) -> {
+				miniFileTracker.loadMap(parent, true);
+				sons.forEach(son -> miniFileTracker.getMapDetailsRevolved().put(son, getTrackerData(son)));
+				miniFileTracker.commitTrackerDataChange(sons);
+			});
+		}
+	}
+
+	/**
+	 * It append tracker data to end of file without rewriting a new file (with time
+	 * to live) It is faster, but causes a big file overtime.
+	 *
+	 * @param paths
+	 * @param parent
+	 * @throws IOException
+	 */
+	@SuppressWarnings("unused")
+	@Deprecated
+	private void appendCommitTrackerData(List<Path> paths, Path parent) throws IOException {
+		File trackerFile = getTrackerFileIn(parent).toFile();
+		// appending data to end with time to live
+		OutputStreamWriter writer = new OutputStreamWriter(new FileOutputStream(trackerFile, true),
+				StandardCharsets.UTF_8);
+		for (Path changed : paths) {
+			if (getMapDetailsRevolved().containsKey(changed)) {
+				writer.write(getTrackerData(changed).setTimeToLive(TIME_TO_LIVE_MAX).toString());
+			}
+		}
+		writer.close();
+	}
+
+	/**
+	 * When creating a new file append tracker data with this option
+	 *
+	 * @param paths
+	 * @param parent
+	 * @throws IOException
+	 */
+	public static void appendTrackerData(Path path, FileTrackerHolder trackerData, boolean writeANewMapIfNeeded)
+			throws IOException {
+		Path parent = path.getParent();
+		if (!isTrackedOutFolder(parent)) {
+			if (writeANewMapIfNeeded) {
+				writeNewDefaultMap(parent, null);
+			} else {
+				return;
+			}
+		}
+		File trackerFile = getTrackerFileIn(parent).toFile();
+		// appending data to end with time to live
+		OutputStreamWriter writer = new OutputStreamWriter(new FileOutputStream(trackerFile, true),
+				StandardCharsets.UTF_8);
+		writer.write(trackerData.toString());
+		writer.close();
 	}
 }

@@ -17,6 +17,7 @@ import java.util.concurrent.ThreadPoolExecutor;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 
+import application.FileHelper.ActionOperation;
 import application.datatype.Setting;
 import javafx.application.Platform;
 import javafx.beans.value.ChangeListener;
@@ -93,14 +94,6 @@ public class FileHelperGUIOperation {
 		}
 	}
 
-	/**
-	 * <---COPY---> Copy operation <br>
-	 * <---MOVE---> Move operation
-	 */
-	public static enum ActionOperation {
-		COPY, MOVE
-	}
-
 	// operations stuff
 	private String Action; // 'Copy' 'Move'
 	private String ActionInPast; // 'Copied' 'Moved'
@@ -149,7 +142,9 @@ public class FileHelperGUIOperation {
 			ActionInContinuous = "Moving";
 			break;
 		default:
-			break;
+			DialogHelper.showAlert(AlertType.ERROR, "File Operation", "Unsuported File Operation: " + action.toString(),
+					"");
+			return;
 		}
 		TargetDirectory = targetDir;
 		// for more control if src was a directory we split all files in it
@@ -328,25 +323,6 @@ public class FileHelperGUIOperation {
 					setDisableControl(false);
 					if (SourceList.size() > 0) {
 						// Successful copy without interruption
-
-						// Transferring Data File Tracker if the file directly putted in target dir
-						// because on new files created a refresh view is triggered by
-						// watchServiceHelper so it may resolve conflict if all mapdetails are moved at
-						// once warning writing files a number of times equals to files sources size
-						// in initial sources directory
-						if (targetDirFile.toPath().equals(TargetDirectory)) {
-							try {
-								FileTracker miniFileTracker = new FileTracker(TargetDirectory);
-								miniFileTracker.loadMap(TargetDirectory, true, false);
-								miniFileTracker.operationUpdate(srcPath, "copy_move");
-							} catch (Exception e) {
-								// another thread may be reading same file at the same moment
-								// TODO before catching this exception it cause copy thread to stop
-								// and freeze !! do resolve copy stuff
-								Platform.runLater(() -> Setting.printStackTrace(e));
-							}
-						}
-
 						// remove from queue
 						SourceList.remove(0);
 						TargetDirLocList.remove(0);
@@ -502,8 +478,8 @@ public class FileHelperGUIOperation {
 
 			@Override
 			public void handle(ActionEvent arg0) {
-				if (OperationsList.contains(this)) {
-					OperationsList.remove(this);
+				if (OperationsList.contains(FileHelperGUIOperation.this)) {
+					OperationsList.remove(FileHelperGUIOperation.this);
 				}
 				if (btnControl.getText().equals("Clear")) {
 					root.getChildren().remove(gr);

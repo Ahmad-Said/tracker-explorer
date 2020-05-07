@@ -11,7 +11,7 @@ import java.nio.file.WatchKey;
 import java.nio.file.WatchService;
 import java.util.concurrent.TimeUnit;
 
-import application.controller.SplitViewController;
+import application.controller.splitview.SplitViewController;
 import javafx.application.Platform;
 
 public class WatchServiceHelper {

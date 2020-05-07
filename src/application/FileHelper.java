@@ -14,9 +14,8 @@ import java.util.stream.Collectors;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.FilenameUtils;
 
-import application.FileHelperGUIOperation.ActionOperation;
-import application.controller.SplitViewController;
 import application.controller.WelcomeController;
+import application.controller.splitview.SplitViewController;
 import application.datatype.Setting;
 import javafx.application.Platform;
 import javafx.event.Event;
@@ -26,8 +25,19 @@ import javafx.scene.control.Alert.AlertType;
 
 public class FileHelper {
 
+	/**
+	 * <---COPY---> Copy operation <br>
+	 * <---MOVE---> Move operation <br>
+	 * <---DELETE---> Delete operation <br>
+	 * <---RENAME---> Rename operation
+	 */
+	public static enum ActionOperation {
+		COPY, MOVE, DELETE, RENAME
+	}
+
 	public static void copyWithTeraCopy(List<Path> source, Path targetDirectory) {
 		try {
+			FileTracker.operationUpdate(source, targetDirectory, ActionOperation.COPY);
 			TeraCopy.copy(source, targetDirectory);
 		} catch (IOException e) {
 			e.printStackTrace();
@@ -36,6 +46,7 @@ public class FileHelper {
 	}
 
 	public static void copy(List<Path> source, Path targetDirectory) {
+		FileTracker.operationUpdate(source, targetDirectory, ActionOperation.COPY);
 		FileHelperGUIOperation.getOperationsList()
 				.add(new FileHelperGUIOperation(ActionOperation.COPY, targetDirectory, source));
 		FileHelperGUIOperation.doThreadOperationsAllList();
@@ -43,6 +54,7 @@ public class FileHelper {
 
 	public static void moveWithTeraCopy(List<Path> source, Path targetDirectory) {
 		try {
+			FileTracker.operationUpdate(source, targetDirectory, ActionOperation.MOVE);
 			TeraCopy.move(source, targetDirectory);
 		} catch (IOException e) {
 			e.printStackTrace();
@@ -51,6 +63,7 @@ public class FileHelper {
 	}
 
 	public static void move(List<Path> source, Path targetDirectory) {
+		FileTracker.operationUpdate(source, targetDirectory, ActionOperation.MOVE);
 		FileHelperGUIOperation.getOperationsList()
 				.add(new FileHelperGUIOperation(ActionOperation.MOVE, targetDirectory, source));
 		FileHelperGUIOperation.doThreadOperationsAllList();
@@ -70,7 +83,7 @@ public class FileHelper {
 				"Do you really want to delete selected files?", filesToDelete);
 
 		if (isConfirmed) {
-
+			FileTracker.operationUpdate(source, null, ActionOperation.DELETE);
 			new Thread() {
 				@Override
 				public void run() {
@@ -123,7 +136,7 @@ public class FileHelper {
 			Path path = parent.resolve(name);
 			try {
 				Files.createDirectory(path);
-				focusedPane.getMfileTracker().NewOutFolder(path);
+				focusedPane.getFileTracker().trackNewOutFolder(path);
 				Platform.runLater(() -> focusedPane.ScrollToName(path.toFile().getName()));
 			} catch (FileAlreadyExistsException e) {
 				DialogHelper.showAlert(Alert.AlertType.INFORMATION, title, "Directory already exists", path.toString());
@@ -209,37 +222,53 @@ public class FileHelper {
 
 	public static Path RenameHelper(Path source, String newName) throws IOException {
 		Path newPath = source.resolveSibling(newName);
-		return RenameHelper(source, newPath);
+		return renameHelper(source, newPath);
 	}
 
 	public static Set<Path> getParentsPaths(List<File> sonFiles) {
-		return sonFiles.stream().map(f -> f.getParentFile().toPath()).collect(Collectors.toSet());
+		return sonFiles.stream().filter(f -> f != null).map(f -> f.getParentFile().toPath())
+				.collect(Collectors.toSet());
 	}
 
 	public static Set<Path> getParentsPathsFromPath(List<Path> sonPaths) {
-		return sonPaths.stream().map(p -> p.getParent()).collect(Collectors.toSet());
+		return sonPaths.stream().filter(p -> p != null).map(p -> p.getParent()).collect(Collectors.toSet());
+	}
+
+	public static HashMap<Path, List<Path>> getParentTochildren(List<Path> sonsPaths) {
+		HashMap<Path, List<Path>> parentToSons = new HashMap<>();
+		sonsPaths.forEach(s -> {
+			Path parent = s.getParent();
+			if (!parentToSons.containsKey(parent)) {
+				parentToSons.put(parent, new ArrayList<Path>());
+			}
+			parentToSons.get(parent).add(s);
+		});
+		return parentToSons;
+	};
+
+	public static Set<Path> getListPathsNoHidden(Path parentDirectory) throws IOException {
+		return Files.list(parentDirectory).filter(p -> !p.toFile().isHidden()).collect(Collectors.toSet());
 	}
 
 	/**
 	 *
-	 * Version 2 Rename
-	 *
-	 * Rename while conserving status in File Tracker
+	 * Version 2 of Rename<br>
+	 * Just Simple Rename
+	 * <p>
+	 * if you wish to rename too many files in shown view
+	 * {@link WatchServiceHelper#setRuning(boolean)} to false before calling this
+	 * function
+	 * <p>
+	 * If you wish to conserve tracker data of renamed file use
+	 * {@link FileTracker#operationUpdateAsList(List, List, ActionOperation)} with
+	 * RENAME parameter as {@link ActionOperation}
 	 *
 	 * @param source  Original file source
 	 * @param newPath Final new Path
 	 * @return
 	 * @throws IOException
 	 */
-	public static Path RenameHelper(Path oldSource, Path NewRenamed) throws IOException {
-
-		// do later at each rename conserve status in file tracker
-		// even at beginning if it cost a file write in each operation
-		// other wise must get a list of rename
-		// then group them by parent directory and make a file write at once..
-		// a trigger of watch service is lunched here
-
-		// danger of concurrent modification
+	public static Path renameHelper(Path oldSource, Path NewRenamed) throws IOException {
 		Files.move(oldSource, NewRenamed);
 		return NewRenamed;
 	}
@@ -301,7 +330,7 @@ public class FileHelper {
 				if (target.equals(source)) {
 					return null;
 				}
-				RenameHelper(source, target);
+				renameHelper(source, target);
 				// Files.move(source, target);
 				// if (source.toFile().isDirectory())
 				// FileUtils.moveDirectory(source.toFile(), target.toFile());

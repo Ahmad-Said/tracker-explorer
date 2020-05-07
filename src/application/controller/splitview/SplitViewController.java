@@ -1,4 +1,4 @@
-package application.controller;
+package application.controller.splitview;
 
 import java.awt.HeadlessException;
 import java.io.File;
@@ -18,7 +18,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.ResourceBundle;
-import java.util.Set;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
@@ -37,6 +36,7 @@ import com.sun.javafx.scene.control.skin.TableColumnHeader;
 import application.DialogHelper;
 import application.FileHelper;
 import application.FileTracker;
+import application.FileTrackerHolder;
 import application.RecursiveFileWalker;
 import application.RunMenu;
 import application.StringHelper;
@@ -45,6 +45,10 @@ import application.VLC;
 import application.WatchServiceHelper;
 import application.WindowsExplorerComparator;
 import application.WindowsShortcut;
+import application.controller.FilterVLCController;
+import application.controller.PhotoViewerController;
+import application.controller.RenameUtilityController;
+import application.controller.WelcomeController;
 import application.datatype.MediaCutData;
 import application.datatype.Setting;
 import application.model.SplitViewState;
@@ -107,7 +111,6 @@ import mslinks.ShellLink;
  * @author Ahmad Said
  *
  */
-@SuppressWarnings("restriction")
 public class SplitViewController implements Initializable {
 
 	static final KeyCombination SHORTCUT_REVEAL_IN_EXPLORER = new KeyCodeCombination(KeyCode.R, KeyCombination.ALT_DOWN,
@@ -216,9 +219,9 @@ public class SplitViewController implements Initializable {
 	private TextField predictNavigation;
 
 	private WelcomeController parentWelcome;
-	private FileTracker mFileTracker;
-	private WatchServiceHelper mWatchServiceHelper = null;
-
+	private FileTracker fileTracker;
+	private SplitViewTrackerAdapter fileTrackerAdapter;
+	private WatchServiceHelper watchServiceHelper = null;
 	private boolean outOfTheBoxRecursive = false;
 	private boolean isOutOfTheBoxHelper = false;
 
@@ -254,8 +257,10 @@ public class SplitViewController implements Initializable {
 		this.isLeft = isLeft;
 		mDirectory = new File(path.toString());
 		truePathField = mDirectory.getAbsolutePath();
-		mFileTracker = new FileTracker(this);
+		fileTracker = new FileTracker(path, writtenPath -> parentWelcome
+				.refreshAllSplitViewsIfMatch(writtenPath.toFile(), SplitViewController.this));
 		parentWelcome = parent;
+		fileTrackerAdapter = new SplitViewTrackerAdapter(fileTracker, this);
 	}
 
 	@Override
@@ -281,7 +286,7 @@ public class SplitViewController implements Initializable {
 
 		initializeFavorites();
 
-		mWatchServiceHelper = new WatchServiceHelper(this);
+		watchServiceHelper = new WatchServiceHelper(this);
 
 	}
 
@@ -472,7 +477,7 @@ public class SplitViewController implements Initializable {
 		updatePathField(options);
 	}
 
-	public void reloadSearchField() {
+	protected void reloadSearchField() {
 		String temp = searchField.getText();
 		searchField.setText("");
 		searchField.setText(temp);
@@ -501,7 +506,7 @@ public class SplitViewController implements Initializable {
 			@Override
 			public void handle(ActionEvent event) {
 				TableViewModel toNavigateFor = table.getSelectionModel().getSelectedItem();
-				Path path = toNavigateFor.getmFilePath().getParent();
+				Path path = toNavigateFor.getFilePath().getParent();
 				navigate(path);
 				resetForm();
 				NavigateForNameAndScrollTo(toNavigateFor);
@@ -567,7 +572,7 @@ public class SplitViewController implements Initializable {
 						try {
 							StringHelper
 									.RunRuntimeProcess(
-											new String[] { "explorer.exe", "/select,", test.getmFilePath().toString() })
+											new String[] { "explorer.exe", "/select,", test.getFilePath().toString() })
 									.waitFor();
 						} catch (InterruptedException e) {
 							e.printStackTrace();
@@ -577,7 +582,7 @@ public class SplitViewController implements Initializable {
 					}
 				} else {
 					if (truePathField.equals("/")) {
-						String cmd = "explorer.exe /select," + DataTable.get(0).getmFilePath();
+						String cmd = "explorer.exe /select," + DataTable.get(0).getFilePath();
 						try {
 							Runtime.getRuntime().exec(cmd);
 						} catch (IOException e) {
@@ -609,12 +614,12 @@ public class SplitViewController implements Initializable {
 				if (c.wasAdded()) {
 					// String key = keyStringMapper(c);
 					for (TableViewModel t : c.getAddedSubList()) {
-						String key = keyMapperToString(t);
-						if (key != null) {
+						FileTrackerHolder option = fileTracker.getTrackerData(t.getFilePath());
+						if (option != null) {
 							// TODO when adding new files to current directory null pointer exception is
 							// detected
-							t.updateMarkSeenText(mFileTracker.isSeen(key));
-							t.setNoteText(mFileTracker.getNoteTooltipText(key));
+							t.setSeenText(option.isSeen());
+							t.setNoteText(option.getNoteText());
 						} else {
 							t.emptyCell();
 						}
@@ -850,7 +855,7 @@ public class SplitViewController implements Initializable {
 			case ENTER:
 				if (table.isFocused()) {
 					if (lastSelectedTemp != null) {
-						navigate(lastSelectedTemp.getmFilePath());
+						navigate(lastSelectedTemp.getFilePath());
 					}
 				}
 				break;
@@ -872,7 +877,9 @@ public class SplitViewController implements Initializable {
 				// if (!test.isEmpty())
 				// PredictNavigation.insertText(PredictNavigation.getText().length(), " ");
 				// else if (temp != null)
-				lastSelectedTemp.getMarkSeen().fire();
+				if (lastSelectedTemp != null) {
+					lastSelectedTemp.getMarkSeen().fire();
+				}
 				break;
 			// leaved for navigation
 			case UP:
@@ -885,7 +892,7 @@ public class SplitViewController implements Initializable {
 						break;
 					}
 					synctoLeft(tempPath.toString());
-					if (!getSelectedItem().getmFilePath().toFile().isDirectory() && leftViewNeighbor != null) {
+					if (!getSelectedItem().getFilePath().toFile().isDirectory() && leftViewNeighbor != null) {
 						leftViewNeighbor.NavigateForNameAndScrollTo(lastSelectedTemp);
 					}
 				}
@@ -897,7 +904,7 @@ public class SplitViewController implements Initializable {
 						break;
 					}
 					synctoRight(tempPath2.toString());
-					if (!getSelectedItem().getmFilePath().toFile().isDirectory() && rightViewNeighbor != null) {
+					if (!getSelectedItem().getFilePath().toFile().isDirectory() && rightViewNeighbor != null) {
 						rightViewNeighbor.NavigateForNameAndScrollTo(lastSelectedTemp);
 					}
 				}
@@ -928,7 +935,7 @@ public class SplitViewController implements Initializable {
 					// newText += StringHelper.getKeyAsShiftDown().get(key.getText());
 					// Get Note Prompt
 					if (key.getText().toLowerCase().equals("n") && lastSelectedTemp != null) {
-						lastSelectedTemp.getmNoteButton().fire();
+						lastSelectedTemp.getNoteButton().fire();
 					}
 					break;
 				}
@@ -1020,9 +1027,9 @@ public class SplitViewController implements Initializable {
 								}).map(row -> row.getItem()).findFirst();
 						if (onDroppedT.isPresent()) {
 							TableViewModel t = onDroppedT.get();
-							String targetFileName = t.getmFilePath().toFile().getName();
-							Path targetPath = t.getmFilePath();
-							if (t.getmFilePath().toFile().isDirectory()) {
+							String targetFileName = t.getFilePath().toFile().getName();
+							Path targetPath = t.getFilePath();
+							if (t.getFilePath().toFile().isDirectory()) {
 								MenuItem mnCopy = new MenuItem("Copy To \n\t\"" + targetFileName + "\"");
 								MenuItem mnMove = new MenuItem("Move To \n\t\"" + targetFileName + "\"");
 								mnCopy.setOnAction(e -> FileHelper.copy(ToOperatePathSameDirAsPaths, targetPath));
@@ -1105,7 +1112,7 @@ public class SplitViewController implements Initializable {
 					getSelection().forEach(x -> selectedFiles.add(x.toFile()));
 				} else {
 					cb.putString(ON_DROP_CREATE_SHORTCUT_Key);
-					selectedFiles.add(getSelectedItem().getmFilePath().toFile());
+					selectedFiles.add(getSelectedItem().getFilePath().toFile());
 				}
 				cb.putFiles(selectedFiles);
 				db.setContent(cb);
@@ -1142,9 +1149,9 @@ public class SplitViewController implements Initializable {
 			} else if (SHORTCUT_CLEAR_SEARCH.match(e)) {
 				clearSearchField();
 			} else if (TOGGLE_FAVORITE.match(e)) {
-				toogleFavorite();
+				toggleFavorite();
 			} else if (SHORTCUT_OPEN_FAVORITE.match(e)) {
-				toogleFavorite();
+				toggleFavorite();
 			}
 		});
 
@@ -1158,20 +1165,20 @@ public class SplitViewController implements Initializable {
 				return;
 			}
 
-			boolean tempIsDirectory = t.getmFilePath().toFile().isDirectory();
+			boolean tempIsDirectory = t.getFilePath().toFile().isDirectory();
 
 			if (m.getButton().equals(MouseButton.PRIMARY) && m.getClickCount() == 2) {
-				navigate(t.getmFilePath());
+				navigate(t.getFilePath());
 				if (!isLeft && Setting.isBackSync() && tempIsDirectory) {
 					synctoLeftParent();
 				}
 			} else if (m.getButton().equals(MouseButton.PRIMARY) && autoExpand.isSelected()) {
 				if (rightViewNeighbor != null) {
 					// double check if it was a directory
-					File tempDir = WindowsShortcut.getRealFileIfDirectory(t.getmFilePath().toFile());
+					File tempDir = WindowsShortcut.getRealFileIfDirectory(t.getFilePath().toFile());
 					if (tempDir.isDirectory()) {
-						synctoRight(t.getmFilePath().toString());
-					} else if (isOutOfTheBoxHelper()) {
+						synctoRight(t.getFilePath().toString());
+					} else if (isOutOfTheBoxRecursive()) {
 						synctoRight(getSelectedPathIfDirectory().toString());
 						rightViewNeighbor.NavigateForNameAndScrollTo(t);
 					}
@@ -1182,7 +1189,7 @@ public class SplitViewController implements Initializable {
 		initializeTableRowFactory();
 	}
 
-	private void toogleFavorite() {
+	private void toggleFavorite() {
 		favoriteCheckBox.fire();
 	}
 
@@ -1226,138 +1233,75 @@ public class SplitViewController implements Initializable {
 					rowMap.put(t, this);
 					// on row hover
 					String rowtooltipPreText = "Name:\t" + t.getName();
-					if (!t.getmFilePath().toFile().isDirectory()) {
+					if (!t.getFilePath().toFile().isDirectory()) {
 						rowtooltipPreText += "\nSize:\t\t" + String.format("%.2f MB", t.getFileSize());
 					}
-					final String key = keyMapperToString(t);
-					if (key != null) {
-						try {
-							updateVisualSeenButton(key, t);
-						} catch (Exception e) {
-							// fileTracker MapDetails return null for this key!
-							// Even when printed it contain it.. but the good thing later on scroll do not
-							// cause any problem and show status correctly.
-							// this happen on move/copy operation when the file is tracked and try to load
-							// larger selection of files while file tracker only containing an outdated
-							// version of mapDetails and resolve conflict is necessary but this done on
-							// later refresh and resolving conflict in map details
-							System.out.println("I'm Left View " + isLeft);
-							System.out.println("i entered as wrong key ");
-							System.out.println(key);
-						}
+					if (isOutOfTheBoxHelper && !isOutOfTheBoxRecursive()) {
+						return;
+					}
+					FileTrackerHolder tOption = fileTracker.getTrackerData(t.getFilePath());
+					// --------- testing purpose
+					if (fileTracker.isTracked() && tOption == null) {
+						System.out.println("i entered as wrong key");
+						System.out.println(t.getFilePath());
+					}
+					// -------------- end testing purpose
+					if (tOption != null) {
+						t.setSeen(tOption.isSeen());
 
-						t.setNoteText(mFileTracker.getNoteTooltipText(t.getName()));
-
-						List<String> options = mFileTracker.getMapDetails().get(key);
-
-						String tooltipPreText = " ";
-						tooltipPreText = mFileTracker.getNoteTooltipText(key);
+						String tooltipPreText = tOption.getNoteText();
 						t.setNoteText(tooltipPreText);
 						if (!tooltipPreText.isEmpty()) {
 							rowtooltipPreText += "\nNote:\t" + tooltipPreText;
 						}
-						t.getmNoteButton().setOnAction(new EventHandler<ActionEvent>() {
-							@Override
-							public void handle(ActionEvent event) {
-								String note = DialogHelper.showTextInputDialog("Quick Note Editor",
-										"Add Note To see on hover",
-										"Old note Was:\n" + mFileTracker.getNoteTooltipText(key),
-										mFileTracker.getNoteTooltipText(key));
-
-								// if null set it to space like it was
-								if (note == null) {
-									return; // keep note unchanged
-								}
-								if (note.isEmpty()) {
-									note = " "; // reset note if is empty
-								}
-								// ensure > is not used
-								note = note.replace('>', '<');
-								if (!outOfTheBoxRecursive) {
-									mFileTracker.setTooltipsTexts(table.getSelectionModel().getSelectedItems(), note);
-									mFileTracker.setTooltipText(t.getName(), note);
+						if (VLC.isVLCMediaExt(t.getName())) {
+							t.getOpenVLC().setOnMouseClicked(m -> {
+								// if it is media file
+								if (m.getButton().equals(MouseButton.PRIMARY)) {
+									// load the preview
+									new FilterVLCController(t.getFilePath());
 								} else {
-									mFileTracker.OutofTheBoxsetTooltipsTexts(
-											table.getSelectionModel().getSelectedItems(), t, note);
-								}
-								refreshTableWithSameData();
-							}
-						});
-						// action method for toggle will make all selection to toggle
-						t.getMarkSeen().setOnAction(new EventHandler<ActionEvent>() {
-							@Override
-							public void handle(ActionEvent event) {
-								// toggle all selected items
-								ToggleSeenHelper(t);
-							}
-						});
-
-						// exclusive to normal view
-						if (!outOfTheBoxRecursive) {
-							if (VLC.isVLCMediaExt(t.getName())) {
-								t.getOpenVLC().setOnMouseClicked(m -> {
-									Path path = getDirectoryPath().resolve(t.getName());
-
-									// if it is media file
-									if (m.getButton().equals(MouseButton.PRIMARY)) {
-										// load the preview
-										new FilterVLCController(t.getmFilePath(), mFileTracker);
+									ArrayList<MediaCutData> list = tOption.getMediaCutDataParsed();
+									if (list.size() != 0) {
+										// if the media does contain a setting do load it
+										VLC.SavePlayListFile(t.getFilePath(), list, true, true, true);
 									} else {
-										ArrayList<MediaCutData> list = new ArrayList<MediaCutData>();
-										// later try to remove this if
-										if (options.size() > 3) {
-											// if the media does contain a setting do load it
-											for (int i = 3; i < options.size(); i = i + 3) {
-												list.add(new MediaCutData(options.get(i), options.get(i + 1),
-														options.get(i + 2)));
-											}
-											VLC.SavePlayListFile(path, list, true, true, true);
-										} else {
-											// just start the file with remote features
-											VLC.watchWithRemote(t.getmFilePath(), "");
-										}
+										// just start the file with remote features
+										VLC.watchWithRemote(t.getFilePath(), "");
 									}
-								});
-							}
+								}
+							});
 						}
 						// end if tracked
 					} else {
 
 						t.resetMarkSeen();
-						t.getMarkSeen().setOnAction(new EventHandler<ActionEvent>() {
-
-							@Override
-							public void handle(ActionEvent event) {
-								if (!untrackedBehavior(t)) {
-									t.getMarkSeen().setSelected(false);
-								} else {
-									ToggleSeenHelper(t);
-								}
-							}
-						});
-						t.getmNoteButton().setOnAction(new EventHandler<ActionEvent>() {
-							@Override
-							public void handle(ActionEvent event) {
-								untrackedBehavior(t);
-							}
-						});
 						if (VLC.isVLCMediaExt(t.getName())) {
 							t.getOpenVLC().setOnMouseClicked(m -> {
 								if (m.getButton().equals(MouseButton.PRIMARY)) {
-									untrackedBehavior(t);
+									fileTrackerAdapter.untrackedBehaviorAndAskTrack(
+											table.getSelectionModel().getSelectedItems(), t);
 								} else {
-									VLC.watchWithRemote(t.getmFilePath(), "");
+									VLC.watchWithRemote(t.getFilePath(), "");
 								}
 							});
 						}
 					}
 					// Common stuff
+					// toggle all selected items
+					t.getMarkSeen().setOnAction(
+							e -> fileTrackerAdapter.toggleSeen(table.getSelectionModel().getSelectedItems(), t));
+
+					t.getNoteButton().setOnAction(e -> fileTrackerAdapter
+							.setNoteTextAfterAsk(table.getSelectionModel().getSelectedItems(), t));
+
 					// is XSPF start the file directly with custom argument
 					if (VLC.isPlaylist(t.getName())) {
 						t.getOpenVLC().setOnMouseClicked(m -> {
-							VLC.startXSPFInOrder(t.getmFilePath());
+							VLC.startXSPFInOrder(t.getFilePath());
 						});
 					}
+
 					setTooltip(getHoverTooltip(rowtooltipPreText));
 				}
 			}
@@ -1372,14 +1316,15 @@ public class SplitViewController implements Initializable {
 	 * you can use instead {@link #setmDirectoryThenRefresh(File)}
 	 */
 	public void refresh(String isOutOfTheBoxPath) {
-		// System.out.println(count);
-		// count++;
-		// if (count > 3)
-		// try {
-		// throw new Exception();
-		// } catch (Exception e) {
-		// e.printStackTrace();
-		// }
+//		System.out.println(count);
+//		count++;
+//		if (count > 3) {
+//			try {
+//				throw new Exception();
+//			} catch (Exception e) {
+//				e.printStackTrace();
+//			}
+//		}
 		isLastChangedLeft = isLeft;
 		if (isOutOfTheBoxPath != null) {
 			// for out of the box do change directory or add your DataTable stuff
@@ -1390,7 +1335,7 @@ public class SplitViewController implements Initializable {
 			parentWelcome.UpdateTitle(truePathField);
 		} else {
 			try {
-				mWatchServiceHelper.changeObservableDirectory(mDirectory.toPath());
+				watchServiceHelper.changeObservableDirectory(mDirectory.toPath());
 			} catch (IOException e) {
 				e.printStackTrace();
 				showToastMessage(e.getClass() + "\n" + e.getMessage());
@@ -1405,8 +1350,12 @@ public class SplitViewController implements Initializable {
 			// PathField.setText(mDirectory.getAbsolutePath());
 			// truePathField = mDirectory.getAbsolutePath();
 			refreshIsOutOfTheBox();
-			mFileTracker.loadMap(getDirectoryPath(), true, false);
-			mFileTracker.resolveConflict();
+			fileTracker.loadMap(getDirectoryPath(), true);
+			try {
+				fileTracker.resolveConflict();
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
 			showList(getCurrentFilesList());
 			reloadSearchField();
 			String stageTitle = mDirectory.getName();
@@ -1606,25 +1555,6 @@ public class SplitViewController implements Initializable {
 	}
 
 	private void doRecursiveSearch() {
-		// String depthANS = DialogHelper.showTextInputDialog("Recursive Search", "Depth
-		// to consider",
-		// "Enter depth value to consider beginning from left view folder and track all
-		// sub directory in it\n"
-		// + "Input must be a number format if anything goes wrong '0' is the default
-		// value",
-		// "0");
-		// if (depthANS == null)
-		// return;
-		// Integer depth = 50;
-		// try {
-		// depth = Integer.parseInt(depthANS);
-		// } catch (NumberFormatException e1) {
-		// depth = 0;
-		// // e1.printStackTrace();
-		// }
-		// boolean saveIndex = DialogHelper.showConfirmationDialog("Recursive Search",
-		// "Save Index File?",
-		// "This to make it faster a second time");
 		// Measure execution time for this method
 		parentWelcome.ProcessTitle("Please Wait .. It might Take long for the first time...Indexing...");
 		WatchServiceHelper.setRuning(false);
@@ -1650,7 +1580,7 @@ public class SplitViewController implements Initializable {
 				long timeElapsed;
 				String msg;
 				Path dir = getDirectoryPath();
-				mFileTracker.getMapDetails().clear();
+				fileTracker.getMapDetailsRevolved().clear();
 				Platform.runLater(() -> DataTable.clear());
 				outOfTheBoxRecursive = true;
 				boolean doSort = false;
@@ -1696,13 +1626,13 @@ public class SplitViewController implements Initializable {
 						});
 					}
 					// dir is not added into paths
-					mFileTracker.OutofTheBoxAddToMapRecusive(dir);
+					fileTracker.loadResolvedMapOrEmpty(dir);
 					for (Path p : paths.collect(Collectors.toList())) {
 						if (!recursiveSearch.isSelected()) {
 							break;
 						}
-						mFileTracker.OutofTheBoxAddToMapRecusive(p);
-						if (mFileTracker.getMapDetails().size() > Setting.getMaxLimitFilesRecursive()) {
+						fileTracker.loadResolvedMapOrEmpty(p);
+						if (fileTracker.getMapDetailsRevolved().size() > Setting.getMaxLimitFilesRecursive()) {
 							break;
 						}
 					}
@@ -1892,14 +1822,6 @@ public class SplitViewController implements Initializable {
 		if (arrayFiles == null) {
 			arrayFiles = new File[0];
 		}
-		// old approach
-		// Arrays.sort(arrayFiles, (f1, f2) -> {
-		// if ((f1.isDirectory() && f2.isDirectory()) || (f1.isFile() && f2.isFile())) {
-		// return f1.compareTo(f2);
-		// }
-		// return f1.isDirectory() ? -1 : 1;
-		// });
-
 		ArrayList<File> listFiles = new ArrayList<>();
 		listFiles.addAll(Arrays.asList(arrayFiles));
 		StringHelper.SortNaturalArrayFiles(listFiles);
@@ -1931,12 +1853,12 @@ public class SplitViewController implements Initializable {
 		return mDirectory;
 	}
 
-	public FileTracker getMfileTracker() {
-		return mFileTracker;
+	public FileTracker getFileTracker() {
+		return fileTracker;
 	}
 
-	public WatchServiceHelper getmWatchServiceHelper() {
-		return mWatchServiceHelper;
+	public WatchServiceHelper getWatchServiceHelper() {
+		return watchServiceHelper;
 	}
 
 	public Button getNextButton() {
@@ -1969,10 +1891,10 @@ public class SplitViewController implements Initializable {
 		if (t == null) {
 			return null;
 		}
-		if (!t.getmFilePath().toFile().isDirectory()) {
-			return t.getmFilePath().getParent();
+		if (!t.getFilePath().toFile().isDirectory()) {
+			return t.getFilePath().getParent();
 		}
-		return t.getmFilePath();
+		return t.getFilePath();
 	}
 
 	// this helper is to optimize call of the function
@@ -1986,7 +1908,7 @@ public class SplitViewController implements Initializable {
 	public List<Path> getSelection() {
 		List<Path> selection = new ArrayList<>();
 		for (TableViewModel item : table.getSelectionModel().getSelectedItems()) {
-			selection.add(item.getmFilePath());
+			selection.add(item.getFilePath());
 		}
 		return selection;
 	}
@@ -2060,22 +1982,22 @@ public class SplitViewController implements Initializable {
 				return;
 			}
 			String name = TrackerPlayer.getPlaylistName();
-			TrackerPlayer.createNewShortcutPlaylist(name, t.getmFilePath());
+			TrackerPlayer.createNewShortcutPlaylist(name, t.getFilePath());
 		});
 		newTrackerPlayerPlaylist.setOnAction(e -> {
 			List<Path> files = new ArrayList<>();
 			for (TableViewModel t : table.getSelectionModel().getSelectedItems()) {
-				File tFile = t.getmFilePath().toFile();
+				File tFile = t.getFilePath().toFile();
 				if (VLC.isVLCMediaExt(tFile.getName()) || tFile.isDirectory()) {
-					files.add(t.getmFilePath());
+					files.add(t.getFilePath());
 				}
 			}
 			if (files.size() == 0) {
 				String allFilesString = "";
 				for (TableViewModel t : DataTable) {
-					File tFile = t.getmFilePath().toFile();
+					File tFile = t.getFilePath().toFile();
 					if (VLC.isVLCMediaExt(tFile.getName()) || tFile.isDirectory()) {
-						files.add(t.getmFilePath());
+						files.add(t.getFilePath());
 						allFilesString += t.getName() + "\n";
 					}
 				}
@@ -2195,13 +2117,13 @@ public class SplitViewController implements Initializable {
 						for (TableViewModel t : toWorkWith) {
 							if (i < toRenameWithFinal.size()) {
 								try {
-									Path oldFile = t.getmFilePath();
-									Path newFile = t.getmFilePath().resolveSibling(toRenameWithFinal.get(i));
-									FileHelper.RenameHelper(oldFile, newFile);
+									Path oldFile = t.getFilePath();
+									Path newFile = t.getFilePath().resolveSibling(toRenameWithFinal.get(i));
+									FileHelper.renameHelper(oldFile, newFile);
 									currentNewToOldRename.put(newFile, oldFile);
 
 								} catch (IOException e) {
-									renameError += t.getmFilePath().getFileName() + " --> " + toRenameWithFinal.get(i)
+									renameError += t.getFilePath().getFileName() + " --> " + toRenameWithFinal.get(i)
 											+ "\n";
 									warningAlert += e.getClass() + ": " + e.getMessage() + "\n";
 									e.printStackTrace();
@@ -2345,24 +2267,6 @@ public class SplitViewController implements Initializable {
 		return outOfTheBoxRecursive;
 	}
 
-	// return the correct key to be used in map details
-	public String keyMapperToString(TableViewModel t) {
-		if (outOfTheBoxRecursive) {
-			if (mFileTracker.isTrackedOutFolder(t.getmFilePath().getParent())) {
-				// the key is the full path
-				return t.getmFilePath().toFile().toURI().toString();
-			}
-
-		} else if (isOutOfTheBoxHelper) {
-			return null;
-		} else if (mFileTracker.isTracked()) {
-			// normal case key is just the name
-			return t.getName();
-		}
-
-		return null;
-	}
-
 	/**
 	 *
 	 * @param filePath
@@ -2385,7 +2289,7 @@ public class SplitViewController implements Initializable {
 					String files = " --playlist-enqueue --loop";
 					for (TableViewModel t : table.getSelectionModel().getSelectedItems()) {
 						if (VLC.isVLCMediaExt(t.getName())) {
-							files += " " + t.getmFilePath().toUri();
+							files += " " + t.getFilePath().toUri();
 						}
 					}
 					VLC.StartVlc(files);
@@ -2400,16 +2304,16 @@ public class SplitViewController implements Initializable {
 					// deal other types of files
 					if (StringHelper.getExtention(selectedFile.getName()).equals("PDF")) {
 						// open bunch of PDF
-						StringHelper.openFiles(table.getSelectionModel().getSelectedItems().stream()
-								.map(p -> p.getmFilePath().toFile())
-								.filter(p -> StringHelper.getExtention(p.getName()).equals("PDF"))
-								.collect(Collectors.toList()));
+						StringHelper.openFiles(
+								table.getSelectionModel().getSelectedItems().stream().map(p -> p.getFilePath().toFile())
+										.filter(p -> StringHelper.getExtention(p.getName()).equals("PDF"))
+										.collect(Collectors.toList()));
 
 						// open bunch of Image or an image
 					} else if (PhotoViewerController.ArrayIMGExt
 							.contains(StringHelper.getExtention(selectedFile.getName()))) {
 						new PhotoViewerController(table.getSelectionModel().getSelectedItems().stream()
-								.map(p -> p.getmFilePath().toFile())
+								.map(p -> p.getFilePath().toFile())
 								.filter(p -> PhotoViewerController.ArrayIMGExt
 										.contains(StringHelper.getExtention(p.getName())))
 								.collect(Collectors.toList()), selectedFile, parentWelcome);
@@ -2443,6 +2347,10 @@ public class SplitViewController implements Initializable {
 	public int indexOfName(String fileName) {
 		TableViewModel found = getViewModelOfName(fileName);
 		return sortedData.indexOf(found);
+	}
+
+	protected void selectTableViewModel(TableViewModel toBeSelected) {
+		table.getSelectionModel().select(toBeSelected);
 	}
 
 	public void selectIndex(int index) {
@@ -2540,9 +2448,9 @@ public class SplitViewController implements Initializable {
 		// // return f1.compareTo(f2);
 		// return new FileComparator().compare(f1, f2);
 		// }).collect(Collectors.toList());
-		for (String pathST : mFileTracker.getMapDetails().keySet()) {
+
+		for (Path pathItem : fileTracker.getMapDetailsRevolved().keySet()) {
 			// List<String> options = mfileTracker.getMapDetails().get(pathST);
-			Path pathItem = StringHelper.parseUriToPath(pathST);
 			if (pathItem != null) {
 				allRowModel.add(new TableViewModel(" ", pathItem.toFile().getName(), pathItem));
 			}
@@ -2628,7 +2536,7 @@ public class SplitViewController implements Initializable {
 	 * view unless something refresh the table so here will do it automatically all
 	 * way reserving the old selection also
 	 */
-	private void refreshTableWithSameData() {
+	protected void refreshTableWithSameData() {
 		List<TableViewModel> Copy = new ArrayList<>(DataTable);
 		// reserve selection before refreshing the table
 		// be aware that if initialized spaces more than needed so table will contain 0
@@ -2660,7 +2568,7 @@ public class SplitViewController implements Initializable {
 		if (table.getSelectionModel().getSelectedItem() != null) {
 			// https://stackoverflow.com/questions/7357969/how-to-use-java-code-to-open-windows-file-explorer-and-highlight-the-specified-f
 			StringHelper.RunRuntimeProcess(new String[] { "explorer.exe", "/select,",
-					table.getSelectionModel().getSelectedItem().getmFilePath().toString() });
+					table.getSelectionModel().getSelectedItem().getFilePath().toString() });
 			// TODO
 			// later do make it multiple selection not working as follow
 			// List<Path> paths = getSelection();
@@ -2716,7 +2624,8 @@ public class SplitViewController implements Initializable {
 				return;
 			}
 			// file tracker operation update
-			getMfileTracker().operationUpdate(target, src.toFile().getName(), target.toFile().getName());
+			// TODO operation rename
+//			getMfileTracker().operationUpdate(target, src.toFile().getName(), target.toFile().getName());
 			// refresh directory is satisfied by watch service
 
 			// scroll to renamed item in any view
@@ -2765,7 +2674,7 @@ public class SplitViewController implements Initializable {
 	}
 
 	public void wipeFileTracker() {
-		if (!getMfileTracker().isTracked()) {
+		if (!getFileTracker().isTracked()) {
 			DialogHelper.showAlert(AlertType.INFORMATION, "Delete Tracker Data", "This is already Untracked folder",
 					"Are you kidding me.");
 			return;
@@ -2775,7 +2684,7 @@ public class SplitViewController implements Initializable {
 				"Note: this have nothing to do with your files, it just delete .tracker_explorer.txt"
 						+ " >>And so set all item to untracked.\nThis cannot be undone!");
 		if (ans) {
-			getMfileTracker().deleteFile();
+			getFileTracker().deleteTrackerFile();
 			refreshAsPathField();
 		}
 	}
@@ -2826,7 +2735,7 @@ public class SplitViewController implements Initializable {
 	}
 
 	public void setMfileTracker(FileTracker mfileTracker) {
-		mFileTracker = mfileTracker;
+		fileTracker = mfileTracker;
 	}
 
 	public void setParentWelcome(WelcomeController parentWelcome) {
@@ -2842,7 +2751,7 @@ public class SplitViewController implements Initializable {
 		if (t != null) {
 			ArrayList<Path> toShow = new ArrayList<>();
 			for (TableViewModel temp : table.getSelectionModel().getSelectedItems()) {
-				toShow.add(temp.getmFilePath());
+				toShow.add(temp.getFilePath());
 			}
 			RunMenu.showMenu(toShow);
 		} else {
@@ -2853,45 +2762,6 @@ public class SplitViewController implements Initializable {
 	public void switchRecursive() {
 		// important fire a checkbox do/un check it before calling it's action
 		recursiveSearch.fire();
-	}
-
-	private void ToggleSeenHelper(TableViewModel clicked) {
-		if (!outOfTheBoxRecursive) {
-			mFileTracker.toggleSelectionSeen(table.getSelectionModel().getSelectedItems(),
-					xspfRelatedWithSelection(clicked), clicked);
-		} else {
-			mFileTracker.OutofTheBoxtoggleSelectionSeen(table.getSelectionModel().getSelectedItems(), clicked);
-		}
-		// when toggle seen if yes or un is in search field do update
-		reloadSearchField();
-	}
-
-	private boolean untrackedBehavior(TableViewModel t) {
-		boolean ans;
-		// returned false
-		if (outOfTheBoxRecursive || isOutOfTheBoxHelper) {
-			ans = DialogHelper.showConfirmationDialog("Track new Folder[Recursive Mode]", "Ready to Be Stunned ?",
-					"Tracking a new Folder will create a hidden file .tracker_explorer.txt"
-							+ " in the folder to save data tracker !"
-							+ "\nIn recursive mode the creation will trigger on all Selected Items.");
-			if (!ans) {
-				return ans;
-			}
-
-			Set<Path> paths = table.getSelectionModel().getSelectedItems().stream()
-					.map(selection -> selection.getmFilePath().getParent()).collect(Collectors.toSet());
-			paths.add(t.getmFilePath().getParent());
-			mFileTracker.OutofTheBoxTrackFolder(paths);
-			refreshTableWithSameData();
-		} else {
-
-			ans = mFileTracker.getAns();
-			if (ans) {
-				mFileTracker.trackNewFolder();
-				refreshTableWithSameData();
-			}
-		}
-		return ans;
 	}
 
 	private void updatePathField(Map<String, String> options) {
@@ -2913,51 +2783,46 @@ public class SplitViewController implements Initializable {
 		pathField.setText(truePathField);
 	}
 
-	public void updateVisualSeenButton(String key, TableViewModel t) {
-		// property of toggle button from map
-		t.updateMarkSeen(mFileTracker.isSeen(key));
-	}
-
-	private ArrayList<TableViewModel> xspfRelatedWithSelection(TableViewModel clicked) {
-
-		// if XSPF is clicked also auto sync seen its video files if exist
-
-		// to collect all model to sync
-		ArrayList<TableViewModel> allRelated = new ArrayList<>();
-
-		// to collect all base name of XSPF
-		Map<String, TableViewModel> mapAllXSPF = new HashMap<String, TableViewModel>();
-
-		// to include clicked in below for loop
-		// Table.getSelectionModel().select(DataTable.indexOf(clicked));
-		ArrayList<TableViewModel> tempOver = new ArrayList<>();
-		tempOver.addAll(table.getSelectionModel().getSelectedItems());
-		tempOver.add(clicked);
-
-		for (TableViewModel t : tempOver) {
-			String ext = StringHelper.getExtention(t.getName());
-			if (ext.equals("XSPF") && t.getName().length() > 15) {
-				String basename = t.getName().substring(0, t.getName().length() - 15).toUpperCase();
-				mapAllXSPF.put(basename, t);
-			}
-		}
-		for (TableViewModel tSearch : DataTable) {
-			String tBase = StringHelper.getBaseName(tSearch.getName());
-			if (mapAllXSPF.containsKey(tBase)) {
-				mFileTracker.setSeen(tSearch.getName(), mFileTracker.getSeen(mapAllXSPF.get(tBase)), tSearch);
-				// first if -> to force toggle if only video is selected and clicked on XSPF
-				// second if ->to prevent double toggle
-				if (table.getSelectionModel().getSelectedItems().size() == 1
-						|| !table.getSelectionModel().getSelectedItems().contains(tSearch)) {
-					allRelated.add(tSearch);
-				}
-			}
-		}
-		if (allRelated.size() == 0) {
-			return null;
-		}
-		return allRelated;
-	}
+//	private ArrayList<TableViewModel> xspfRelatedWithSelection(TableViewModel clicked) {
+//
+//		// if XSPF is clicked also auto sync seen its video files if exist
+//
+//		// to collect all model to sync
+//		ArrayList<TableViewModel> allRelated = new ArrayList<>();
+//
+//		// to collect all base name of XSPF
+//		Map<String, TableViewModel> mapAllXSPF = new HashMap<String, TableViewModel>();
+//
+//		// to include clicked in below for loop
+//		// Table.getSelectionModel().select(DataTable.indexOf(clicked));
+//		ArrayList<TableViewModel> tempOver = new ArrayList<>();
+//		tempOver.addAll(table.getSelectionModel().getSelectedItems());
+//		tempOver.add(clicked);
+//
+//		for (TableViewModel t : tempOver) {
+//			String ext = StringHelper.getExtention(t.getName());
+//			if (ext.equals("XSPF") && t.getName().length() > 15) {
+//				String basename = t.getName().substring(0, t.getName().length() - 15).toUpperCase();
+//				mapAllXSPF.put(basename, t);
+//			}
+//		}
+//		for (TableViewModel tSearch : DataTable) {
+//			String tBase = StringHelper.getBaseName(tSearch.getName());
+//			if (mapAllXSPF.containsKey(tBase)) {
+//				fileTracker.setSeen(fileTracker.isSeen(mapAllXSPF.get(tBase)), tSearch);
+//				// first if -> to force toggle if only video is selected and clicked on XSPF
+//				// second if ->to prevent double toggle
+//				if (table.getSelectionModel().getSelectedItems().size() == 1
+//						|| !table.getSelectionModel().getSelectedItems().contains(tSearch)) {
+//					allRelated.add(tSearch);
+//				}
+//			}
+//		}
+//		if (allRelated.size() == 0) {
+//			return null;
+//		}
+//		return allRelated;
+//	}
 
 	public void saveStateToSplitState(SplitViewState state) {
 		// Save current state view to state

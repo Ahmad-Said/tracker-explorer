@@ -13,12 +13,12 @@ import java.util.stream.Collectors;
 
 import application.DialogHelper;
 import application.FileHelper;
+import application.FileHelper.ActionOperation;
 import application.FileTracker;
 import application.Main;
 import application.StringHelper;
 import application.datatype.ImagePosition;
 import application.fxGraphics.ImageGridItem;
-import application.model.TableViewModel;
 import javafx.application.Platform;
 import javafx.event.Event;
 import javafx.event.EventHandler;
@@ -161,8 +161,7 @@ public class PhotoViewerController {
 
 	public static HashSet<String> ArrayIMGExt = new HashSet<String>(
 			Arrays.asList("PNG", "GIF", "JPG", "JPS", "MPO", "BMP", "WEBMP", "JPEG"));
-	private FileTracker mFileTracker;
-	private File mDirectory;
+	private FileTracker fileTracker;
 	private Stage photoStage;
 
 	private List<File> ImgResources;
@@ -194,22 +193,19 @@ public class PhotoViewerController {
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
-		mDirectory = selectedImg.getParentFile();
+		File directory = selectedImg.getParentFile();
 		if (imgResources == null || imgResources.size() <= 1) {
-			imgResources = getImgFilesInDir(mDirectory);
+			imgResources = getImgFilesInDir(directory);
 		}
 		ImgResources = imgResources;
 		rollerPhoto = imgResources.indexOf(selectedImg);
 		initializeButtons();
-		initializeFileTracker();
+		initializeFileTracker(welcomeToRefreshCanNull);
 		photoStage.setOnCloseRequest(new EventHandler<WindowEvent>() {
 			@Override
 			public void handle(WindowEvent t) {
-				if (welcomeToRefreshCanNull != null) {
-//					welcomeToRefreshCanNull.refreshBothViewsAsPathField(null);
-					cachedImage.clear();
-					cachedImage = null;
-				}
+				cachedImage.clear();
+				cachedImage = null;
 			}
 		});
 
@@ -243,11 +239,11 @@ public class PhotoViewerController {
 		});
 	}
 
-	private void initializeFileTracker() {
-		mFileTracker = new FileTracker(ImgResources.get(0).getParentFile().toPath());
-		mFileTracker.setVirtualModeToFullURIPathKey();
+	private void initializeFileTracker(WelcomeController welcomeCon) {
+		fileTracker = new FileTracker(null, welcomeCon == null ? null
+				: writtenPath -> welcomeCon.refreshAllSplitViewsIfMatch(writtenPath.toFile(), null));
 		FileHelper.getParentsPaths(ImgResources).forEach(parent -> {
-			mFileTracker.OutofTheBoxAddToMapRecusive(parent);
+			fileTracker.loadResolvedMapOrEmpty(parent);
 		});
 	}
 
@@ -270,9 +266,9 @@ public class PhotoViewerController {
 			widthPx.setText(gridItem.getOriginalImageDim().getWidth() + " Px");
 			heightPx.setText(gridItem.getOriginalImageDim().getHeight() + " Px");
 			sizeMb.setText(String.format("%.2f", gridItem.getImageFile().length() / 1024.0 / 1024.0) + " MB");
-			String key = gridItem.getImageFile().toURI().toString();
-			updateMarkSeen(mFileTracker.isSeen(key));
-			noteInput.setText(mFileTracker.getNoteTooltipText(key));
+			Path key = gridItem.getImageFile().toPath();
+			updateMarkSeen(fileTracker.isSeen(key));
+			noteInput.setText(fileTracker.getNoteText(key));
 			if (!gridItem.getImageAllPane().isFocused()) {
 				gridItem.requestFocusOnImageAllPane();
 			}
@@ -306,7 +302,7 @@ public class PhotoViewerController {
 				Dragboard db = event.getDragboard();
 				if (db.hasFiles()) {
 					FileHelper.getParentsPaths(db.getFiles()).forEach(parent -> {
-						mFileTracker.OutofTheBoxAddToMapRecusive(parent);
+						fileTracker.loadResolvedMapOrEmpty(parent);
 					});
 					if (db.getFiles().size() == 1 && ImgResources.contains(db.getFiles().get(0))) {
 						changeImage(db.getFiles().get(0));
@@ -671,9 +667,9 @@ public class PhotoViewerController {
 				cachedImageDimension.put(toLoadImageFile, new Dimension2D(gridItem.getOriginalImageDim().getWidth(),
 						gridItem.getOriginalImageDim().getHeight()));
 			}
-			String key = toLoadImageFile.toURI().toString();
-			boolean isSeen = mFileTracker.isSeen(key);
-			String toolTip = mFileTracker.getNoteTooltipText(key);
+			Path key = toLoadImageFile.toPath();
+			Boolean isSeen = fileTracker.isSeen(key);
+			String toolTip = fileTracker.getNoteText(key);
 			gridItem.setSeen(isSeen);
 			gridItem.setNoteLabel(toolTip);
 			if (showNoteCheckBox.isSelected() && !toolTip.isEmpty()) {
@@ -769,25 +765,28 @@ public class PhotoViewerController {
 		}
 		boolean isOtherRename = oldconflictPath != null && newconflictPath != null;
 		boolean isCurrentRename = newPath != null && oldPath != null;
+		fileTracker.getMapDetailsRevolved()
+				.putAll(FileTracker.operationUpdateAsList(Arrays.asList(oldconflictPath, oldPath),
+						Arrays.asList(newconflictPath, newPath), ActionOperation.RENAME));
 		// remember that options 0 in map details is name to be changed
 		if (isOtherRename) {
-			Path parentDir = oldconflictPath.getParent();
+//			Path parentDir = oldconflictPath.getParent();
 			// updating list of images sources in photo explorer
 			ImgResources.set(ImgResources.indexOf(oldconflictPath.toFile()), newconflictPath.toFile());
 
-			// conserving tracker data
-			if (mFileTracker.isTrackedOutFolder(parentDir)) {
-				mFileTracker.operationUpdate(oldconflictPath, oldconflictPath.toFile().getName(),
-						newconflictPath.toFile().getName());
-			}
+//			// conserving tracker data
+//			if (mFileTracker.isTrackedOutFolder(parentDir)) {
+//				mFileTracker.operationUpdate(oldconflictPath, oldconflictPath.toFile().getName(),
+//						newconflictPath.toFile().getName());
+//			}
 		}
 		if (isCurrentRename) {
-			Path parentDir = newPath.getParent();
+//			Path parentDir = newPath.getParent();
 			ImgResources.set(ImgResources.indexOf(oldPath.toFile()), newPath.toFile());
-			// conserving tracker data
-			if (mFileTracker.isTrackedOutFolder(parentDir)) {
-				mFileTracker.operationUpdate(oldPath, oldPath.toFile().getName(), newPath.toFile().getName());
-			}
+//			// conserving tracker data
+//			if (mFileTracker.isTrackedOutFolder(parentDir)) {
+//				mFileTracker.operationUpdate(oldPath, oldPath.toFile().getName(), newPath.toFile().getName());
+//			}
 		}
 
 		final Path path = newPath;
@@ -800,9 +799,17 @@ public class PhotoViewerController {
 
 	private boolean untrackedBehavior() {
 		boolean ans;
-		ans = mFileTracker.getAns();
+		ans = FileTracker.getAns();
 		if (ans) {
-			mFileTracker.NewOutFolder(ImgResources.get(rollerPhoto).toPath().getParent());
+			Path parentPath = ImgResources.get(rollerPhoto).toPath().getParent();
+			try {
+				if (fileTracker.trackNewOutFolder(parentPath)) {
+					fileTracker.loadMap(parentPath, false);
+				}
+			} catch (IOException e) {
+				e.printStackTrace();
+				DialogHelper.showException(e);
+			}
 		}
 		return ans;
 	}
@@ -811,15 +818,12 @@ public class PhotoViewerController {
 	private void addNoteImage() {
 		File curFile = ImgResources.get(rollerPhoto);
 		Path parentPath = curFile.toPath().getParent();
-		if (!mFileTracker.isTrackedOutFolder(parentPath) && !untrackedBehavior()) {
+		if (!FileTracker.isTrackedOutFolder(parentPath) && !untrackedBehavior()) {
 			return;
 		}
 		String note = noteInput.getText();
-
-		String key = curFile.toURI().toString();
-		mFileTracker.setTooltipText(key, note);
-		TableViewModel tCur = new TableViewModel(curFile.getName(), curFile.toPath());
-		mFileTracker.OutofTheBoxWriteMap(parentPath, Arrays.asList(tCur));
+		fileTracker.getMapDetailsRevolved().get(curFile.toPath()).setNoteText(note);
+		fileTracker.commitTrackerDataChange(curFile.toPath());
 		allGridItems.get(rollerPhoto % gridSize).setNoteLabel(note);
 		if (!note.isEmpty()) {
 			allGridItems.get(rollerPhoto % gridSize).showNoteLabel();
@@ -827,9 +831,14 @@ public class PhotoViewerController {
 		requestFocusOnRollerToGetBorder();
 	}
 
-	public void updateMarkSeen(boolean seen) {
+	public void updateMarkSeen(Boolean seen) {
 		markSeen.getStyleClass().removeAll("info", "success");
 		allGridItems.get(rollerPhoto % gridSize).setSeen(seen);
+		if (seen == null) {
+			markSeen.setText("S/U");
+			markSeen.setSelected(false);
+			return;
+		}
 		if (seen) {
 			markSeen.getStyleClass().add("success");
 			markSeen.setText("S");
@@ -843,16 +852,14 @@ public class PhotoViewerController {
 
 	@FXML
 	private void toggleSeen() {
-		File curFile = ImgResources.get(rollerPhoto);
-		Path parentPath = curFile.toPath().getParent();
-		if (!mFileTracker.isTrackedOutFolder(parentPath) && !untrackedBehavior()) {
+		Path curFile = ImgResources.get(rollerPhoto).toPath();
+		Path parentPath = curFile.getParent();
+		if (!FileTracker.isTrackedOutFolder(parentPath) && !untrackedBehavior()) {
 			return;
 		}
-		String key = curFile.toURI().toString();
-		updateMarkSeen(!mFileTracker.isSeen(key));
-		mFileTracker.toggleSingleSeenItem(key, null);
-		TableViewModel tCur = new TableViewModel(curFile.getName(), curFile.toPath());
-		mFileTracker.OutofTheBoxWriteMap(parentPath, Arrays.asList(tCur));
+		updateMarkSeen(!fileTracker.isSeen(curFile));
+		fileTracker.toggleSeen(curFile);
+		fileTracker.commitTrackerDataChange(curFile);
 		requestFocusOnRollerToGetBorder();
 	}
 

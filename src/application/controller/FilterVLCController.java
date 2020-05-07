@@ -9,8 +9,10 @@ import java.util.List;
 
 import application.DialogHelper;
 import application.FileTracker;
+import application.FileTrackerHolder;
 import application.Main;
 import application.VLC;
+import application.controller.splitview.SplitViewController;
 import application.datatype.MediaCutData;
 import application.model.FilterVLCViewModel;
 import javafx.collections.FXCollections;
@@ -131,12 +133,13 @@ public class FilterVLCController {
 	 *
 	 * @param path         Path of the file to configure
 	 * @param mfileTracker It's tracker came from it's parent
-	 *                     {@link SplitViewController#getMfileTracker()}
+	 *                     {@link SplitViewController#getFileTracker()}
 	 */
-	public FilterVLCController(Path path, FileTracker mfileTracker) {
+	public FilterVLCController(Path path) {
 
 		mPath = path;
-		this.mfileTracker = mfileTracker;
+		mfileTracker = new FileTracker(path.getParent(), null);
+		mfileTracker.loadMap(path.getParent(), true);
 		filterStage = new Stage();
 		filterStage.sizeToScene();
 		// didn't work as expected
@@ -173,9 +176,9 @@ public class FilterVLCController {
 
 			filterStage.getIcons().add(new Image(Main.class.getResourceAsStream("/img/filter_vlc.png")));
 
-			StartTimeColumn.setCellValueFactory(new PropertyValueFactory<FilterVLCViewModel, String>("ShowStart"));
-			EndTimeColumn.setCellValueFactory(new PropertyValueFactory<FilterVLCViewModel, String>("ShowEnd"));
-			DescriptionColumn.setCellValueFactory(new PropertyValueFactory<FilterVLCViewModel, String>("Description"));
+			StartTimeColumn.setCellValueFactory(new PropertyValueFactory<FilterVLCViewModel, String>("startText"));
+			EndTimeColumn.setCellValueFactory(new PropertyValueFactory<FilterVLCViewModel, String>("endText"));
+			DescriptionColumn.setCellValueFactory(new PropertyValueFactory<FilterVLCViewModel, String>("description"));
 			ActionsColumn.setCellValueFactory(new PropertyValueFactory<FilterVLCViewModel, HBox>("hboxActions"));
 			TimeTable.setItems(mDataTable);
 			resetForm();
@@ -222,12 +225,13 @@ public class FilterVLCController {
 	private void initisalizeTable() {
 
 		// initialize data Table
-		List<String> options = mfileTracker.getMapDetails().get(mPath.getFileName().toString());
-		// later try to remove this if
-		if (options.size() > 3) {
-			for (int i = 3; i < options.size(); i = i + 3) {
-				mDataTable.add(new FilterVLCViewModel(options.get(i), options.get(i + 1), options.get(i + 2)));
+		FileTrackerHolder options = mfileTracker.getMapDetailsRevolved().get(mPath);
+		try {
+			if (options.getMediaCutDataUnPrased() != null && !options.getMediaCutDataUnPrased().isEmpty()) {
+				options.getMediaCutDataParsed().forEach(mCut -> mDataTable.add(new FilterVLCViewModel(mCut)));
 			}
+		} catch (Exception e) {
+			e.printStackTrace();
 		}
 
 		// initialize button action row
@@ -237,16 +241,16 @@ public class FilterVLCController {
 			public void updateItem(FilterVLCViewModel t, boolean empty) {
 				super.updateItem(t, empty);
 				if (t != null) {
-					t.getOpenEdit().setOnAction(new EventHandler<ActionEvent>() {
+					t.getEditButton().setOnAction(new EventHandler<ActionEvent>() {
 
 						@Override
 						public void handle(ActionEvent event) {
-							inputStart.setText(FilterVLCViewModel.mDurationFormat(t.getStart()));
-							inputEnd.setText(FilterVLCViewModel.mDurationFormat(t.getEnd()));
+							inputStart.setText(FilterVLCViewModel.getDurationFormat(t.getStart()));
+							inputEnd.setText(FilterVLCViewModel.getDurationFormat(t.getEnd()));
 							inputDescription.setText(t.getDescription());
 						}
 					});
-					t.getRunVLC().setOnAction(new EventHandler<ActionEvent>() {
+					t.getRunVLCButton().setOnAction(new EventHandler<ActionEvent>() {
 
 						@Override
 						public void handle(ActionEvent event) {
@@ -268,7 +272,7 @@ public class FilterVLCController {
 							VLC.SavePlayListFile(mPath, list, true, isFirst, notifyend.isSelected());
 						}
 					});
-					t.getRemove().setOnAction(new EventHandler<ActionEvent>() {
+					t.getRemoveButton().setOnAction(new EventHandler<ActionEvent>() {
 
 						@Override
 						public void handle(ActionEvent event) {
@@ -423,23 +427,20 @@ public class FilterVLCController {
 
 	@FXML // this does save to hidden filetracker
 	public void saveToMapAndFile() {
-		String key = mPath.getFileName().toString();
-		List<String> options = mfileTracker.getMapDetails().get(key);
-		ArrayList<String> newCopy = new ArrayList<String>();
-		for (int i = 0; i < 3; i++) {
-			newCopy.add(options.get(i));
-		}
+		FileTrackerHolder options = mfileTracker.getMapDetailsRevolved().get(mPath);
+		List<String> concatenatedOptions = new ArrayList<String>();
 		// clear all track data and get them from observable list
 		for (FilterVLCViewModel t : mDataTable) {
 			String desc = " ";
-			newCopy.add("" + (int) t.getStart().toSeconds());
-			newCopy.add("" + (int) t.getEnd().toSeconds());
+			concatenatedOptions.add("" + (int) t.getStart().toSeconds());
+
+			concatenatedOptions.add("" + (int) t.getEnd().toSeconds());
 			if (t.getDescription() != null && !t.getDescription().isEmpty()) {
 				desc = t.getDescription();
 			}
-			newCopy.add(desc);
+			concatenatedOptions.add(desc);
 		}
-		mfileTracker.getMapDetails().put(key, newCopy);
+		options.setMediaCutDataUnPrased(">" + String.join(">", concatenatedOptions));
 		mfileTracker.writeMap();
 	}
 
@@ -470,13 +471,13 @@ public class FilterVLCController {
 	@FXML
 	public void PickStart() {
 		int sec = pickHelper("Start");
-		inputStart.setText(FilterVLCViewModel.mDurationFormat(Duration.millis(sec)));
+		inputStart.setText(FilterVLCViewModel.getDurationFormat(Duration.millis(sec)));
 	}
 
 	@FXML
 	public void PickEnd() {
 		int sec = pickHelper("End");
-		inputEnd.setText(FilterVLCViewModel.mDurationFormat(Duration.millis(sec)));
+		inputEnd.setText(FilterVLCViewModel.getDurationFormat(Duration.millis(sec)));
 	}
 
 	private boolean doshowAgain = true;
@@ -512,8 +513,7 @@ public class FilterVLCController {
 	public void getCopyRaw() {
 		// https://stackoverflow.com/questions/6710350/copying-text-to-the-clipboard-using-java
 		String myString = "Failed to copy";
-		myString = String.join(">",
-				String.join(">", mfileTracker.getMapDetails().get(mPath.getFileName().toString()).subList(0, 3)));
+		myString = mfileTracker.getMapDetailsRevolved().get(mPath).getMediaCutDataUnPrased();
 		for (FilterVLCViewModel t : mDataTable) {
 			myString += ">" + t.getStart().toSeconds() + ">" + t.getEnd().toSeconds() + ">" + t.getDescription();
 		}

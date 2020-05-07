@@ -19,6 +19,8 @@ import org.apache.commons.io.FilenameUtils;
 
 import application.DialogHelper;
 import application.FileHelper;
+import application.FileHelper.ActionOperation;
+import application.FileTracker;
 import application.Main;
 import application.StringHelper;
 import application.WatchServiceHelper;
@@ -745,6 +747,8 @@ public class RenameUtilityController {
 		if (ans) {
 			String renameError = "";
 			HashMap<Path, Path> currentNewToOldRename = new HashMap<>();
+			List<Path> sources = new ArrayList<Path>();
+			List<Path> targets = new ArrayList<Path>();
 			boolean renameOccur = false;
 			boolean isThereRealFile = false;
 			// TODO conserve status seen and notes!
@@ -762,11 +766,13 @@ public class RenameUtilityController {
 						try {
 							oldFile = t.getPathFile();
 							newFile = t.getPathFile().resolveSibling(StringHelper.textFlowToString(t.getNewName()));
-							FileHelper.RenameHelper(oldFile, newFile);
+							FileHelper.renameHelper(oldFile, newFile);
 							t.setPathFile(newFile);
 							t.setOldName(newFile.getFileName().toString());
 							isThereRealFile = true;
 							currentNewToOldRename.put(newFile, oldFile);
+							sources.add(oldFile);
+							targets.add(newFile);
 						} catch (IOException e) {
 							renameError += t.getPathFile().getFileName() + " --> "
 									+ StringHelper.textFlowToString(t.getNewName()) + "\n";
@@ -781,9 +787,10 @@ public class RenameUtilityController {
 				return;
 			}
 			try {
-				// just to refresh the view:
-				FileHelper.RenameHelper(newFile, oldFile);
-				FileHelper.RenameHelper(oldFile, newFile);
+				// just to refresh the views as this call a watch key
+				FileTracker.operationUpdateAsList(sources, targets, ActionOperation.RENAME);
+				FileHelper.renameHelper(newFile, oldFile);
+				FileHelper.renameHelper(oldFile, newFile);
 			} catch (IOException e) {
 				e.printStackTrace();
 			}

@@ -22,7 +22,7 @@ import java.util.stream.Collectors;
 import org.apache.commons.io.FilenameUtils;
 import org.jetbrains.annotations.Nullable;
 
-import application.controller.SplitViewController;
+import application.controller.splitview.SplitViewController;
 import javafx.scene.Node;
 import javafx.scene.text.Text;
 import javafx.scene.text.TextFlow;
@@ -105,6 +105,12 @@ public class StringHelper {
 				extensions.stream().map(p -> "*" + p).collect(Collectors.toList()));
 	}
 
+	/**
+	 *
+	 *
+	 * @param fileName
+	 * @return Upper Case Extension
+	 */
 	public static String getExtention(String fileName) {
 		return FilenameUtils.getExtension(fileName).toUpperCase();
 	}
@@ -224,17 +230,25 @@ public class StringHelper {
 		StringHelper.temp = temp;
 	}
 
-	private static Instant Start;
-	private static Instant Finish;
+	private static Instant startTime;
+	private static long cumulativeDuration = 0;
+	private static long startMemoryInByte;
+	private static long cumlativeMemoryInByte = 0;
+	private static long count = 0;
 
 	public static void startTimer() {
-		Start = Instant.now();
+		startMemoryInByte = Runtime.getRuntime().totalMemory();
+		startTime = Instant.now();
 	}
 
 	public static long endTimerAndDisplay() {
-		Finish = Instant.now();
-		long timeElapsed = Duration.between(Start, Finish).toMillis(); // in millis
-		System.out.println("--- Took about :  " + timeElapsed + "  -----");
+		long timeElapsed = Duration.between(startTime, Instant.now()).toMillis(); // in millis
+		cumulativeDuration += timeElapsed;
+		long allocatedMemory = Runtime.getRuntime().totalMemory() - startMemoryInByte;
+		cumlativeMemoryInByte += allocatedMemory;
+		System.out.println("--- Ping: " + count++ + " ---  Took about:  " + timeElapsed + "  ----- Cumlative Duration: "
+				+ cumulativeDuration + " --- Allocation:" + allocatedMemory + "  Bytes ----- Cumlative Allocation: "
+				+ cumlativeMemoryInByte / 1024 + " MB");
 		return timeElapsed;
 	}
 

@@ -6,7 +6,7 @@ import java.util.concurrent.ThreadPoolExecutor;
 
 import application.SystemIconsHelper;
 import application.VLC;
-import application.controller.SplitViewController;
+import application.controller.splitview.SplitViewController;
 import javafx.application.Platform;
 import javafx.beans.property.SimpleDoubleProperty;
 import javafx.beans.property.SimpleStringProperty;
@@ -27,13 +27,13 @@ public class TableViewModel {
 	private HBox hboxActions;
 	private ImageView imgIcon;
 	private ToggleButton MarkSeen;
-	private Path mFilePath;
-	private Button mNoteButton;
-	private SimpleStringProperty Name;
+	private Path filePath;
+	private Button noteButton;
+	private SimpleStringProperty name;
 	/// most important note that took me hours to catch
 	// all elements used in view property table must have
 	// getters and setters generate them with source !
-	private SimpleStringProperty NoteText;
+	private SimpleStringProperty noteText;
 	private Button openVLC;
 	private boolean wasinitialized = false;
 
@@ -44,20 +44,20 @@ public class TableViewModel {
 	 * @param path
 	 */
 	public TableViewModel(String name, Path path) {
-		Name = new SimpleStringProperty(name);
-		mFilePath = path;
+		this.name = new SimpleStringProperty(name);
+		filePath = path;
 	}
 
-	public TableViewModel(String status, String name, Path path) {
+	public TableViewModel(String note, String name, Path path) {
 		super();
-		NoteText = new SimpleStringProperty(status);
-		Name = new SimpleStringProperty(name);
+		noteText = new SimpleStringProperty(note);
+		this.name = new SimpleStringProperty(name);
 		// hboxActions = new HBox(10,MarkSeen); give error !!
 		hboxActions = new HBox();
-		mFilePath = path;
+		filePath = path;
 		setFileSize(new SimpleDoubleProperty(path.toFile().length() / 1024.0 / 1024.0));
 		// testing
-		mNoteButton = new Button();
+		noteButton = new Button();
 		MarkSeen = new ToggleButton();
 		// hboxActions.getChildren().addAll(getMarkSeen(), getmNoteButton());
 		// if (VLC.isVLCMediaExt(this.getName()) || VLC.isPlaylist(getName()))
@@ -80,10 +80,6 @@ public class TableViewModel {
 		MarkSeen.setText("-");
 	}
 
-	public String generateKeyURI() {
-		return mFilePath.toFile().toURI().toString();
-	}
-
 	/**
 	 * @return the fileSize In MB
 	 */
@@ -103,20 +99,20 @@ public class TableViewModel {
 		return MarkSeen;
 	}
 
-	public Path getmFilePath() {
-		return mFilePath;
+	public Path getFilePath() {
+		return filePath;
 	}
 
-	public Button getmNoteButton() {
-		return mNoteButton;
+	public Button getNoteButton() {
+		return noteButton;
 	}
 
 	public String getName() {
-		return Name.get();
+		return name.get();
 	}
 
 	public String getNoteText() {
-		return NoteText.get();
+		return noteText.get();
 	}
 
 	public Button getOpenVLC() {
@@ -132,18 +128,18 @@ public class TableViewModel {
 	private void initializeButton() {
 
 		// initialize Note button with ToolTip
-		mNoteButton.getStyleClass().addAll("btn");
-		mNoteButton.setText("N");
+		noteButton.getStyleClass().addAll("btn");
+		noteButton.setText("N");
 		Tooltip tt = new Tooltip();
 		tt.setText("Add Hover Note");
 		tt.getStyleClass().addAll("tooltip");
 		tt.setStyle("-fx-background-color: #7F00FF;-fx-text-fill:white;-fx-font-size:12;-fx-font-weight:bold");
-		mNoteButton.setTooltip(tt);
+		noteButton.setTooltip(tt);
 		// mNoteButton.setStyle("-fx-text-fill:
 		// white;-fx-font-size:12;-fx-font-weight:bold");
-		mNoteButton.setStyle("-fx-background-color: #7F00FF;-fx-text-fill:white;-fx-font-size:13;-fx-font-weight:bold");
-		mNoteButton.getStyleClass().add("last");
-		mNoteButton.setPrefHeight(MarkSeen.getPrefHeight());
+		noteButton.setStyle("-fx-background-color: #7F00FF;-fx-text-fill:white;-fx-font-size:13;-fx-font-weight:bold");
+		noteButton.getStyleClass().add("last");
+		noteButton.setPrefHeight(MarkSeen.getPrefHeight());
 		MarkSeen.setMaxWidth(Double.MAX_VALUE);
 		MarkSeen.getStyleClass().add("first");
 		hboxActions.setMinWidth(100);
@@ -154,9 +150,9 @@ public class TableViewModel {
 		ms.getStyleClass().addAll("tooltip");
 		MarkSeen.setStyle("-fx-text-fill: white;-fx-font-size:13;-fx-font-weight:bold");
 		MarkSeen.setTooltip(ms);
-		updateMarkSeen(false);
+		setSeen(false);
 
-		hboxActions.getChildren().addAll(getMarkSeen(), getmNoteButton());
+		hboxActions.getChildren().addAll(getMarkSeen(), getNoteButton());
 	}
 
 	// using this approach only initializing visual stuff when user do realy need
@@ -170,13 +166,13 @@ public class TableViewModel {
 		initializeButton();
 		initializeVLCFeatures();
 
-		Image fxImage = SystemIconsHelper.getFileIconIfCached(mFilePath.toString());
+		Image fxImage = SystemIconsHelper.getFileIconIfCached(filePath.toString());
 		imgIcon = new ImageView();
 		if (fxImage != null) {
 			imgIcon.setImage(fxImage);
 		} else {
 			executor.execute(() -> {
-				Image fxImage2 = SystemIconsHelper.getFileIcon(mFilePath.toString());
+				Image fxImage2 = SystemIconsHelper.getFileIcon(filePath.toString());
 				Platform.runLater(() -> imgIcon.setImage(fxImage2));
 			});
 		}
@@ -195,27 +191,21 @@ public class TableViewModel {
 
 			if (VLC.isPlaylist(getName())) {
 				ms.setText("Click to Run PlayList!"); // this will run with postion 4 and timeout 12
-				hboxActions.getChildren().remove(mNoteButton);
+				hboxActions.getChildren().remove(noteButton);
 				HBox.setHgrow(openVLC, Priority.ALWAYS);
 				openVLC.setMaxWidth(200);
 			} else {
 				ms.setText("Click to Configure or right click for a quick start");
-				mNoteButton.getStyleClass().removeAll("last");
-				mNoteButton.getStyleClass().add("middle");
+				noteButton.getStyleClass().removeAll("last");
+				noteButton.getStyleClass().add("middle");
 				openVLC.getStyleClass().add("last");
 			}
 			openVLC.getStyleClass().addAll("warning", "btn");
 			hboxActions.getChildren().add(getOpenVLC());
 		} else {
-			mNoteButton.getStyleClass().add("last");
+			noteButton.getStyleClass().add("last");
 		}
 
-	}
-
-	public void resetMarkSeen() {
-		MarkSeen.getStyleClass().removeAll("info", "success");
-		MarkSeen.setText("-");
-		MarkSeen.setSelected(false);
 	}
 
 	/**
@@ -237,20 +227,20 @@ public class TableViewModel {
 		this.MarkSeen = MarkSeen;
 	}
 
-	public void setmFilePath(Path mFilePath) {
-		this.mFilePath = mFilePath;
+	public void setFilePath(Path filePath) {
+		this.filePath = filePath;
 	}
 
 	public void setmNoteButton(Button mNoteButton) {
-		this.mNoteButton = mNoteButton;
+		noteButton = mNoteButton;
 	}
 
 	public void setName(String name) {
-		Name = new SimpleStringProperty(name);
+		this.name = new SimpleStringProperty(name);
 	}
 
 	public void setNoteText(String noteText) {
-		NoteText.set(noteText);
+		this.noteText.set(noteText);
 		// NoteText.setValue(noteText);
 		// NoteText.set(noteText);
 	}
@@ -261,12 +251,24 @@ public class TableViewModel {
 
 	@Override
 	public String toString() {
-		return "TableViewModel " + Name.get() + "]";
+		return "TableViewModel " + name.get() + "]";
 	}
 
-	public void updateMarkSeen(boolean seen) {
+	public boolean isSeen() {
+		return getMarkSeen().isSelected();
+	}
+
+	/**
+	 * Visual Update of markSeen button
+	 *
+	 * @param seen null -> untracked, other wise seen status
+	 */
+	public void setSeen(Boolean seen) {
 		MarkSeen.getStyleClass().removeAll("info", "success");
-		updateMarkSeenText(seen);
+		setSeenText(seen);
+		if (seen == null) {
+			return;
+		}
 		if (seen) {
 			MarkSeen.getStyleClass().add("success");
 			MarkSeen.setSelected(true);
@@ -276,12 +278,25 @@ public class TableViewModel {
 		}
 	}
 
-	public void updateMarkSeenText(boolean seen) {
-		if (seen) {
+	/**
+	 * Used when adding new Items in table to make search on seen/unseen availble
+	 * without loading full view style
+	 *
+	 * @param seen
+	 */
+	public void setSeenText(Boolean seen) {
+		if (seen == null) {
+			MarkSeen.setText("-");
+		} else if (seen) {
 			MarkSeen.setText("S");
 		} else {
 			getMarkSeen().setText("U");
 		}
 	}
 
+	public void resetMarkSeen() {
+		MarkSeen.getStyleClass().removeAll("info", "success");
+		MarkSeen.setText("-");
+		MarkSeen.setSelected(false);
+	}
 }

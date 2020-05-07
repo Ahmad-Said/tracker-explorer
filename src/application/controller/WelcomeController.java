@@ -32,6 +32,7 @@ import application.RecursiveFileWalker;
 import application.StringHelper;
 import application.TrackerPlayer;
 import application.VLC;
+import application.controller.splitview.SplitViewController;
 import application.datatype.Setting;
 import application.fxGraphics.DraggableTab;
 import application.fxGraphics.MenuItemFactory;
@@ -160,6 +161,8 @@ public class WelcomeController implements Initializable {
 
 			leftView = addSplitView(StringHelper.InitialLeftPath, true);
 			rightView = addSplitView(StringHelper.InitialRightPath, false);
+			// Split view do refresh later on call of #initializeViewStage.. from main
+			// to faster showing stage first
 
 			initializeViewSetting();
 			// refresh is done since we switch to default tab
@@ -1184,7 +1187,11 @@ public class WelcomeController implements Initializable {
 					Files.walkFileTree(dir, EnumSet.noneOf(FileVisitOption.class), StringHelper.getTemp(), r);
 					r.getParent().forEach(p -> {
 						Platform.runLater(() -> Main.ProcessTitle(p.toString()));
-						leftView.getMfileTracker().NewOutFolder(p);
+						try {
+							leftView.getFileTracker().trackNewOutFolder(p);
+						} catch (IOException e) {
+							e.printStackTrace();
+						}
 					});
 					Platform.runLater(() -> refreshAllSplitViews());
 				} catch (IOException e) {
@@ -1280,29 +1287,36 @@ public class WelcomeController implements Initializable {
 			return;
 		}
 
-		if (!rightView.getMfileTracker().isTracked()) {
-			rightView.getMfileTracker().trackNewFolder();
-		}
-
-		for (String name : rightView.getCurrentFilesListName()) {
-			if (VLC.isVLCMediaExt(name)) {
-				Main.ProcessTitle(name);
-				String key = name;
-				List<String> options = rightView.getMfileTracker().getMapDetails().get(key);
-				ArrayList<String> newCopy = new ArrayList<String>();
-				for (int i = 0; i < 3; i++) {
-					newCopy.add(options.get(i));
-				}
-				String desc = name + " [Skipped Intro]";
-				newCopy.add("0");
-				newCopy.add("" + (int) ans.toSeconds());
-				newCopy.add(desc);
-
-				rightView.getMfileTracker().getMapDetails().put(key, newCopy);
+		if (!rightView.getFileTracker().isTracked()) {
+			try {
+				rightView.getFileTracker().trackNewFolder();
+			} catch (IOException e) {
+				e.printStackTrace();
+				DialogHelper.showException(e);
+				return;
 			}
 		}
+
+		// TODO
+//		for (String name : rightView.getCurrentFilesListName()) {
+//			if (VLC.isVLCMediaExt(name)) {
+//				Main.ProcessTitle(name);
+//				String key = name;
+////				List<String> options = rightView.getMfileTracker().getMapDetailsRevolved().get(key);
+//				ArrayList<String> newCopy = new ArrayList<String>();
+//				for (int i = 0; i < 3; i++) {
+//					newCopy.add(options.get(i));
+//				}
+//				String desc = name + " [Skipped Intro]";
+//				newCopy.add("0");
+//				newCopy.add("" + (int) ans.toSeconds());
+//				newCopy.add(desc);
+//
+//				rightView.getMfileTracker().getMapDetails().put(key, newCopy);
+//			}
+//		}
 		Main.ResetTitle();
-		rightView.getMfileTracker().writeMap();
+		rightView.getFileTracker().writeMap();
 	}
 
 	public void saveSetting() {

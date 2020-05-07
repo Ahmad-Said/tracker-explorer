@@ -1,5 +1,6 @@
 package application.model;
 
+import application.datatype.MediaCutData;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.scene.control.Button;
 import javafx.scene.control.Tooltip;
@@ -9,70 +10,76 @@ import javafx.util.Duration;
 
 public class FilterVLCViewModel implements Comparable<FilterVLCViewModel> {
 
-	private final SimpleStringProperty ShowStart;
-	private final SimpleStringProperty ShowEnd;
-	private SimpleStringProperty Description;
-	private Duration Start;
-	private Duration End;
+	private Duration start;
+	private SimpleStringProperty startText;
+
+	private Duration end;
+	private SimpleStringProperty endText;
+
+	private SimpleStringProperty description;
 
 	private HBox hboxActions;
-	private Button OpenEdit;
-	private Button RunVLC;
-	private Button Remove;
+	private Button editButton;
+	private Button runVLCButton;
+	private Button removeButton;
 
 	public FilterVLCViewModel(Duration start, Duration end, String description) {
-		super();
-		Start = start;
-		End = end;
-		ShowStart = new SimpleStringProperty(mDurationFormat(Start));
-		ShowEnd = new SimpleStringProperty(mDurationFormat(End));
-		Description = new SimpleStringProperty(description);
-		hboxActions = new HBox();
-		initializeButtonViews();
+		this.start = start;
+		this.end = end;
+		initializeConstruction(description);
 	}
 
 	public FilterVLCViewModel(String start, String end, String description) {
-		super();
-		Start = Duration.seconds(Integer.parseInt(start));
-		End = Duration.seconds(Integer.parseInt(end));
-		ShowStart = new SimpleStringProperty(mDurationFormat(Start));
-		ShowEnd = new SimpleStringProperty(mDurationFormat(End));
-		Description = new SimpleStringProperty(description);
+		this.start = Duration.seconds(Integer.parseInt(start));
+		this.end = Duration.seconds(Integer.parseInt(end));
+		initializeConstruction(description);
+	}
 
+	public FilterVLCViewModel(MediaCutData mediaCutData) {
+		start = Duration.seconds(mediaCutData.getStart());
+		end = Duration.seconds(mediaCutData.getEnd());
+		initializeConstruction(mediaCutData.getTitle());
+	}
+
+	public final void initializeConstruction(String description) {
+		startText = new SimpleStringProperty(getDurationFormat(start));
+		endText = new SimpleStringProperty(getDurationFormat(end));
+		this.description = new SimpleStringProperty(description);
 		hboxActions = new HBox();
 		initializeButtonViews();
 	}
 
 	private void initializeButtonViews() {
-		OpenEdit = new Button();
-		OpenEdit.setMaxWidth(Double.MAX_VALUE);
-		OpenEdit.setText("Edit");
-		OpenEdit.getStyleClass().addAll("info", "first");
+		editButton = new Button();
+		editButton.setMaxWidth(Double.MAX_VALUE);
+		editButton.setText("Edit");
+		editButton.getStyleClass().addAll("info", "first");
 
-		RunVLC = new Button();
-		RunVLC.setMaxWidth(Double.MAX_VALUE);
-		RunVLC.setText("Run");
-		RunVLC.getStyleClass().addAll("warning", "middle");
-		RunVLC.setTooltip(new Tooltip("This Start playing media considering only this and above exclution"));
-		Remove = new Button();
-		Remove.getStyleClass().addAll("danger", "last");
-		Remove.setMaxWidth(Double.MAX_VALUE);
-		Remove.setText("Remove");
+		runVLCButton = new Button();
+		runVLCButton.setMaxWidth(Double.MAX_VALUE);
+		runVLCButton.setText("Run");
+		runVLCButton.getStyleClass().addAll("warning", "middle");
+		runVLCButton.setTooltip(new Tooltip("This Start playing media considering only this and above exclution"));
+		removeButton = new Button();
+		removeButton.getStyleClass().addAll("danger", "last");
+		removeButton.setMaxWidth(Double.MAX_VALUE);
+		removeButton.setText("Remove");
 		hboxActions.setMinWidth(100);
-		HBox.setHgrow(OpenEdit, Priority.ALWAYS);
+		HBox.setHgrow(editButton, Priority.ALWAYS);
 
-		hboxActions.getChildren().addAll(getOpenEdit(), getRunVLC(), getRemove());
+		hboxActions.getChildren().addAll(getEditButton(), getRunVLCButton(), getRemoveButton());
 	}
 
 	@Override
 	public int compareTo(FilterVLCViewModel o) {
 		// TODO Auto-generated method stub
-		if (o.getStart().toSeconds() < this.getStart().toSeconds())
+		if (o.getStart().toSeconds() < getStart().toSeconds()) {
 			return 1;
+		}
 		return 0;
 	}
 
-	public static String mDurationFormat(Duration a) {
+	public static String getDurationFormat(Duration a) {
 		String ans = " : ";
 		int hours = (int) a.toHours();
 		int min = (int) a.toMinutes();
@@ -81,30 +88,34 @@ public class FilterVLCViewModel implements Comparable<FilterVLCViewModel> {
 		min -= hours * 60;
 
 		// Prettily look:
-		if (sec < 10)
+		if (sec < 10) {
 			ans += "0";
-		if (min < 10)
+		}
+		if (min < 10) {
 			ans = "0" + min + ans;
-		else
+		} else {
 			ans = min + ans;
+		}
 		ans = hours + " : " + ans;
 		return ans + sec;
 	}
 
 	public Duration getStart() {
-		return Start;
+		return start;
 	}
 
 	public void setStart(Duration start) {
-		Start = start;
+		startText.set(getDurationFormat(start));
+		this.start = start;
 	}
 
 	public Duration getEnd() {
-		return End;
+		return end;
 	}
 
 	public void setEnd(Duration end) {
-		End = end;
+		endText.set(getDurationFormat(end));
+		this.end = end;
 	}
 
 	public HBox getHboxActions() {
@@ -115,46 +126,47 @@ public class FilterVLCViewModel implements Comparable<FilterVLCViewModel> {
 		this.hboxActions = hboxActions;
 	}
 
-	public Button getRemove() {
-		return Remove;
+	public Button getRemoveButton() {
+		return removeButton;
 	}
 
-	public void setRemove(Button remove) {
-		Remove = remove;
+	public void setRemoveButton(Button remove) {
+		removeButton = remove;
 	}
 
-	public Button getOpenEdit() {
-		return OpenEdit;
+	public Button getEditButton() {
+		return editButton;
 	}
 
-	public void setOpenEdit(Button openEdit) {
-		OpenEdit = openEdit;
+	public void setEditButton(Button openEdit) {
+		editButton = openEdit;
 	}
 
-	public String getShowStart() {
-		return ShowStart.get();
+	public Button getRunVLCButton() {
+		return runVLCButton;
 	}
 
-	public String getShowEnd() {
-		return ShowEnd.get();
+	public void setRunVLCButton(Button runVLC) {
+		runVLCButton = runVLC;
 	}
 
 	/**
 	 * @return the description
 	 */
 	public String getDescription() {
-		return Description.get();
+		return description.get();
 	}
 
-	public Button getRunVLC() {
-		return RunVLC;
+	public void setDescription(String string) {
+		description.set(string);
 	}
 
-	public void setRunVLC(Button runVLC) {
-		RunVLC = runVLC;
+	public String getStartText() {
+		return startText.get();
 	}
 
-	public void setDescription(String description) {
-		Description = new SimpleStringProperty(description);
+	public String getEndText() {
+		return endText.get();
 	}
+
 }

@@ -6,15 +6,15 @@ public class MediaCutData {
 	private String Title;
 
 	public MediaCutData(double start, double end, String title) {
-		this.Start = (int) start;
-		this.End = (int) end;
-		this.Title = title;
+		Start = (int) start;
+		End = (int) end;
+		Title = title;
 	}
 
-	public MediaCutData(String start, String end, String title) {
-		this.Start = Integer.parseInt(start);
-		this.End = Integer.parseInt(end);
-		this.Title = title;
+	public MediaCutData(String start, String end, String title) throws NumberFormatException {
+		Start = Integer.parseInt(start);
+		End = Integer.parseInt(end);
+		Title = title;
 	}
 
 	public int getStart() {

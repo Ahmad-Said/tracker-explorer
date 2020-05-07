@@ -1571,8 +1571,8 @@ public class ImageGridItem extends ImageView {
 		return noteLabel.getText();
 	}
 
-	public void setSeen(boolean isSeen) {
-		if (isSeen) {
+	public void setSeen(Boolean isSeen) {
+		if (isSeen != null && isSeen) {
 			getImageAllPane().setStyle("-fx-background-color: #DCEDC8;");
 		} else {
 			getImageAllPane().setStyle("");
