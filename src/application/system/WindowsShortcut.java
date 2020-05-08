@@ -1,4 +1,4 @@
-package application;
+package application.system;
 
 import java.io.ByteArrayOutputStream;
 import java.io.File;
@@ -8,6 +8,8 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.text.ParseException;
+
+import application.StringHelper;
 
 /**
  * Represents a Windows shortcut (typically visible to Java only as a '.lnk'

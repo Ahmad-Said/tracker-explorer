@@ -1,4 +1,4 @@
-package application;
+package application.system.services;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -17,9 +17,13 @@ import java.util.Scanner;
 
 import org.jetbrains.annotations.Nullable;
 
+import application.DialogHelper;
+import application.StringHelper;
 import application.controller.FilterVLCController;
 import application.datatype.MediaCutData;
 import application.datatype.Setting;
+import application.system.tracker.FileTracker;
+import application.system.tracker.FileTrackerHolder;
 import javafx.scene.control.Alert.AlertType;
 import javafx.util.Duration;
 

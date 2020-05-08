@@ -1,4 +1,4 @@
-package application.model;
+package application.datatype;
 
 import java.io.File;
 import java.util.LinkedList;

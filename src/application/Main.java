@@ -11,6 +11,9 @@ import java.util.Map;
 
 import application.controller.WelcomeController;
 import application.datatype.Setting;
+import application.system.operation.FileHelperGUIOperation;
+import application.system.services.TrackerPlayer;
+import application.system.tracker.FileTracker;
 import javafx.application.Application;
 import javafx.application.Platform;
 import javafx.event.EventHandler;

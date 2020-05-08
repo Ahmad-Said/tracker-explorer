@@ -3,7 +3,7 @@ package application.model;
 import java.nio.file.Path;
 
 import application.StringHelper;
-import application.SystemIconsHelper;
+import application.system.SystemIconsHelper;
 import javafx.scene.control.CheckBox;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;

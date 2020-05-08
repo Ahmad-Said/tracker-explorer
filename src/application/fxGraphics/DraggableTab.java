@@ -6,7 +6,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-import application.model.SplitViewState;
+import application.datatype.SplitViewState;
 import javafx.collections.ListChangeListener;
 import javafx.event.EventHandler;
 import javafx.geometry.Point2D;

@@ -1,4 +1,4 @@
-package application;
+package application.system;
 
 import java.io.File;
 import java.io.IOException;
@@ -11,6 +11,7 @@ import java.nio.file.WatchKey;
 import java.nio.file.WatchService;
 import java.util.concurrent.TimeUnit;
 
+import application.DialogHelper;
 import application.controller.splitview.SplitViewController;
 import javafx.application.Platform;
 

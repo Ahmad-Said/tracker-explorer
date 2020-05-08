@@ -4,9 +4,9 @@ import java.nio.file.Path;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadPoolExecutor;
 
-import application.SystemIconsHelper;
-import application.VLC;
 import application.controller.splitview.SplitViewController;
+import application.system.SystemIconsHelper;
+import application.system.services.VLC;
 import javafx.application.Platform;
 import javafx.beans.property.SimpleDoubleProperty;
 import javafx.beans.property.SimpleStringProperty;

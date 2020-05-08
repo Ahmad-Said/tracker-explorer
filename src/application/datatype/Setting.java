@@ -16,10 +16,10 @@ import java.util.Scanner;
 import java.util.stream.Collectors;
 
 import application.DialogHelper;
-import application.RunMenu;
 import application.StringHelper;
-import application.TeraCopy;
-import application.VLC;
+import application.system.call.RunMenu;
+import application.system.call.TeraCopy;
+import application.system.services.VLC;
 import javafx.scene.control.Alert.AlertType;
 
 public class Setting {

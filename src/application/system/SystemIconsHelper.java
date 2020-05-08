@@ -1,4 +1,4 @@
-package application;
+package application.system;
 
 import java.awt.image.BufferedImage;
 import java.io.File;

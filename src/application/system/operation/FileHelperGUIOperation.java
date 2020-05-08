@@ -1,4 +1,4 @@
-package application;
+package application.system.operation;
 
 import java.io.File;
 import java.io.IOException;
@@ -17,8 +17,11 @@ import java.util.concurrent.ThreadPoolExecutor;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 
-import application.FileHelper.ActionOperation;
+import application.DialogHelper;
+import application.Main;
 import application.datatype.Setting;
+import application.system.RecursiveFileWalker;
+import application.system.operation.FileHelper.ActionOperation;
 import javafx.application.Platform;
 import javafx.beans.value.ChangeListener;
 import javafx.beans.value.ObservableValue;

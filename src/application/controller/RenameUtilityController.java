@@ -18,14 +18,14 @@ import java.util.stream.Collectors;
 import org.apache.commons.io.FilenameUtils;
 
 import application.DialogHelper;
-import application.FileHelper;
-import application.FileHelper.ActionOperation;
-import application.FileTracker;
 import application.Main;
 import application.StringHelper;
-import application.WatchServiceHelper;
 import application.fxGraphics.IntField;
 import application.model.RenameUtilityViewModel;
+import application.system.WatchServiceHelper;
+import application.system.operation.FileHelper;
+import application.system.operation.FileHelper.ActionOperation;
+import application.system.tracker.FileTracker;
 import javafx.collections.FXCollections;
 import javafx.collections.ListChangeListener;
 import javafx.collections.ObservableList;

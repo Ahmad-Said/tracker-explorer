@@ -1,4 +1,4 @@
-package application;
+package application.system.call;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -7,6 +7,9 @@ import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
+
+import application.Main;
+import application.StringHelper;
 
 public class RunMenu {
 	private static File runmenuFile = new File(System.getenv("APPDATA") + "\\Tracker Explorer\\runmenu.exe");

@@ -1,4 +1,4 @@
-package application;
+package application.system.operation;
 
 import java.io.File;
 import java.io.IOException;
@@ -14,9 +14,15 @@ import java.util.stream.Collectors;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.FilenameUtils;
 
+import application.DialogHelper;
+import application.Main;
+import application.StringHelper;
 import application.controller.WelcomeController;
 import application.controller.splitview.SplitViewController;
 import application.datatype.Setting;
+import application.system.WatchServiceHelper;
+import application.system.call.TeraCopy;
+import application.system.tracker.FileTracker;
 import javafx.application.Platform;
 import javafx.event.Event;
 import javafx.event.EventHandler;

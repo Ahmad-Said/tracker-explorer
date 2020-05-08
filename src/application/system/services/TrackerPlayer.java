@@ -1,4 +1,4 @@
-package application;
+package application.system.services;
 
 import java.awt.Desktop;
 import java.awt.image.BufferedImage;
@@ -14,7 +14,12 @@ import java.util.List;
 import org.apache.commons.io.FileUtils;
 import org.jetbrains.annotations.Nullable;
 
+import application.DialogHelper;
+import application.Main;
+import application.StringHelper;
 import application.controller.SettingController;
+import application.system.SystemIconsHelper;
+import application.system.WindowsShortcut;
 import javafx.embed.swing.SwingFXUtils;
 import javafx.scene.image.Image;
 import javafx.stage.FileChooser;

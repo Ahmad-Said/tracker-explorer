@@ -11,14 +11,14 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 import application.DialogHelper;
-import application.FileHelper;
-import application.FileTracker;
 import application.Main;
 import application.StringHelper;
-import application.TeraCopy;
-import application.TrackerPlayer;
 import application.datatype.Setting;
 import application.fxGraphics.IntField;
+import application.system.call.TeraCopy;
+import application.system.operation.FileHelper;
+import application.system.services.TrackerPlayer;
+import application.system.tracker.FileTracker;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.event.ActionEvent;

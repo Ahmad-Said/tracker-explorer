@@ -9,9 +9,9 @@ import java.util.stream.Stream;
 
 import org.jetbrains.annotations.Nullable;
 
-import application.FileTracker;
-import application.FileTrackerMultipleReturn;
 import application.model.TableViewModel;
+import application.system.tracker.FileTracker;
+import application.system.tracker.FileTrackerMultipleReturn;
 import javafx.util.Pair;
 
 public class SplitViewTrackerAdapter {

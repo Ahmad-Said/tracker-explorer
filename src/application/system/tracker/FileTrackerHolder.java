@@ -1,9 +1,9 @@
-package application;
+package application.system.tracker;
 
 import java.util.ArrayList;
 
-import application.FileTracker.CommandOption;
 import application.datatype.MediaCutData;
+import application.system.tracker.FileTracker.CommandOption;
 
 /**
  * Used to hold File tracker data such as name, Seen status, notes...

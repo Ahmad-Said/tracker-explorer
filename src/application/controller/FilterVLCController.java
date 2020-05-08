@@ -8,13 +8,13 @@ import java.util.Collections;
 import java.util.List;
 
 import application.DialogHelper;
-import application.FileTracker;
-import application.FileTrackerHolder;
 import application.Main;
-import application.VLC;
 import application.controller.splitview.SplitViewController;
 import application.datatype.MediaCutData;
 import application.model.FilterVLCViewModel;
+import application.system.services.VLC;
+import application.system.tracker.FileTracker;
+import application.system.tracker.FileTrackerHolder;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.event.ActionEvent;
