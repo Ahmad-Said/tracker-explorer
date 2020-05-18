@@ -3,7 +3,6 @@ package application.controller;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.FileAlreadyExistsException;
-import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -16,6 +15,9 @@ import application.Main;
 import application.StringHelper;
 import application.datatype.ImagePosition;
 import application.fxGraphics.ImageGridItem;
+import application.system.file.PathLayer;
+import application.system.file.PathLayerHelper;
+import application.system.file.local.FilePathLayer;
 import application.system.operation.FileHelper;
 import application.system.operation.FileHelper.ActionOperation;
 import application.system.tracker.FileTracker;
@@ -164,7 +166,7 @@ public class PhotoViewerController {
 	private FileTracker fileTracker;
 	private Stage photoStage;
 
-	private List<File> ImgResources;
+	private List<PathLayer> ImgResources;
 	private Integer rollerPhoto = 0;
 
 	/**
@@ -172,11 +174,11 @@ public class PhotoViewerController {
 	 * size so after setting this viewport rectangle it will be scaled to imageView
 	 * where image is being shown.
 	 *
-	 * @param imgResources
-	 * @param selectedImg
+	 * @param list
+	 * @param filePath
 	 * @param welcomeToRefreshCanNull
 	 */
-	public PhotoViewerController(List<File> imgResources, File selectedImg, WelcomeController welcomeToRefreshCanNull) {
+	public PhotoViewerController(List<PathLayer> list, PathLayer filePath, WelcomeController welcomeToRefreshCanNull) {
 		try {
 			photoStage = new Stage();
 			Parent root;
@@ -188,17 +190,25 @@ public class PhotoViewerController {
 			scene.getStylesheets().add("/css/bootstrap3.css");
 			photoStage.getIcons().add(new Image(Main.class.getResourceAsStream("/img/photo_Icon.png")));
 
-			photoStage.setTitle("Photo Viewer " + selectedImg.getName());
+			photoStage.setTitle("Photo Viewer " + filePath.getName());
 			photoStage.setScene(scene);
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
-		File directory = selectedImg.getParentFile();
-		if (imgResources == null || imgResources.size() <= 1) {
-			imgResources = getImgFilesInDir(directory);
+		PathLayer directory = filePath.getParentPath();
+		if (list == null || list.size() <= 1) {
+			try {
+				list = getImgFilesInDir(directory);
+			} catch (IOException e) {
+				e.printStackTrace();
+				if (list == null) {
+					list = new ArrayList<>();
+					list.add(filePath);
+				}
+			}
 		}
-		ImgResources = imgResources;
-		rollerPhoto = imgResources.indexOf(selectedImg);
+		ImgResources = list;
+		rollerPhoto = list.indexOf(filePath);
 		initializeButtons();
 		initializeFileTracker(welcomeToRefreshCanNull);
 		photoStage.setOnCloseRequest(new EventHandler<WindowEvent>() {
@@ -219,7 +229,7 @@ public class PhotoViewerController {
 
 		initializeGridImagesPane();
 
-		changeImage(selectedImg);
+		changeImage(filePath);
 
 		gridImagesPane.requestFocus();
 
@@ -240,9 +250,9 @@ public class PhotoViewerController {
 	}
 
 	private void initializeFileTracker(WelcomeController welcomeCon) {
-		fileTracker = new FileTracker(null, welcomeCon == null ? null
-				: writtenPath -> welcomeCon.refreshAllSplitViewsIfMatch(writtenPath.toFile(), null));
-		FileHelper.getParentsPaths(ImgResources).forEach(parent -> {
+		fileTracker = new FileTracker(null,
+				welcomeCon == null ? null : writtenPath -> welcomeCon.refreshAllSplitViewsIfMatch(writtenPath, null));
+		PathLayerHelper.getParentsPaths(ImgResources).forEach(parent -> {
 			fileTracker.loadResolvedMapOrEmpty(parent);
 		});
 	}
@@ -265,8 +275,8 @@ public class PhotoViewerController {
 			nameImage.setText(gridItem.getImageFile().getName());
 			widthPx.setText(gridItem.getOriginalImageDim().getWidth() + " Px");
 			heightPx.setText(gridItem.getOriginalImageDim().getHeight() + " Px");
-			sizeMb.setText(String.format("%.2f", gridItem.getImageFile().length() / 1024.0 / 1024.0) + " MB");
-			Path key = gridItem.getImageFile().toPath();
+			sizeMb.setText(String.format("%.2f", gridItem.getImageFile().getSize() / 1024.0 / 1024.0) + " MB");
+			PathLayer key = gridItem.getImageFile();
 			updateMarkSeen(fileTracker.isSeen(key));
 			noteInput.setText(fileTracker.getNoteText(key));
 			if (!gridItem.getImageAllPane().isFocused()) {
@@ -301,16 +311,17 @@ public class PhotoViewerController {
 			public void handle(DragEvent event) {
 				Dragboard db = event.getDragboard();
 				if (db.hasFiles()) {
-					FileHelper.getParentsPaths(db.getFiles()).forEach(parent -> {
+					PathLayerHelper.getParentsFiles(db.getFiles()).forEach(parent -> {
 						fileTracker.loadResolvedMapOrEmpty(parent);
 					});
-					if (db.getFiles().size() == 1 && ImgResources.contains(db.getFiles().get(0))) {
-						changeImage(db.getFiles().get(0));
+					if (db.getFiles().size() == 1 && ImgResources.contains(new FilePathLayer(db.getFiles().get(0)))) {
+						changeImage(new FilePathLayer(db.getFiles().get(0)));
 					} else {
 						db.getFiles().forEach(file3 -> {
-							if (ArrayIMGExt.contains(StringHelper.getExtention(file3.getName()))
-									&& !ImgResources.contains(file3)) {
-								ImgResources.add(rollerPhoto, file3);
+							FilePathLayer filePath = new FilePathLayer(file3);
+							if (ArrayIMGExt.contains(filePath.getExtensionUPPERCASE())
+									&& !ImgResources.contains(filePath)) {
+								ImgResources.add(rollerPhoto, filePath);
 							}
 						});
 					}
@@ -330,10 +341,12 @@ public class PhotoViewerController {
 			case F:
 			case D:
 				nextImage();
+				key.consume();
 				break;
 			case LEFT:
 			case A:
 				previousImage();
+				key.consume();
 				break;
 			case SPACE:
 				toggleSeen();
@@ -341,9 +354,11 @@ public class PhotoViewerController {
 				break;
 			case N:
 				Platform.runLater(() -> noteInput.requestFocus());
+				key.consume();
 				break;
 			case F2:
 			case M:
+				key.consume();
 				Platform.runLater(() -> {
 					nameImage.requestFocus();
 					nameImage.selectRange(0, nameImage.getText().lastIndexOf('.'));
@@ -362,6 +377,11 @@ public class PhotoViewerController {
 		gridRowSize = newGridRowSize;
 		gridColumnSize = newGridColumnSize;
 		gridSize = newGridColumnSize * newGridRowSize;
+		if (gridSize > 1) {
+			initialGridItem.getImageAllPane().getStyleClass().add("onFocusBorder");
+		} else {
+			initialGridItem.getImageAllPane().getStyleClass().removeAll("onFocusBorder");
+		}
 		limitGridSize();
 		gridImagesPane.getChildren().clear();
 		int allGridIndex = 0;
@@ -482,12 +502,10 @@ public class PhotoViewerController {
 			if (gridSize != 1) {
 				gridSwitchButton.setUserData(new Pair<Integer, Integer>(gridRowSize, gridColumnSize));
 				resizeGridImagesPane(1, 1);
-				initialGridItem.getImageAllPane().getStyleClass().removeAll("onFocusBorder");
 			} else {
 				@SuppressWarnings("unchecked")
 				Pair<Integer, Integer> rowSize = (Pair<Integer, Integer>) gridSwitchButton.getUserData();
 				resizeGridImagesPane(rowSize.getKey(), rowSize.getValue());
-				initialGridItem.getImageAllPane().getStyleClass().add("onFocusBorder");
 			}
 		});
 		increaseGridSize.setOnAction(e -> resizeGridImagesPane(gridRowSize + 1, gridColumnSize + 1));
@@ -591,25 +609,20 @@ public class PhotoViewerController {
 		}
 	}
 
-	@FXML
-	private void fitWidth() {
-		// TODO fit width all grid items
-	}
-
-	private List<File> getImgFilesInDir(File parent) {
+	private List<PathLayer> getImgFilesInDir(PathLayer parent) throws IOException {
 		// https://stackoverflow.com/questions/2965747/why-do-i-get-an-unsupportedoperationexception-when-trying-to-remove-an-element-f
-		return Arrays.asList(parent.listFiles(p -> ArrayIMGExt.contains(StringHelper.getExtention(p.getName()))))
-				.stream().sorted(new StringHelper.NaturalFileComparator()).collect(Collectors.toList());
+		return parent.listNoHiddenPathLayers().stream().filter(p -> ArrayIMGExt.contains(p.getExtensionUPPERCASE()))
+				.sorted(StringHelper.NaturalFileComparator).collect(Collectors.toList());
 	}
 
 	// whenever images are fully loaded or not
-	private HashMap<File, Pair<Image, Boolean>> cachedImage = new HashMap<>();
-	private HashMap<File, ImagePosition> cachedImagePositon = new HashMap<File, ImagePosition>();
-	private HashMap<File, Dimension2D> cachedImageDimension = new HashMap<File, Dimension2D>();
+	private HashMap<PathLayer, Pair<Image, Boolean>> cachedImage = new HashMap<>();
+	private HashMap<PathLayer, ImagePosition> cachedImagePositon = new HashMap<>();
+	private HashMap<PathLayer, Dimension2D> cachedImageDimension = new HashMap<>();
 	private ImageGridItem lastSelectedGridItem = null;
 	private EventHandler<Event> onSetUpImage = e -> selectImageGrid(lastSelectedGridItem);
 
-	private void changeImage(File selectedImg) {
+	private void changeImage(PathLayer selectedImg) {
 		// When finish setup image do focus on target image
 		if (lastSelectedGridItem != null) {
 			lastSelectedGridItem.setOnSetUpImage(null);
@@ -637,7 +650,7 @@ public class PhotoViewerController {
 		int end = Math.min(ImgResources.size(), start + gridSize);
 		int gridIndex = 0;
 		for (int i = start; i < end && i < ImgResources.size(); i++) {
-			File toLoadImageFile = ImgResources.get(i);
+			PathLayer toLoadImageFile = ImgResources.get(i);
 			// check existence
 			if (!toLoadImageFile.exists()) {
 				cachedImage.remove(toLoadImageFile);
@@ -667,7 +680,7 @@ public class PhotoViewerController {
 				cachedImageDimension.put(toLoadImageFile, new Dimension2D(gridItem.getOriginalImageDim().getWidth(),
 						gridItem.getOriginalImageDim().getHeight()));
 			}
-			Path key = toLoadImageFile.toPath();
+			PathLayer key = toLoadImageFile;
 			Boolean isSeen = fileTracker.isSeen(key);
 			String toolTip = fileTracker.getNoteText(key);
 			gridItem.setSeen(isSeen);
@@ -725,16 +738,16 @@ public class PhotoViewerController {
 
 	@FXML
 	private void renameImage() {
-		final File curImage = ImgResources.get(rollerPhoto);
+		final PathLayer curImage = ImgResources.get(rollerPhoto);
 		if (nameImage.getText().isEmpty()) {
 			DialogHelper.showAlert(AlertType.ERROR, "Rename", "Name cannot be empty", "");
 			nameImage.setText(curImage.getName());
 			return;
 		}
-		Path oldPath = curImage.toPath();
-		Path newPath = null;
-		Path oldconflictPath = null;
-		Path newconflictPath = null;
+		PathLayer oldPath = curImage;
+		PathLayer newPath = null;
+		PathLayer oldconflictPath = null;
+		PathLayer newconflictPath = null;
 
 		if (!nameImage.getText().equals(curImage.getName())) {
 			try {
@@ -744,7 +757,7 @@ public class PhotoViewerController {
 						"File Already exist with such name!!",
 						"Do you want to rename the other file? \n So we can retry renaming this File..");
 				if (ans) {
-					oldconflictPath = curImage.toPath().resolveSibling(nameImage.getText());
+					oldconflictPath = curImage.resolveSibling(nameImage.getText());
 					newconflictPath = FileHelper.rename(oldconflictPath, false);
 					try {
 						newPath = FileHelper.RenameHelper(oldPath, nameImage.getText());
@@ -765,33 +778,22 @@ public class PhotoViewerController {
 		}
 		boolean isOtherRename = oldconflictPath != null && newconflictPath != null;
 		boolean isCurrentRename = newPath != null && oldPath != null;
-		fileTracker.getMapDetailsRevolved()
-				.putAll(FileTracker.operationUpdateAsList(Arrays.asList(oldconflictPath, oldPath),
-						Arrays.asList(newconflictPath, newPath), ActionOperation.RENAME));
-		// remember that options 0 in map details is name to be changed
+
+		// conserving tracker data
+		fileTracker.getMapDetails().putAll(FileTracker.operationUpdateAsList(Arrays.asList(oldconflictPath, oldPath),
+				Arrays.asList(newconflictPath, newPath), ActionOperation.RENAME));
+
 		if (isOtherRename) {
-//			Path parentDir = oldconflictPath.getParent();
 			// updating list of images sources in photo explorer
-			ImgResources.set(ImgResources.indexOf(oldconflictPath.toFile()), newconflictPath.toFile());
-
-//			// conserving tracker data
-//			if (mFileTracker.isTrackedOutFolder(parentDir)) {
-//				mFileTracker.operationUpdate(oldconflictPath, oldconflictPath.toFile().getName(),
-//						newconflictPath.toFile().getName());
-//			}
+			ImgResources.set(ImgResources.indexOf(oldconflictPath), newconflictPath);
 		}
 		if (isCurrentRename) {
-//			Path parentDir = newPath.getParent();
-			ImgResources.set(ImgResources.indexOf(oldPath.toFile()), newPath.toFile());
-//			// conserving tracker data
-//			if (mFileTracker.isTrackedOutFolder(parentDir)) {
-//				mFileTracker.operationUpdate(oldPath, oldPath.toFile().getName(), newPath.toFile().getName());
-//			}
+			ImgResources.set(ImgResources.indexOf(oldPath), newPath);
 		}
 
-		final Path path = newPath;
+		final PathLayer path = newPath;
 		if (isCurrentRename) {
-			changeImage(path.toFile());
+			changeImage(path);
 		} else {
 			requestFocusOnRollerToGetBorder();
 		}
@@ -801,10 +803,10 @@ public class PhotoViewerController {
 		boolean ans;
 		ans = FileTracker.getAns();
 		if (ans) {
-			Path parentPath = ImgResources.get(rollerPhoto).toPath().getParent();
+			PathLayer parentPath = ImgResources.get(rollerPhoto).getParentPath();
 			try {
 				if (fileTracker.trackNewOutFolder(parentPath)) {
-					fileTracker.loadMap(parentPath, false);
+					fileTracker.loadMap(parentPath, false, null);
 				}
 			} catch (IOException e) {
 				e.printStackTrace();
@@ -816,14 +818,14 @@ public class PhotoViewerController {
 
 	@FXML
 	private void addNoteImage() {
-		File curFile = ImgResources.get(rollerPhoto);
-		Path parentPath = curFile.toPath().getParent();
+		PathLayer curFile = ImgResources.get(rollerPhoto);
+		PathLayer parentPath = curFile.getParentPath();
 		if (!FileTracker.isTrackedOutFolder(parentPath) && !untrackedBehavior()) {
 			return;
 		}
 		String note = noteInput.getText();
-		fileTracker.getMapDetailsRevolved().get(curFile.toPath()).setNoteText(note);
-		fileTracker.commitTrackerDataChange(curFile.toPath());
+		fileTracker.getMapDetails().get(curFile).setNoteText(note);
+		fileTracker.commitTrackerDataChange(curFile);
 		allGridItems.get(rollerPhoto % gridSize).setNoteLabel(note);
 		if (!note.isEmpty()) {
 			allGridItems.get(rollerPhoto % gridSize).showNoteLabel();
@@ -852,8 +854,8 @@ public class PhotoViewerController {
 
 	@FXML
 	private void toggleSeen() {
-		Path curFile = ImgResources.get(rollerPhoto).toPath();
-		Path parentPath = curFile.getParent();
+		PathLayer curFile = ImgResources.get(rollerPhoto);
+		PathLayer parentPath = curFile.getParentPath();
 		if (!FileTracker.isTrackedOutFolder(parentPath) && !untrackedBehavior()) {
 			return;
 		}

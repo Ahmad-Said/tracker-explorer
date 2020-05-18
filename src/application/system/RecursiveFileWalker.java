@@ -2,63 +2,68 @@ package application.system;
 
 import java.io.IOException;
 import java.nio.file.FileVisitResult;
-import java.nio.file.FileVisitor;
-import java.nio.file.Path;
-import java.nio.file.attribute.BasicFileAttributes;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Set;
+import java.util.Stack;
 
 import application.datatype.Setting;
+import application.system.file.PathLayer;
+import application.system.file.PathLayerHelper;
+import application.system.file.PathLayerVisitor;
 
-public class RecursiveFileWalker implements FileVisitor<Path> {
+/**
+ * @see PathLayerHelper#walkFileTree(PathLayer, int, boolean, PathLayerVisitor)
+ */
+public class RecursiveFileWalker implements PathLayerVisitor<PathLayer> {
 
 	private long filesCount;
-	private Set<Path> Parent = new HashSet<>();
-	private Set<Path> allFiles = new HashSet<>();
-	private boolean GetFiles;
+	private HashMap<PathLayer, ArrayList<PathLayer>> directoriesToFiles = new HashMap<>();
+	private HashSet<PathLayer> directories = new HashSet<>();
+	/** Temporary data */
+	private Stack<PathLayer> rootDirListing = new Stack<>();
 
 	public RecursiveFileWalker() {
-		// TODO Auto-generated constructor stub
-	}
-
-	public RecursiveFileWalker(boolean doGetFiles) {
-		GetFiles = doGetFiles;
 	}
 
 	@Override
-	public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs) throws IOException {
+	public FileVisitResult preVisitDirectory(PathLayer dir) throws IOException {
 		// this is used because later we gonna sort them as depth
 		// getNameCount() return the depth of current file
 		// so it is useless to go further if there exist more files than to show
 		// but it is important to define all node to make bfs work correctly
+		if (rootDirListing.size() != 0) {
+			directoriesToFiles.get(rootDirListing.peek()).add(dir);
+		}
+		rootDirListing.push(dir);
+		directoriesToFiles.put(dir, new ArrayList<>());
 		if (filesCount > Setting.getMaxLimitFilesRecursive()) {
 			if (dir.getNameCount() > Setting.getMaxDepthFilesRecursive()) {
 				return FileVisitResult.SKIP_SIBLINGS;
+			} else {
+				directories.add(dir);
 			}
+		} else {
+			directories.add(dir);
 		}
 		return FileVisitResult.CONTINUE;
 	}
 
 	@Override
-	public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
-		// This is where I need my logic
-		Parent.add(file.getParent());
-		// check later if it impact speed
-		if (GetFiles) {
-			allFiles.add(file);
-		}
-		filesCount++;
+	public FileVisitResult visitFile(PathLayer file) throws IOException {
+		directoriesToFiles.get(rootDirListing.peek()).add(file);
 		return FileVisitResult.CONTINUE;
 	}
 
 	@Override
-	public FileVisitResult visitFileFailed(Path file, IOException exc) throws IOException {
-		// This is important to note. Test this behaviour
+	public FileVisitResult visitFileFailed(PathLayer file, IOException exc) throws IOException {
+		// This is important to note. Test this behavior
 		return FileVisitResult.CONTINUE;
 	}
 
 	@Override
-	public FileVisitResult postVisitDirectory(Path dir, IOException exc) throws IOException {
+	public FileVisitResult postVisitDirectory(PathLayer dir, IOException exc) throws IOException {
+		rootDirListing.pop();
 		return FileVisitResult.CONTINUE;
 	}
 
@@ -66,11 +71,14 @@ public class RecursiveFileWalker implements FileVisitor<Path> {
 		return filesCount;
 	}
 
-	public Set<Path> getParent() {
-		return Parent;
+	public HashSet<PathLayer> getDirectories() {
+		return directories;
 	}
 
-	public Set<Path> getAllFiles() {
-		return allFiles;
+	/**
+	 * @return the directoriesToFiles
+	 */
+	public HashMap<PathLayer, ArrayList<PathLayer>> getDirectoriesToFiles() {
+		return directoriesToFiles;
 	}
 }

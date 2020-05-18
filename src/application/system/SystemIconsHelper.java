@@ -68,10 +68,12 @@ public class SystemIconsHelper {
 		File file = new File(filePath);
 		if (file.isFile() && ext == ".") {
 			ext = ".SomethingNotAnextention";
+		} else if (file.isDirectory()) {
+			ext = ".SomethingADirectory";
 		}
 
-		// resolving same name extension with different icon
-		if (Setting.getLoadAllIcon()) {
+		// resolving local files same name extension with different icon
+		if (Setting.getLoadAllIcon() && !filePath.startsWith("\\\\")) {
 			if (ext.equals(".exe") || ext.equals(".lnk")) {
 				ext = file.getName();
 			}
@@ -83,8 +85,7 @@ public class SystemIconsHelper {
 					ext = file.getName();
 				} else {
 					// check if it was a root
-					File filep = new File(filePath);
-					if (filep.toPath().getNameCount() == 0) {
+					if (file.toPath().getNameCount() == 0) {
 						ext = "root" + id++;
 					}
 				}

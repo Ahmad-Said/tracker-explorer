@@ -5,7 +5,6 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.List;
 
 import application.Main;
@@ -19,8 +18,9 @@ public class RunMenu {
 
 			// ensure directory is present
 			File dirsetting = new File(System.getenv("APPDATA") + "\\Tracker Explorer");
-			if (!dirsetting.exists())
+			if (!dirsetting.exists()) {
 				Files.createDirectory(dirsetting.toPath());
+			}
 
 			// copying resources somewhere on the system
 			InputStream is = Main.class.getResourceAsStream("/resources/runmenu.exe");
@@ -36,13 +36,13 @@ public class RunMenu {
 		}
 	}
 
-	public static void showMenu(List<Path> paths) {
-		String[] cmdArray = new String[paths.size() + 2];
+	public static void showMenu(List<File> toShow) {
+		String[] cmdArray = new String[toShow.size() + 2];
 		int j = 0;
 		cmdArray[j++] = runmenuFile.toString();
 		cmdArray[j++] = "/show";
-		for (Path path : paths) {
-			cmdArray[j++] = path.toAbsolutePath().toString();
+		for (File path : toShow) {
+			cmdArray[j++] = path.getAbsolutePath();
 		}
 		// https://stackoverflow.com/questions/1105085/runtime-exec-with-absolute-directory
 		StringHelper.RunRuntimeProcess(cmdArray);

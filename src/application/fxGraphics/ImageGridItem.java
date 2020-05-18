@@ -14,6 +14,7 @@ import java.awt.image.WritableRaster;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
+import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
@@ -29,6 +30,9 @@ import application.Main;
 import application.StringHelper;
 import application.datatype.ImagePosition;
 import application.system.call.RunMenu;
+import application.system.file.PathLayer;
+import application.system.file.PathLayerHelper;
+import application.system.file.local.FilePathLayer;
 import javafx.application.Platform;
 import javafx.beans.property.ObjectProperty;
 import javafx.beans.property.SimpleObjectProperty;
@@ -144,7 +148,7 @@ public class ImageGridItem extends ImageView {
 
 	boolean isInCropMode = false;
 	private Image lastBackUpCroppedImage = null;
-	private File lastBackUpCroppedFile = null;
+	private PathLayer lastBackUpCroppedFile = null;
 	private RubberBandSelection rubberBandSelection = null;
 
 	// for a faster switch we don't need to define method each time
@@ -162,7 +166,7 @@ public class ImageGridItem extends ImageView {
 	private double height;
 	private double deltaW;
 	private double deltaH;
-	private File imageFile;
+	private PathLayer imageFile;
 
 	// zoom idea source : https://gist.github.com/james-d/ce5ec1fd44ce6c64e81a
 	private static int MIN_PIXELS = 100;
@@ -324,8 +328,12 @@ public class ImageGridItem extends ImageView {
 			Dragboard db = dragThisPhoto.startDragAndDrop(TransferMode.ANY);
 			ClipboardContent cb = new ClipboardContent();
 			List<File> selectedFiles = new ArrayList<>();
-			selectedFiles.add(imageFile);
-			cb.putFiles(selectedFiles);
+			if (imageFile.isLocal()) {
+				selectedFiles.add(imageFile.toFileIfLocal());
+				cb.putFiles(selectedFiles);
+			} else {
+				cb.putString(PathLayerHelper.ON_DROP_URI_OPERATION_KEY + "\n" + imageFile.toURI());
+			}
 			db.setContent(cb);
 		});
 		dragThisPhoto.setStyle("-fx-font-weight:bold");
@@ -364,8 +372,8 @@ public class ImageGridItem extends ImageView {
 	 * @return the loaded image as {@link Pair#getKey()} of the pair <br>
 	 *         and fully loaded or not as {@link Pair#getValue()}
 	 */
-	public Pair<Image, Boolean> setImageAndSetup(File file, ImagePosition positionImg) {
-		return setImageAndSetup(file.toURI().toString(), false, true, positionImg);
+	public Pair<Image, Boolean> setImageAndSetup(PathLayer file, ImagePosition positionImg) {
+		return setImageAndSetup(file.toURI().toString(), false, true, positionImg, file);
 	}
 
 	/**
@@ -380,15 +388,15 @@ public class ImageGridItem extends ImageView {
 	 * @return the loaded image as {@link Pair#getKey()} of the pair <br>
 	 *         and fully loaded or not as {@link Pair#getValue()}
 	 */
-	public Pair<Image, Boolean> setImageAndSetup(File file, boolean loadFullImage, boolean showLoadingBar,
+	public Pair<Image, Boolean> setImageAndSetup(PathLayer file, boolean loadFullImage, boolean showLoadingBar,
 			ImagePosition positionImg) {
-		return setImageAndSetup(file.toURI().toString(), loadFullImage, showLoadingBar, positionImg);
+		return setImageAndSetup(file.toURI().toString(), loadFullImage, showLoadingBar, positionImg, file);
 	}
 
 	// if setUpimage is called multiple times consecutively
 	// ensure that only last image is shown up and do not add
 	// loading bar multiple times
-	private long loadInThisCall = Long.MIN_VALUE;
+	private long displayInThisCall = Long.MIN_VALUE;
 
 	/**
 	 * if you desire to cache image using this function also do cache
@@ -402,14 +410,24 @@ public class ImageGridItem extends ImageView {
 	 *         and fully loaded or not as {@link Pair#getValue()}
 	 */
 	public Pair<Image, Boolean> setImageAndSetup(String url, boolean loadFullImage, boolean showLoadingBar,
-			ImagePosition positionImg) {
+			ImagePosition positionImg, PathLayer imageFileFromUrlCanBeNull) {
 		// https://gist.github.com/jewelsea/2556122
 		// load an image in the background.
 		isFullyLoaded = false;
 		int requestWidth = 0;
 		int requestHeight = 0;
+
+		if (imageFileFromUrlCanBeNull == null) {
+			try {
+				imageFileFromUrlCanBeNull = PathLayerHelper.parseURI(url);
+			} catch (URISyntaxException e) {
+				e.printStackTrace();
+				return new Pair<Image, Boolean>(null, null);
+			}
+		}
 		try {
-			try (ImageInputStream in = ImageIO.createImageInputStream(StringHelper.parseUriToPath(url).toFile())) {
+			try (ImageInputStream in = ImageIO
+					.createImageInputStream(imageFileFromUrlCanBeNull.toFileIfLocalOrAsCopy(true).getFile())) {
 				final Iterator<ImageReader> readers = ImageIO.getImageReaders(in);
 				if (readers.hasNext()) {
 					ImageReader reader = readers.next();
@@ -441,8 +459,7 @@ public class ImageGridItem extends ImageView {
 			isFullyLoaded = true;
 		}
 		Image newImage = new Image(url, requestWidth, requestHeight, true, true, true);
-		setImageAndSetup(newImage, StringHelper.parseUriToPath(url).toFile(), isFullyLoaded, positionImg,
-				showLoadingBar);
+		setImageAndSetup(newImage, imageFileFromUrlCanBeNull, isFullyLoaded, positionImg, showLoadingBar);
 		return new Pair<Image, Boolean>(newImage, isFullyLoaded);
 	}
 
@@ -457,7 +474,7 @@ public class ImageGridItem extends ImageView {
 	 *         and fully loaded or not as {@link Pair#getValue()}
 	 */
 	public Pair<Image, Boolean> setImageAndSetup(String url, ImagePosition positionImg) {
-		return setImageAndSetup(url, false, true, positionImg);
+		return setImageAndSetup(url, false, true, positionImg, null);
 	}
 
 	/**
@@ -467,7 +484,7 @@ public class ImageGridItem extends ImageView {
 	 * @param imageFile   image file
 	 * @param positionImg
 	 */
-	public void setImageAndSetup(Image image, File imageFile, boolean isFullyLoaded, ImagePosition positionImg) {
+	public void setImageAndSetup(Image image, PathLayer imageFile, boolean isFullyLoaded, ImagePosition positionImg) {
 		setImageAndSetup(image, imageFile, isFullyLoaded, positionImg, true);
 	}
 
@@ -479,7 +496,7 @@ public class ImageGridItem extends ImageView {
 	 * @param positionImg
 	 * @param showLoadingBar
 	 */
-	public void setImageAndSetup(Image newImage, File imageFile, boolean isFullyLoaded, ImagePosition positionImg,
+	public void setImageAndSetup(Image newImage, PathLayer imageFile, boolean isFullyLoaded, ImagePosition positionImg,
 			boolean showLoadingBar) {
 		// only changed after do load full image or when rotating/croping image
 		didImageChanged = false;
@@ -487,7 +504,7 @@ public class ImageGridItem extends ImageView {
 		if (newImage.progressProperty().get() == 1) {
 			finalizeSetUpImage(newImage, imageFile, positionImg);
 		} else {
-			long currentCall = ++loadInThisCall;
+			long currentCall = ++displayInThisCall;
 			if (showLoadingBar) {
 
 				if (imagePane.getChildren().contains(loadingPane)) {
@@ -509,7 +526,7 @@ public class ImageGridItem extends ImageView {
 					@Override
 					public void changed(ObservableValue<? extends Boolean> observable, Boolean oldValue,
 							Boolean imageError) {
-						if (imageError && currentCall == loadInThisCall) {
+						if (imageError && currentCall == displayInThisCall) {
 							statusLabel.setText("Oh-oh there was an error loading: \n" + imageFile);
 							statusLabel.setStyle("-fx-text-fill: firebrick;");
 							imagePane.getChildren().remove(loadingPane);
@@ -523,7 +540,7 @@ public class ImageGridItem extends ImageView {
 					@Override
 					public void changed(ObservableValue<? extends Number> observable, Number oldValue,
 							Number progress) {
-						if ((Double) progress == 1.0 && !newImage.isError() && currentCall == loadInThisCall) {
+						if ((Double) progress == 1.0 && !newImage.isError() && currentCall == displayInThisCall) {
 							statusLabel.setText("Loading complete");
 							statusLabel.setStyle("-fx-text-fill: forestgreen;");
 							imagePane.getChildren().remove(loadingPane);
@@ -542,6 +559,9 @@ public class ImageGridItem extends ImageView {
 							Number progress) {
 						if ((Double) progress == 1.0 && !newImage.isError()) {
 							finalizeSetUpImage(newImage, imageFile, positionImg);
+							if (onFinishLoading != null) {
+								onFinishLoading.handle(null);
+							}
 						}
 					}
 
@@ -560,7 +580,7 @@ public class ImageGridItem extends ImageView {
 	 * @param imageFile
 	 * @param positionImg
 	 */
-	private void finalizeSetUpImage(Image image, File imageFile, ImagePosition positionImg) {
+	private void finalizeSetUpImage(Image image, PathLayer imageFile, ImagePosition positionImg) {
 		this.imageFile = imageFile;
 		nameLabel.setText(imageFile.getName());
 		setImage(image);
@@ -581,15 +601,19 @@ public class ImageGridItem extends ImageView {
 		}
 		resetCenter();
 		if (MantaingPos && positionImg != null) {
-			zoomSlider_setValue(positionImg.getZoomLvl());
-			xSlider_setValue(positionImg.getxLvl());
-			ySlider_setValue(positionImg.getyLvl());
+			setPosition(positionImg);
 		} else if (AutoFitWidth) {
 			fitWidth();
 		}
 		if (onSetUpImage != null) {
 			onSetUpImage.handle(null);
 		}
+	}
+
+	public void setPosition(ImagePosition positionImg) {
+		zoomSlider_setValue(positionImg.getZoomLvl());
+		xSlider_setValue(positionImg.getxLvl());
+		ySlider_setValue(positionImg.getyLvl());
 	}
 
 	private void initializeImageView() {
@@ -696,7 +720,9 @@ public class ImageGridItem extends ImageView {
 
 		setOnMouseClicked(e -> {
 			if (e.getButton().equals(MouseButton.SECONDARY)) {
-				RunMenu.showMenu(Arrays.asList(imageFile.toPath()));
+				if (imageFile.isLocal()) {
+					RunMenu.showMenu(Arrays.asList(imageFile.toFileIfLocal()));
+				}
 			} else {
 				if (e.getClickCount() % 2 == 0 && isDoubleClickBehavior()) {
 					Rectangle2D viewPort = getViewport();
@@ -1084,10 +1110,12 @@ public class ImageGridItem extends ImageView {
 			try {
 				Platform.runLater(() -> DialogHelper.showWaitingScreen("Please Wait.. Processing", "Rotating Image.."));
 				BufferedImage buffImg = null;
-				buffImg = ImageIO.read(imageFile);
+				FilePathLayer newImageFile = imageFile.toFileIfLocalOrAsCopy(true);
+				buffImg = ImageIO.read(newImageFile.getFile());
 				buffImg = getRotatedImage(buffImg, 90); // or other angle if needed be
-				File newImageFile = imageFile;
-				ImageIO.write(buffImg, StringHelper.getExtention(imageFile.getName()), newImageFile);
+				imageFile.delete();
+				ImageIO.write(buffImg, imageFile.getExtensionUPPERCASE(), newImageFile.getFile());
+				newImageFile.move(imageFile);
 				Platform.runLater(() -> {
 //					imageView.setRotate(imageView.getRotate() - 90);
 					setImageAndSetup(imageFile, null);
@@ -1106,18 +1134,17 @@ public class ImageGridItem extends ImageView {
 	private void deleteIMG() {
 		boolean ans = DialogHelper.showConfirmationDialog("Delete " + imageFile.getName(),
 				"Are you Sure you want to delete " + imageFile.getName() + " ?",
-				"Name:\n\t" + imageFile.getName() + "\nLocated in:\n\t" + imageFile.getParent().toString());
+				"Name:\n\t" + imageFile.getName() + "\nLocated in:\n\t" + imageFile.getParentPath().toString());
 		if (ans) {
-			deleteAndRemoveImage(imageFile);
+			try {
+				imageFile.delete();
+				setImage(null);
+				imageFile = null;
+			} catch (IOException e) {
+				e.printStackTrace();
+				DialogHelper.showException(e);
+			}
 		}
-	}
-
-	private void deleteAndRemoveImage(File img) {
-		if (img.exists()) {
-			img.delete();
-		}
-		setImage(null);
-		imageFile = null;
 	}
 
 //	@FXML
@@ -1161,6 +1188,11 @@ public class ImageGridItem extends ImageView {
 
 			// RubberBand selection
 			rubberBandSelection = new RubberBandSelection(imageLayer, this);
+			EventHandler<Event> recentOnFinishLoading = onFinishLoading;
+			onFinishLoading = e -> {
+				selectAllImage();
+				onFinishLoading = recentOnFinishLoading;
+			};
 			isInCropMode = true;
 			requestFocus();
 		} else {
@@ -1231,7 +1263,7 @@ public class ImageGridItem extends ImageView {
 		th.start();
 	}
 
-	private void crop(Bounds bounds, File outFile) {
+	private void crop(Bounds bounds, PathLayer outFile) {
 		int width = (int) bounds.getWidth();
 		int height = (int) bounds.getHeight();
 
@@ -1241,8 +1273,11 @@ public class ImageGridItem extends ImageView {
 
 		if (outFile == null) {
 			FileChooser fileChooser = new FileChooser();
-			File originalFile = imageFile;
-			fileChooser.setInitialDirectory(originalFile.getParentFile());
+			PathLayer originalFile = imageFile;
+			File initialDir = imageFile.toFileIfLocal();
+			if (initialDir != null) {
+				fileChooser.setInitialDirectory(initialDir);
+			}
 			String ext = StringHelper.getExtention(originalFile.getName());
 			if (ext.equals("GIF")) {
 				ext = "png";
@@ -1250,16 +1285,16 @@ public class ImageGridItem extends ImageView {
 			fileChooser.setInitialFileName(StringHelper.getBaseName(originalFile.getName()) + "_Cropped." + ext);
 			fileChooser.setSelectedExtensionFilter(new ExtensionFilter("Output Format", "jpg"));
 			fileChooser.setTitle("Save Image");
-			outFile = fileChooser.showSaveDialog(parentStage);
-		}
-
-		if (outFile == null) {
-			return;
+			File outFileChoser = fileChooser.showSaveDialog(parentStage);
+			if (outFileChoser == null) {
+				return;
+			}
+			outFile = new FilePathLayer(outFileChoser);
 		}
 		cropImage(bounds, outFile);
 	}
 
-	private WritableImage cropImage(Bounds bounds, File outFile) {
+	private WritableImage cropImage(Bounds bounds, PathLayer outFile) {
 		// converting bounds to real photo bounds
 		// convert rectangle of rubberBandSelection from imageView to image:
 		Point2D ptStartBounds = new Point2D(bounds.getMinX(), bounds.getMinY());
@@ -1307,22 +1342,28 @@ public class ImageGridItem extends ImageView {
 	private static final int[] RGB_MASKS = { 0xFF0000, 0xFF00, 0xFF };
 	private static final ColorModel RGB_OPAQUE = new DirectColorModel(32, RGB_MASKS[0], RGB_MASKS[1], RGB_MASKS[2]);
 
-	private void saveCroppedImage(WritableImage wi, File outFile) {
+	private void saveCroppedImage(WritableImage wi, PathLayer outFile) {
 
 		if (outFile == null) {
 			return;
 		}
-		String ext = StringHelper.getExtention(outFile.getName());
+		String ext = outFile.getExtensionUPPERCASE();
 		if (!ArrayIMGExt.contains(ext) || ext.equals("GIF")) {
 			// renaming no valid extension type to PNG
-			outFile = outFile.toPath().getParent().resolve(outFile.getName() + ".png").toFile();
+			outFile = outFile.resolveSibling(outFile.getName() + ".png");
 		}
-		final File nOutFile = outFile;
-		convertImageToFile(wi, outFile);
+		final PathLayer nOutFile = outFile;
 		Runnable runnable = () -> {
 			Platform.runLater(() -> DialogHelper.showWaitingScreen("Croping Image.. Processing", "Cropping Image..."));
 			Graphics2D graphics = null;
-
+			FilePathLayer tempFile;
+			try {
+				tempFile = new FilePathLayer(File.createTempFile(nOutFile.getName(), "." + nOutFile.getExtension()));
+			} catch (IOException e1) {
+				e1.printStackTrace();
+				DialogHelper.showException(e1);
+				return;
+			}
 			try {
 				String extention = StringHelper.getExtention(nOutFile.getName()).toLowerCase();
 				BufferedImage bufImageARGB = SwingFXUtils.fromFXImage(wi, null);
@@ -1335,7 +1376,8 @@ public class ImageGridItem extends ImageView {
 					DataBuffer buffer = new DataBufferInt((int[]) pg.getPixels(), pg.getWidth() * pg.getHeight());
 					WritableRaster raster = Raster.createPackedRaster(buffer, width, height, width, RGB_MASKS, null);
 					BufferedImage bi = new BufferedImage(RGB_OPAQUE, raster, false, null);
-					ImageIO.write(bi, extention, nOutFile);
+
+					ImageIO.write(bi, extention, tempFile.getFile());
 				} else {
 					BufferedImage bufImageRGB = new BufferedImage(bufImageARGB.getWidth(), bufImageARGB.getHeight(),
 							BufferedImage.BITMASK);
@@ -1343,25 +1385,23 @@ public class ImageGridItem extends ImageView {
 					graphics = bufImageRGB.createGraphics();
 					graphics.drawImage(bufImageARGB, 0, 0, null);
 					// writing image and forcing PNG format
-					ImageIO.write(bufImageRGB, extention, nOutFile);
+					ImageIO.write(bufImageRGB, extention, tempFile.getFile());
 				}
+				nOutFile.delete();
+				tempFile.move(nOutFile);
 			} catch (Exception e) {
 				e.printStackTrace();
 			} finally {
 				Platform.runLater(() -> {
-//					if (mFileTracker.isTracked()) {
-//						mFileTracker.resolveConflict();
-//					}
-//					if (!ImgResources.contains(nOutFile)) {
-//						ImgResources.add(rollerPhoto + 1, nOutFile);
-//					}
 					cumulativeZoom = 1.0;
 					zoomSlider_setValue(1);
 					setImageAndSetup(nOutFile.toURI().toString(), null);
 					didImageChanged = true;
 				});
-//				graphics.dispose();
-//				System.gc();
+				if (graphics != null) {
+					graphics.dispose();
+				}
+				System.gc();
 			}
 			Platform.runLater(() -> DialogHelper.closeWaitingScreen());
 		};
@@ -1372,22 +1412,32 @@ public class ImageGridItem extends ImageView {
 	/**
 	 *
 	 * @param image
-	 * @param outputFile
+	 * @param outFile
 	 * @return outputFile
 	 */
-	private File convertImageToFile(Image image, File outputFile) {
+	private PathLayer convertImageToFile(Image image, PathLayer outFile) {
 		BufferedImage bImage = SwingFXUtils.fromFXImage(image, null);
 		try {
-			ImageIO.write(bImage, StringHelper.getExtention(outputFile.getName()), outputFile);
+			File tempFile = File.createTempFile(outFile.getName(), outFile.getExtension());
+			ImageIO.write(bImage, outFile.getExtensionUPPERCASE(), tempFile);
+			outFile.delete();
+			new FilePathLayer(tempFile).move(outFile);
 		} catch (IOException e) {
 			throw new RuntimeException(e);
 		}
-		return outputFile;
+		return outFile;
 	}
 
-	private Image convertFileToImage(File imageFile) {
+	private Image convertFileToImage(PathLayer imageFile) {
 		Image image = null;
-		try (FileInputStream fileInputStream = new FileInputStream(imageFile)) {
+		File inputFile = null;
+		try {
+			inputFile = imageFile.toFileIfLocalOrAsCopy(false).getFile();
+		} catch (IOException e1) {
+			e1.printStackTrace();
+			return null;
+		}
+		try (FileInputStream fileInputStream = new FileInputStream(inputFile)) {
 			image = new Image(fileInputStream);
 		} catch (Exception e) {
 			e.printStackTrace();
@@ -1434,11 +1484,11 @@ public class ImageGridItem extends ImageView {
 		this.originalImageDim = originalImageDim;
 	}
 
-	public File getImageFile() {
+	public PathLayer getImageFile() {
 		return imageFile;
 	}
 
-	public void setImageFile(File imageFile) {
+	public void setImageFile(PathLayer imageFile) {
 		this.imageFile = imageFile;
 	}
 

@@ -19,6 +19,8 @@ import application.DialogHelper;
 import application.StringHelper;
 import application.system.call.RunMenu;
 import application.system.call.TeraCopy;
+import application.system.file.PathLayer;
+import application.system.file.PathLayerHelper;
 import application.system.services.VLC;
 import javafx.scene.control.Alert.AlertType;
 
@@ -27,12 +29,14 @@ public class Setting {
 	// this things are temporary solution later will use :
 	// lightbend refrence.conf see testimagewthatable project
 	// these initial definition are even if not initialized
-	private static String Version = "5.0";
+	private static String Version = "5.1";
+	/** @since v5.1 */
+	private static long ApplicationTimesLunched = 1;
 	private static Boolean BackSync = false;
 	private static Boolean AutoExpand = true;
 	private static Boolean LoadAllIcon = true;
-	private static Path LeftLastKnowLocation = null;
-	private static Path RightLastKnowLocation = null;
+	private static PathLayer LeftLastKnowLocation = null;
+	private static PathLayer RightLastKnowLocation = null;
 	private static Boolean ShowLeftNotesColumn = false;
 	private static Boolean ShowRightNotesColumn = false;
 	private static String ActiveUser = "default";
@@ -49,18 +53,21 @@ public class Setting {
 
 	private static ArrayList<String> UserNames = new ArrayList<String>();
 	private static FavoriteViewList FavoritesLocations = new FavoriteViewList();
+
 	/**
 	 * backsync > BackSync loadallicon > LoadAllIcon LeftLastKnowLocation >
 	 * LeftLastKnowLocation > RightLastKnowLocation
 	 *
 	 */
 	private static Map<String, String> mapOptions = new HashMap<String, String>();
+	private static String PATH_SPLITTER = ";";
 	private static File mSettingFile = new File(
 			System.getenv("APPDATA") + "\\Tracker Explorer\\TrackerExplorerSetting.txt");
 	public static File SETTING_DIRECTORY = new File(System.getenv("APPDATA") + "\\Tracker Explorer");
 
 	public static void initializeSetting() {
-		Version = "5.0";
+		Version = "5.1";
+		ApplicationTimesLunched = 1;
 		BackSync = false;
 		AutoExpand = true;
 		LoadAllIcon = true;
@@ -73,10 +80,8 @@ public class Setting {
 		MaxLimitFilesRecursive = 10000;
 		MaxDepthFilesRecursive = 5;
 		setVLCHttpPass("1234");
-
 		VLC.initializeDefaultVLCPath();
 		TeraCopy.initializeDefaultVLCPath();
-
 		UserNames.add("default");
 
 		isDebugMode = false;
@@ -107,6 +112,7 @@ public class Setting {
 			Files.setAttribute(mSettingFile.toPath(), "dos:hidden", true);
 			p.println("/this is a generated folder by application to Save Setting");
 			p.println("Version=" + Version);
+			p.println("ApplicationTimesLunched=" + ++ApplicationTimesLunched);
 			p.println("VLCHttpPass=" + getVLCHttpPass());
 			// saved as URI
 			p.println("VLCPath=" + VLC.getPath_Setup().toUri().toString());
@@ -134,28 +140,38 @@ public class Setting {
 			//
 			// As result use file.toFile().toURI()) for network location
 			if (LeftLastKnowLocation != null) {
-				p.println("LeftLastKnowLocation=" + LeftLastKnowLocation.toFile().toURI());
+				if (LeftLastKnowLocation.isLocal()) {
+					p.println("LeftLastKnowLocation=" + LeftLastKnowLocation.toFileIfLocal().toURI());
+				} else {
+					p.println("LeftLastKnowLocation=" + LeftLastKnowLocation.toURI());
+				}
 			} else {
 				p.println("LeftLastKnowLocation=null");
 			}
 			if (RightLastKnowLocation != null) {
-				p.println("RightLastKnowLocation=" + RightLastKnowLocation.toFile().toURI());
+				if (RightLastKnowLocation.isLocal()) {
+					p.println("RightLastKnowLocation=" + RightLastKnowLocation.toFileIfLocal().toURI());
+				} else {
+					p.println("RightLastKnowLocation=" + RightLastKnowLocation.toURI());
+				}
 			} else {
 				p.println("RightLastKnowLocation=null");
 			}
-			p.println("UserNames=" + String.join(";", UserNames));
-			p.println("lastOpenedFavoriteIndex=" + String.join(";",
+			p.println("UserNames=" + String.join(PATH_SPLITTER, UserNames));
+			p.println("lastOpenedFavoriteIndex=" + String.join(PATH_SPLITTER,
 					lastOpenedFavoriteIndex.stream().map(m -> m.toString()).collect(Collectors.toList())));
 
 			// check https://winterbe.com/posts/2014/07/31/java8-stream-tutorial-examples/
 			p.println("FavoritesTitlesLocations="
-					+ FavoritesLocations.getTitle().stream().map(s -> s).collect(Collectors.joining(";")));
+					+ FavoritesLocations.getTitle().stream().map(s -> s).collect(Collectors.joining(PATH_SPLITTER)));
 
 			p.println("FavoritesLeftLocations=" + FavoritesLocations.getLeftLoc().stream()
-					.map(s -> s.toURI().toString()).collect(Collectors.joining(";")));
+					.map(s -> s.isLocal() ? s.toFileIfLocal().toURI().toString() : s.toURI().toString())
+					.collect(Collectors.joining(PATH_SPLITTER)));
 
 			p.println("FavoritesRightLocations=" + FavoritesLocations.getRightLoc().stream()
-					.map(s -> s.toURI().toString()).collect(Collectors.joining(";")));
+					.map(s -> s.isLocal() ? s.toFileIfLocal().toURI().toString() : s.toURI().toString())
+					.collect(Collectors.joining(PATH_SPLITTER)));
 			p.close();
 		} catch (IOException e) {
 			e.printStackTrace();
@@ -200,7 +216,9 @@ public class Setting {
 				// if (key.equals("Version"))
 				// Version = value;
 				try {
-					if (key.equals("VLCHttpPass")) {
+					if (key.equals("ApplicationTimesLunched")) {
+						ApplicationTimesLunched = Long.parseLong(value);
+					} else if (key.equals("VLCHttpPass")) {
 						setVLCHttpPass(value);
 					} else if (key.equals("VLCPath")) {
 						VLC.setPath_Setup(StringHelper.parseUriToPath(value));
@@ -225,30 +243,30 @@ public class Setting {
 					} else if (key.equals("MaxLimitFilesRecursive")) {
 						MaxLimitFilesRecursive = Integer.parseInt(value);
 					} else if (key.equals("LeftLastKnowLocation")) {
-						LeftLastKnowLocation = StringHelper.parseUriToPath(value);
+						LeftLastKnowLocation = PathLayerHelper.parseURI(value);
 					} else if (key.equals("RightLastKnowLocation")) {
-						RightLastKnowLocation = StringHelper.parseUriToPath(value);
+						RightLastKnowLocation = PathLayerHelper.parseURI(value);
 					} else if (key.equals("ActiveUser")) {
 						ActiveUser = value;
 					} else if (key.equals("UserNames")) {
 						UserNames.clear();
-						UserNames.addAll(Arrays.asList(value.split(";")));
+						UserNames.addAll(Arrays.asList(value.split(PATH_SPLITTER)));
 					} else if (key.equals("lastOpenedFavoriteIndex")) {
 						lastOpenedFavoriteIndex.clear();
-						Arrays.asList(value.split(";")).stream().mapToInt(m -> Integer.parseInt(m))
+						Arrays.asList(value.split(PATH_SPLITTER)).stream().mapToInt(m -> Integer.parseInt(m))
 								.forEach(e -> lastOpenedFavoriteIndex.add(e));
 
 					} else if (key.equals("FavoritesTitlesLocations")) {
 
 						// Favorites stuff to save for later and synchronize them
-						favoritesTitles = Arrays.asList(value.split(";"));
+						favoritesTitles = Arrays.asList(value.split(PATH_SPLITTER));
 
 					} else if (key.equals("FavoritesLeftLocations")) {
 
-						favoritesLeftLocs = Arrays.asList(value.split(";"));
+						favoritesLeftLocs = Arrays.asList(value.split(PATH_SPLITTER));
 
 					} else if (key.equals("FavoritesRightLocations")) {
-						favoritesRightLocs = Arrays.asList(value.split(";"));
+						favoritesRightLocs = Arrays.asList(value.split(PATH_SPLITTER));
 					}
 				} catch (Exception e) {
 					System.out.println("Something went wrong loading setting");
@@ -444,11 +462,11 @@ public class Setting {
 	// navigating.");
 	// }
 
-	public static Path getLeftLastKnowLocation() {
+	public static PathLayer getLeftLastKnowLocation() {
 		return LeftLastKnowLocation;
 	}
 
-	public static void setLeftLastKnowLocation(Path LeftLastKnowLocation) {
+	public static void setLeftLastKnowLocation(PathLayer LeftLastKnowLocation) {
 		Setting.LeftLastKnowLocation = LeftLastKnowLocation;
 	}
 
@@ -460,11 +478,11 @@ public class Setting {
 		mapOptions = mapoptions;
 	}
 
-	public static Path getRightLastKnowLocation() {
+	public static PathLayer getRightLastKnowLocation() {
 		return RightLastKnowLocation;
 	}
 
-	public static void setRightLastKnowLocation(Path RightLastKnowLocation) {
+	public static void setRightLastKnowLocation(PathLayer RightLastKnowLocation) {
 		Setting.RightLastKnowLocation = RightLastKnowLocation;
 	}
 

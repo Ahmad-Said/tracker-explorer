@@ -8,8 +8,6 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
-import java.util.Set;
-import java.util.stream.Collectors;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.FilenameUtils;
@@ -22,6 +20,8 @@ import application.controller.splitview.SplitViewController;
 import application.datatype.Setting;
 import application.system.WatchServiceHelper;
 import application.system.call.TeraCopy;
+import application.system.file.PathLayer;
+import application.system.file.local.FilePathLayer;
 import application.system.tracker.FileTracker;
 import javafx.application.Platform;
 import javafx.event.Event;
@@ -41,7 +41,7 @@ public class FileHelper {
 		COPY, MOVE, DELETE, RENAME
 	}
 
-	public static void copyWithTeraCopy(List<Path> source, Path targetDirectory) {
+	public static void copyWithTeraCopy(List<FilePathLayer> source, FilePathLayer targetDirectory) {
 		try {
 			FileTracker.operationUpdate(source, targetDirectory, ActionOperation.COPY);
 			TeraCopy.copy(source, targetDirectory);
@@ -51,38 +51,38 @@ public class FileHelper {
 		}
 	}
 
-	public static void copy(List<Path> source, Path targetDirectory) {
+	public static void copy(List<? extends PathLayer> source, PathLayer targetDirectory) {
 		FileTracker.operationUpdate(source, targetDirectory, ActionOperation.COPY);
 		FileHelperGUIOperation.getOperationsList()
 				.add(new FileHelperGUIOperation(ActionOperation.COPY, targetDirectory, source));
 		FileHelperGUIOperation.doThreadOperationsAllList();
 	}
 
-	public static void moveWithTeraCopy(List<Path> source, Path targetDirectory) {
+	public static void moveWithTeraCopy(List<FilePathLayer> toOperatePath, FilePathLayer pathLayer) {
 		try {
-			FileTracker.operationUpdate(source, targetDirectory, ActionOperation.MOVE);
-			TeraCopy.move(source, targetDirectory);
+			FileTracker.operationUpdate(toOperatePath, pathLayer, ActionOperation.MOVE);
+			TeraCopy.move(toOperatePath, pathLayer);
 		} catch (IOException e) {
 			e.printStackTrace();
 			DialogHelper.showException(e);
 		}
 	}
 
-	public static void move(List<Path> source, Path targetDirectory) {
+	public static void move(List<? extends PathLayer> source, PathLayer targetDirectory) {
 		FileTracker.operationUpdate(source, targetDirectory, ActionOperation.MOVE);
 		FileHelperGUIOperation.getOperationsList()
 				.add(new FileHelperGUIOperation(ActionOperation.MOVE, targetDirectory, source));
 		FileHelperGUIOperation.doThreadOperationsAllList();
 	}
 
-	public static boolean delete(List<Path> source, EventHandler<Event> onFinishTask) {
+	public static boolean delete(List<PathLayer> source, EventHandler<Event> onFinishTask) {
 		if (source.size() == 0) {
 			return false;
 		}
-		String sourceDirectory = source.get(0).getParent().toString();
+		String sourceDirectory = source.get(0).getParentPath().toString();
 
 		String filesToDelete = "";
-		for (Path path : source) {
+		for (PathLayer path : source) {
 			filesToDelete += path.toString() + System.lineSeparator();
 		}
 		boolean isConfirmed = DialogHelper.showExpandableConfirmationDialog(sourceDirectory, "Delete",
@@ -93,29 +93,25 @@ public class FileHelper {
 			new Thread() {
 				@Override
 				public void run() {
-					List<Path> undeleted = new ArrayList<>();
-					for (Path path : source) {
-						Platform.runLater(
-								() -> Main.ProcessTitle("Please Wait..Deleting " + path.getFileName().toString()));
+					List<PathLayer> undeleted = new ArrayList<>();
+					for (PathLayer path : source) {
+						Platform.runLater(() -> Main.ProcessTitle("Please Wait..Deleting " + path.getName()));
 						try {
-							if (path.toFile().isDirectory()) {
-								FileUtils.deleteDirectory(path.toFile());
-							} else {
-								FileUtils.forceDelete(path.toFile());
-							}
+							path.deleteForcefully();
 						} catch (Exception e) {
+							e.printStackTrace();
 							undeleted.add(path);
 						}
 					}
 					if (undeleted.size() > 0) {
-						String content = "";
-						for (Path path : undeleted) {
-							content += path.toString() + System.lineSeparator();
+						StringBuilder content = new StringBuilder();
+						for (PathLayer path : undeleted) {
+							content.append(path.toString() + System.lineSeparator());
 						}
 						String message = "Some files were not deleted";
-						String contectHelper = content;
-						Platform.runLater(() -> DialogHelper.showAlert(Alert.AlertType.INFORMATION, sourceDirectory,
-								message, contectHelper));
+						Platform.runLater(
+								() -> DialogHelper.showExpandableAlert(Alert.AlertType.INFORMATION, sourceDirectory,
+										message, message + "  " + undeleted.size() + " files.", content.toString()));
 					}
 					Platform.runLater(() -> {
 						Main.ResetTitle();
@@ -128,22 +124,24 @@ public class FileHelper {
 
 	}
 
-	public static void createDirectory(Path parent, SplitViewController focusedPane) {
+	public static void createDirectory(PathLayer parent, SplitViewController focusedPane) {
 		String title = parent.toString();
 		String hint = "New Folder";
-		File temp = parent.resolve(hint).toFile();
+		PathLayer temp = parent.resolve(hint);
 		int i = 2;
 		while (temp.exists()) {
-			temp = parent.resolve("New Folder (" + i++ + ")").toFile();
+			temp = parent.resolve("New Folder (" + i++ + ")");
 		}
 		hint = temp.getName();
 		String name = DialogHelper.showTextInputDialog(title, null, "New Directory", hint);
 		if (name != null) {
-			Path path = parent.resolve(name);
+			PathLayer path = parent.resolve(name);
 			try {
-				Files.createDirectory(path);
-				focusedPane.getFileTracker().trackNewOutFolder(path);
-				Platform.runLater(() -> focusedPane.ScrollToName(path.toFile().getName()));
+				if (path.isLocal()) {
+					Files.createDirectory(path.toPath());
+					focusedPane.getFileTracker().trackNewOutFolder(path);
+					Platform.runLater(() -> focusedPane.ScrollToName(path.getName()));
+				}
 			} catch (FileAlreadyExistsException e) {
 				DialogHelper.showAlert(Alert.AlertType.INFORMATION, title, "Directory already exists", path.toString());
 			} catch (Exception e) {
@@ -153,20 +151,25 @@ public class FileHelper {
 		}
 	}
 
-	public static void createFile(Path parent) {
+	public static void createFile(PathLayer parent) {
+		if (!parent.isLocal()) {
+			return;
+		}
 		String title = parent.toString();
 		String hint = "New File.txt";
-		File temp = parent.resolve(hint).toFile();
+		PathLayer temp = parent.resolve(hint);
 		int i = 2;
 		while (temp.exists()) {
-			temp = parent.resolve("New File (" + i++ + ").txt").toFile();
+			temp = parent.resolve("New File (" + i++ + ").txt");
 		}
 		hint = temp.getName();
 		String name = DialogHelper.showTextInputDialog(title, null, "New File", hint);
 		if (name != null) {
-			Path path = parent.resolve(name);
+			PathLayer path = parent.resolve(name);
 			try {
-				Files.createFile(path);
+				if (path.isLocal()) {
+					Files.createFile(path.toPath());
+				}
 			} catch (FileAlreadyExistsException e) {
 				DialogHelper.showAlert(Alert.AlertType.INFORMATION, title, "File already exists", path.toString());
 			} catch (Exception e) {
@@ -226,34 +229,8 @@ public class FileHelper {
 		return parentTry;
 	}
 
-	public static Path RenameHelper(Path source, String newName) throws IOException {
-		Path newPath = source.resolveSibling(newName);
-		return renameHelper(source, newPath);
-	}
-
-	public static Set<Path> getParentsPaths(List<File> sonFiles) {
-		return sonFiles.stream().filter(f -> f != null).map(f -> f.getParentFile().toPath())
-				.collect(Collectors.toSet());
-	}
-
-	public static Set<Path> getParentsPathsFromPath(List<Path> sonPaths) {
-		return sonPaths.stream().filter(p -> p != null).map(p -> p.getParent()).collect(Collectors.toSet());
-	}
-
-	public static HashMap<Path, List<Path>> getParentTochildren(List<Path> sonsPaths) {
-		HashMap<Path, List<Path>> parentToSons = new HashMap<>();
-		sonsPaths.forEach(s -> {
-			Path parent = s.getParent();
-			if (!parentToSons.containsKey(parent)) {
-				parentToSons.put(parent, new ArrayList<Path>());
-			}
-			parentToSons.get(parent).add(s);
-		});
-		return parentToSons;
-	};
-
-	public static Set<Path> getListPathsNoHidden(Path parentDirectory) throws IOException {
-		return Files.list(parentDirectory).filter(p -> !p.toFile().isHidden()).collect(Collectors.toSet());
+	public static PathLayer RenameHelper(PathLayer source, String newName) throws IOException {
+		return renameHelper(source, source.resolveSibling(newName));
 	}
 
 	/**
@@ -274,8 +251,8 @@ public class FileHelper {
 	 * @return
 	 * @throws IOException
 	 */
-	public static Path renameHelper(Path oldSource, Path NewRenamed) throws IOException {
-		Files.move(oldSource, NewRenamed);
+	public static PathLayer renameHelper(PathLayer oldSource, PathLayer NewRenamed) throws IOException {
+		oldSource.move(NewRenamed);
 		return NewRenamed;
 	}
 
@@ -296,13 +273,13 @@ public class FileHelper {
 	 *
 	 * @return null for unsuccessful rename or the new path of renamed item
 	 */
-	public static Path rename(Path source, boolean silentFix) {
+	public static PathLayer rename(PathLayer source, boolean silentFix) {
 		String newName;
 		if (!silentFix) {
-			String OriginalName = source.getFileName().toString();
-			if (source.toFile().isDirectory()) {
+			String OriginalName = source.getName().toString();
+			if (source.isDirectory()) {
 				newName = DialogHelper.showTextInputDialog("Rename", null, "Enter New Name",
-						source.getFileName().toString());
+						source.getName().toString());
 			} else {
 				HashMap<String, String> PreNameExt = DialogHelper.showMultiTextInputDialog(
 						"Rename", null, "Enter New Name", new String[] { "Prefix", "Name", "Extention" }, new String[] {
@@ -321,39 +298,32 @@ public class FileHelper {
 						+ (!PreNameExt.get("Extention").isEmpty() ? "." + PreNameExt.get("Extention") : "");
 			}
 		} else {
-			newName = StringHelper.FixNameEncoding(source.toFile().getName());
+			newName = StringHelper.FixNameEncoding(source.getName());
 		}
 		if (newName != null && !newName.isEmpty()) {
-			Path target = source.getParent().resolve(newName);
+			PathLayer target = source.getParentPath().resolve(newName);
 			try {
 				// System.out.println("name is " + source.toString());
 				// System.out.println("target is "+ target);
 				// https://stackoverflow.com/questions/1000183/reliable-file-renameto-alternative-on-windows
 				if (Setting.isAutoRenameUTFFile()) {
-					String fixedName = StringHelper.FixNameEncoding(target.toFile().getName());
-					target = source.getParent().resolve(fixedName);
+					String fixedName = StringHelper.FixNameEncoding(target.getName());
+					target = source.getParentPath().resolve(fixedName);
 				}
 				if (target.equals(source)) {
 					return null;
 				}
 				renameHelper(source, target);
-				// Files.move(source, target);
-				// if (source.toFile().isDirectory())
-				// FileUtils.moveDirectory(source.toFile(), target.toFile());
-				// else
-				// FileUtils.moveFile(source.toFile(), target.toFile());
 				return target;
 			} catch (Exception e) {
 				e.printStackTrace();
 				DialogHelper.showException(e);
-				// if (!silentFix)
-//				DialogHelper.showAlert(Alert.AlertType.INFORMATION, source.getParent().toString(),
-//						"File was not renamed", source.toString());
 			}
 		}
 		return null;
 	}
 
+	// TODO PathLayer
 	public static void copyFiles(List<File> sourceFiles, List<File> targetFiles) {
 		Runnable runnable = () -> {
 			try {

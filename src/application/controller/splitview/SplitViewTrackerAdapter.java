@@ -1,6 +1,5 @@
 package application.controller.splitview;
 
-import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
@@ -10,6 +9,7 @@ import java.util.stream.Stream;
 import org.jetbrains.annotations.Nullable;
 
 import application.model.TableViewModel;
+import application.system.file.PathLayer;
 import application.system.tracker.FileTracker;
 import application.system.tracker.FileTrackerMultipleReturn;
 import javafx.util.Pair;
@@ -35,10 +35,10 @@ public class SplitViewTrackerAdapter {
 	public FileTrackerMultipleReturn untrackedBehaviorAndAskTrack(List<TableViewModel> selectedItems,
 			TableViewModel clicked) {
 		// returned false
-		Set<Path> paths = selectedItems.stream().map(selection -> selection.getFilePath().getParent())
+		Set<PathLayer> parentPaths = selectedItems.stream().map(selection -> selection.getFilePath().getParentPath())
 				.collect(Collectors.toSet());
-		paths.add(clicked.getFilePath().getParent());
-		FileTrackerMultipleReturn fileMultipleReturn = fileTracker.trackNewMultipleAndAsk(paths, true);
+		parentPaths.add(clicked.getFilePath().getParentPath());
+		FileTrackerMultipleReturn fileMultipleReturn = fileTracker.trackNewMultipleAndAsk(parentPaths, true);
 		if (fileMultipleReturn.didTrackNewFolder) {
 			splitView.refreshTableWithSameData();
 		}
@@ -52,7 +52,7 @@ public class SplitViewTrackerAdapter {
 	 * @param clicked
 	 */
 	public void toggleSeen(List<TableViewModel> selectedItems, TableViewModel clicked) {
-		Pair<List<Path>, List<TableViewModel>> toChange = getToChangeListAndAskIfUntracked(selectedItems, clicked);
+		Pair<List<PathLayer>, List<TableViewModel>> toChange = getToChangeListAndAskIfUntracked(selectedItems, clicked);
 		if (toChange == null) {
 			clicked.getMarkSeen().setSelected(false);
 			return;
@@ -64,7 +64,7 @@ public class SplitViewTrackerAdapter {
 	}
 
 	public void setNoteTextAfterAsk(List<TableViewModel> selectedItems, TableViewModel clicked) {
-		Pair<List<Path>, List<TableViewModel>> toChange = getToChangeListAndAskIfUntracked(selectedItems, clicked);
+		Pair<List<PathLayer>, List<TableViewModel>> toChange = getToChangeListAndAskIfUntracked(selectedItems, clicked);
 		if (toChange == null) {
 			return;
 		}
@@ -86,14 +86,14 @@ public class SplitViewTrackerAdapter {
 	 *         list of tableViewModel to change as value
 	 */
 	@Nullable
-	private Pair<List<Path>, List<TableViewModel>> getToChangeListAndAskIfUntracked(List<TableViewModel> selectedItems,
-			TableViewModel clicked) {
+	private Pair<List<PathLayer>, List<TableViewModel>> getToChangeListAndAskIfUntracked(
+			List<TableViewModel> selectedItems, TableViewModel clicked) {
 		FileTrackerMultipleReturn fileMultipleReturn = untrackedBehaviorAndAskTrack(selectedItems, clicked);
 		if (fileMultipleReturn.trackedList.size() == 0) {
 			return null;
 		}
 
-		List<Path> pathsToUpdate = new ArrayList<Path>();
+		List<PathLayer> pathsToUpdate = new ArrayList<>();
 		List<TableViewModel> viewsToUpdate = new ArrayList<>();
 		Stream<TableViewModel> clickedStream;
 		Stream<TableViewModel> selectedStream;
@@ -109,10 +109,10 @@ public class SplitViewTrackerAdapter {
 			selectedStream = selectedItems.stream();
 		}
 		Stream.concat(clickedStream, selectedStream)
-				.filter(t -> fileMultipleReturn.trackedList.contains(t.getFilePath().getParent())).forEach(t -> {
+				.filter(t -> fileMultipleReturn.trackedList.contains(t.getFilePath().getParentPath())).forEach(t -> {
 					viewsToUpdate.add(t);
 					pathsToUpdate.add(t.getFilePath());
 				});
-		return new Pair<List<Path>, List<TableViewModel>>(pathsToUpdate, viewsToUpdate);
+		return new Pair<List<PathLayer>, List<TableViewModel>>(pathsToUpdate, viewsToUpdate);
 	}
 }

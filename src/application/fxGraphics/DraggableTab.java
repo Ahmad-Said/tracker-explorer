@@ -1,12 +1,12 @@
 package application.fxGraphics;
 
-import java.io.File;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
 import application.datatype.SplitViewState;
+import application.system.file.PathLayer;
 import javafx.collections.ListChangeListener;
 import javafx.event.EventHandler;
 import javafx.geometry.Point2D;
@@ -65,9 +65,9 @@ public class DraggableTab extends Tab {
 	 *
 	 * @param text the text to appear on the tag label.
 	 */
-	public DraggableTab(String text, List<File> splitDirectories) {
+	public DraggableTab(String text, List<PathLayer> splitDirectories) {
 		splitViewStates = new ArrayList<>();
-		splitDirectories.forEach(f -> splitViewStates.add(new SplitViewState(f)));
+		splitDirectories.forEach(p -> splitViewStates.add(new SplitViewState(p)));
 
 		setTooltip(new Tooltip(text));
 		nameLabel = new Label(text);

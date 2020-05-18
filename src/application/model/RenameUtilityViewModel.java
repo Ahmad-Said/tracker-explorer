@@ -1,9 +1,8 @@
 package application.model;
 
-import java.nio.file.Path;
-
 import application.StringHelper;
 import application.system.SystemIconsHelper;
+import application.system.file.PathLayer;
 import javafx.scene.control.CheckBox;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
@@ -18,11 +17,11 @@ public class RenameUtilityViewModel {
 	// https://docs.oracle.com/javase/8/javafx/api/javafx/scene/text/TextFlow.html
 	private TextFlow NewName;
 
-	private Path PathFile;
+	private PathLayer PathFile;
 	private static int TextFlowHeigh = 35;
 
-	public RenameUtilityViewModel(Path path) {
-		String name = path.getFileName().toString();
+	public RenameUtilityViewModel(PathLayer path) {
+		String name = path.getName();
 
 		setOldName(name);
 		setNewName(name);
@@ -67,14 +66,14 @@ public class RenameUtilityViewModel {
 	/**
 	 * @return the pathFile
 	 */
-	public Path getPathFile() {
+	public PathLayer getPathFile() {
 		return PathFile;
 	}
 
 	/**
 	 * @param pathFile the pathFile to set
 	 */
-	public void setPathFile(Path pathFile) {
+	public void setPathFile(PathLayer pathFile) {
 		PathFile = pathFile;
 	}
 

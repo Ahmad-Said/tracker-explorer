@@ -7,13 +7,9 @@ import java.net.DatagramSocket;
 import java.net.InetAddress;
 import java.net.URISyntaxException;
 import java.net.URL;
-import java.nio.file.FileVisitOption;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.EnumSet;
 import java.util.List;
 import java.util.ResourceBundle;
 import java.util.Set;
@@ -32,6 +28,8 @@ import application.datatype.SplitViewState;
 import application.fxGraphics.DraggableTab;
 import application.fxGraphics.MenuItemFactory;
 import application.system.RecursiveFileWalker;
+import application.system.file.PathLayer;
+import application.system.file.PathLayerHelper;
 import application.system.operation.FileHelper;
 import application.system.operation.FileHelperGUIOperation;
 import application.system.services.TrackerPlayer;
@@ -211,7 +209,7 @@ public class WelcomeController implements Initializable {
 		}
 		SplitViewController newSplitView = null;
 		try {
-			newSplitView = addSplitView(allSplitViewController.peek().getDirectoryPath(), doAddLeft);
+			newSplitView = addSplitView(allSplitViewController.peek().getmDirectoryPath(), doAddLeft);
 			newSplitView.refresh(null);
 		} catch (IOException e1) {
 			e1.printStackTrace();
@@ -219,11 +217,11 @@ public class WelcomeController implements Initializable {
 		return newSplitView;
 	}
 
-	private SplitViewController addSplitView(Path initialePath, boolean isLeftTemplate) throws IOException {
+	private SplitViewController addSplitView(PathLayer initialePath, boolean isLeftTemplate) throws IOException {
 		SplitViewController newSplit = null;
 		if (allSplitViewControllerRemoved.size() != 0) {
 			newSplit = allSplitViewControllerRemoved.pop();
-			newSplit.setmDirectoryThenRefresh(initialePath.toFile());
+			newSplit.setmDirectoryThenRefresh(initialePath);
 		} else {
 			newSplit = new SplitViewController(initialePath, isLeftTemplate, this);
 			if (isLeftTemplate) {
@@ -310,7 +308,7 @@ public class WelcomeController implements Initializable {
 		// initialize tabs
 		tabPane.getTabs().clear();
 		DraggableTab defaultTab = new DraggableTab("Default",
-				Arrays.asList(StringHelper.InitialLeftPath.toFile(), StringHelper.InitialRightPath.toFile()));
+				Arrays.asList(StringHelper.InitialLeftPath, StringHelper.InitialRightPath));
 		defaultTab.setClosable(false);
 		defaultTab.flipisEnteringAction();
 		tabPane.getTabs().add(defaultTab);
@@ -342,7 +340,7 @@ public class WelcomeController implements Initializable {
 			// If showing split view more than saved add new Split States same as last split
 			// View
 			if (maxStates != shownSplit) {
-				File defaultDir = splitStates.get(splitStates.size() - 1).getmDirectoryExisting();
+				PathLayer defaultDir = splitStates.get(splitStates.size() - 1).getmDirectory();
 				for (int i = maxStates - 1; i < shownSplit; i++) {
 					splitStates.add(new SplitViewState(defaultDir));
 				}
@@ -398,8 +396,8 @@ public class WelcomeController implements Initializable {
 		addTabAndSwitch("New Tab", getSplitDirectories());
 	}
 
-	private List<File> getSplitDirectories() {
-		return allSplitViewController.stream().map(spCon -> spCon.getmDirectory()).collect(Collectors.toList());
+	private List<PathLayer> getSplitDirectories() {
+		return allSplitViewController.stream().map(spCon -> spCon.getmDirectoryPath()).collect(Collectors.toList());
 	}
 
 	public void closeCurrentTab() {
@@ -428,13 +426,13 @@ public class WelcomeController implements Initializable {
 
 	}
 
-	private DraggableTab addTabAndSwitch(String title, List<File> splitDirectories) {
+	private DraggableTab addTabAndSwitch(String title, List<PathLayer> splitDirectories) {
 		DraggableTab tempTab = addTabOnly(title, splitDirectories);
 		tabPane.getSelectionModel().select(tempTab);
 		return tempTab;
 	}
 
-	private DraggableTab addTabOnly(String title, List<File> splitDirectories) {
+	private DraggableTab addTabOnly(String title, List<PathLayer> splitDirectories) {
 		DraggableTab tempTab = new DraggableTab(title, splitDirectories);
 		activeActionTab(tempTab);
 		tabPane.getTabs().add(tempTab);
@@ -532,7 +530,7 @@ public class WelcomeController implements Initializable {
 		MenuItem newSplitLeftTemplate = new MenuItem("Left Template");
 		newSplitLeftTemplate.setOnAction(e -> {
 			try {
-				addSplitView(allSplitViewController.peek().getmDirectory().toPath(), true).refresh(null);
+				addSplitView(allSplitViewController.peek().getmDirectoryPath(), true).refresh(null);
 			} catch (IOException e3) {
 				e3.printStackTrace();
 			}
@@ -540,7 +538,7 @@ public class WelcomeController implements Initializable {
 		MenuItem newSplitRightTemplate = new MenuItem("Right Template");
 		newSplitRightTemplate.setOnAction(e -> {
 			try {
-				addSplitView(allSplitViewController.peek().getmDirectory().toPath(), false).refresh(null);
+				addSplitView(allSplitViewController.peek().getmDirectoryPath(), false).refresh(null);
 			} catch (IOException e3) {
 				e3.printStackTrace();
 			}
@@ -564,8 +562,8 @@ public class WelcomeController implements Initializable {
 				WelcomeController anotherWelcome = loader.getController();
 				anotherStage.show();
 				anotherWelcome.initializeViewStage(anotherStage, false);
-				anotherWelcome.leftView.navigate(leftView.getDirectoryPath());
-				anotherWelcome.rightView.navigate(rightView.getDirectoryPath());
+				anotherWelcome.leftView.navigate(leftView.getmDirectoryPath());
+				anotherWelcome.rightView.navigate(rightView.getmDirectoryPath());
 			} catch (IOException e1) {
 				e1.printStackTrace();
 			}
@@ -745,16 +743,16 @@ public class WelcomeController implements Initializable {
 					return;
 				}
 
-				Path dir = leftView.getDirectoryPath();
+				PathLayer dir = leftView.getmDirectoryPath();
 				StringHelper.setTemp(depth);
 				Thread cleanerThread = new Thread() {
 					@Override
 					public void run() {
 						try {
 							RecursiveFileWalker r = new RecursiveFileWalker();
-							Files.walkFileTree(dir, EnumSet.noneOf(FileVisitOption.class), StringHelper.getTemp(), r);
+							PathLayerHelper.walkFileTree(dir, StringHelper.getTemp(), false, r);
 
-							r.getParent().forEach(p -> {
+							r.getDirectories().forEach(p -> {
 								Platform.runLater(() -> Main.ProcessTitle(p.toString()));
 								FileTracker.deleteOutFile(p, user);
 							});
@@ -799,7 +797,7 @@ public class WelcomeController implements Initializable {
 		 * Set up helpMenu
 		 */
 		aboutMenuItem.setOnAction(e -> DialogHelper.showAlert(Alert.AlertType.INFORMATION, "About", null,
-				"Tracker Explorer v5.0\n\n" + "Copyright © 2020 by Ahmad Said"));
+				"Tracker Explorer v" + Setting.getVersion() + "\n\n" + "Copyright © 2020 by Ahmad Said"));
 	}
 
 	@FXML
@@ -808,22 +806,22 @@ public class WelcomeController implements Initializable {
 	}
 
 	// TODO later make favorites for all views
-	public void openFavoriteLocation(String title, Path leftPath, Path rightPath,
+	public void openFavoriteLocation(String title, PathLayer leftPath, PathLayer rightPath,
 			SplitViewController splitViewController) {
-		if (!leftPath.toFile().exists()) {
+		if (!leftPath.exists()) {
 			DialogHelper.showAlert(AlertType.INFORMATION, "Open Favorites", "File Doesn't exist!", leftPath.toString());
 		}
-		if (!rightPath.toFile().exists()) {
+		if (!rightPath.exists()) {
 			DialogHelper.showAlert(AlertType.INFORMATION, "Open Favorites", "File Doesn't exist!",
 					rightPath.toString());
 		}
 		if (splitViewController == leftView) {
-			DraggableTab newTab = new DraggableTab(title, Arrays.asList(leftPath.toFile(), rightPath.toFile()));
+			DraggableTab newTab = new DraggableTab(title, Arrays.asList(leftPath, rightPath));
 			activeActionTab(newTab);
 			tabPane.getTabs().add(newTab);
 			tabPane.getSelectionModel().select(newTab);
 		} else {
-			splitViewController.setmDirectoryThenRefresh(leftPath.toFile());
+			splitViewController.setmDirectoryThenRefresh(leftPath);
 			splitViewController.synctoRight(rightPath.toString());
 		}
 	}
@@ -1030,17 +1028,17 @@ public class WelcomeController implements Initializable {
 	 * @param exception     Do not refresh given splitView <br>
 	 *                      can be null
 	 */
-	public void refreshAllSplitViewsIfMatch(File directoryView, SplitViewController exception) {
+	public void refreshAllSplitViewsIfMatch(PathLayer directoryView, SplitViewController exception) {
 		allSplitViewController.stream()
-				.filter(spCon -> spCon != exception && spCon.getmDirectory().equals(directoryView))
+				.filter(spCon -> spCon != exception && spCon.getmDirectoryPath().equals(directoryView))
 				.forEach(spCon -> spCon.refreshAsPathField());
 	}
 
 	public void refreshUnExistingViewsDir() {
 		allSplitViewController.forEach(spCon -> {
 			boolean doRefresh = false;
-			while (!spCon.getDirectoryPath().toFile().exists()) {
-				spCon.setmDirectory(spCon.getmDirectory().getParentFile());
+			while (!spCon.getmDirectoryPath().exists()) {
+				spCon.setmDirectory(spCon.getmDirectoryPath().getParentPath());
 				doRefresh = true;
 			}
 			if (doRefresh) {
@@ -1067,14 +1065,6 @@ public class WelcomeController implements Initializable {
 		}
 	}
 
-	public Path getLeftLastKnowLocation() {
-		return leftView.getDirectoryPath();
-	}
-
-	public SplitViewController getLeftView() {
-		return leftView;
-	}
-
 	@FXML
 	void GetMp3Tag(ActionEvent event) {
 		boolean openIt = DialogHelper.showAlert(AlertType.INFORMATION, "Get Mp3 Tag", "Mp3 Tag: Tag Like A Pro",
@@ -1093,8 +1083,16 @@ public class WelcomeController implements Initializable {
 		}
 	}
 
-	public Path getRightLastKnowLocation() {
-		return rightView.getDirectoryPath();
+	public PathLayer getLeftLastKnowLocation() {
+		return leftView.getmDirectoryPath();
+	}
+
+	public SplitViewController getLeftView() {
+		return leftView;
+	}
+
+	public PathLayer getRightLastKnowLocation() {
+		return rightView.getmDirectoryPath();
 	}
 
 	public SplitViewController getRightView() {
@@ -1102,12 +1100,12 @@ public class WelcomeController implements Initializable {
 	}
 
 	@Nullable
-	private Path getSelectedPath() {
+	private PathLayer getSelectedPath() {
 		SplitViewController focusedPane = getFocusedPane();
 		if (focusedPane == null) {
 			return null;
 		}
-		List<Path> selection = focusedPane.getSelection();
+		List<PathLayer> selection = focusedPane.getSelection();
 		if (selection.size() != 1) {
 			return null;
 		}
@@ -1133,7 +1131,7 @@ public class WelcomeController implements Initializable {
 			try {
 				Desktop.getDesktop().browse(new URL("https://www.videolan.org/vlc").toURI());
 			} catch (IOException | URISyntaxException e) {
-				// e.printStackTrace();
+				e.printStackTrace();
 			}
 		}
 	}
@@ -1178,14 +1176,14 @@ public class WelcomeController implements Initializable {
 			// e1.printStackTrace();
 		}
 		StringHelper.setTemp(depth);
-		Path dir = leftView.getDirectoryPath();
+		PathLayer dir = leftView.getmDirectoryPath();
 		Thread trackerThread = new Thread() {
 			@Override
 			public void run() {
 				try {
 					RecursiveFileWalker r = new RecursiveFileWalker();
-					Files.walkFileTree(dir, EnumSet.noneOf(FileVisitOption.class), StringHelper.getTemp(), r);
-					r.getParent().forEach(p -> {
+					PathLayerHelper.walkFileTree(dir, StringHelper.getTemp(), false, r);
+					r.getDirectories().forEach(p -> {
 						Platform.runLater(() -> Main.ProcessTitle(p.toString()));
 						try {
 							leftView.getFileTracker().trackNewOutFolder(p);

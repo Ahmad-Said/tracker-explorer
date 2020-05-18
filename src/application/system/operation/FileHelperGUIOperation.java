@@ -1,26 +1,21 @@
 package application.system.operation;
 
-import java.io.File;
 import java.io.IOException;
-import java.nio.file.FileVisitOption;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.ArrayList;
-import java.util.EnumSet;
-import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Queue;
 import java.util.Stack;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadPoolExecutor;
 
-import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 
 import application.DialogHelper;
 import application.Main;
 import application.datatype.Setting;
-import application.system.RecursiveFileWalker;
+import application.system.file.PathLayer;
+import application.system.file.PathLayerHelper;
 import application.system.operation.FileHelper.ActionOperation;
 import javafx.application.Platform;
 import javafx.beans.value.ChangeListener;
@@ -101,12 +96,11 @@ public class FileHelperGUIOperation {
 	private String Action; // 'Copy' 'Move'
 	private String ActionInPast; // 'Copied' 'Moved'
 	private String ActionInContinuous; // 'Copying' 'Moving'
-	private Path TargetDirectory;
-	private List<Path> SourceList;
-	private List<Path> TargetDirLocList;
-	private HashMap<Path, List<Path>> ParentTochildren;
+	private PathLayer TargetDirectory;
+	private Queue<PathLayer> SourceList;
+	private Queue<PathLayer> TargetList;
 	// old file to newly created file
-	private File LastCreatedFile;
+	private PathLayer LastCreatedFile;
 	private int FilesCounts;
 	private boolean isRuning;
 	private boolean isOperationComplete;
@@ -132,7 +126,7 @@ public class FileHelperGUIOperation {
 	 * @param targetDir
 	 * @param src
 	 */
-	public FileHelperGUIOperation(ActionOperation action, Path targetDir, List<Path> src) {
+	public FileHelperGUIOperation(ActionOperation action, PathLayer targetDir, List<? extends PathLayer> src) {
 		switch (action) {
 		case COPY:
 			Action = "Copy";
@@ -150,58 +144,30 @@ public class FileHelperGUIOperation {
 			return;
 		}
 		TargetDirectory = targetDir;
-		// for more control if src was a directory we split all files in it
-		// and in action we check again if the src was a directory we simply create it
-		// then move file to this dir
-		SourceList = new ArrayList<>();
-		TargetDirLocList = new ArrayList<>();
-		ParentTochildren = new HashMap<>();
+		SourceList = new LinkedList<>();
+		TargetList = new LinkedList<>();
 		FilesCounts = 0;
-		for (Path p : src) {
-			if (p.toFile().isDirectory()) {
-				splitDirectory(TargetDirectory, p);
+		// for more control if source was a directory we split all files in it.
+		FileHelperOperationWalker directorySplitter = new FileHelperOperationWalker(TargetDirectory, SourceList,
+				TargetList, toDeleteLater, action);
+		for (PathLayer p : src) {
+			if (p.isDirectory()) {
+				try {
+					PathLayerHelper.walkFileTree(p, Integer.MAX_VALUE, true, directorySplitter);
+				} catch (IOException e) {
+					e.printStackTrace();
+				}
 			} else {
 				SourceList.add(p);
-				TargetDirLocList.add(TargetDirectory);
-				FilesCounts++;
+				TargetList.add(TargetDirectory.resolve(p.getName()));
 			}
 		}
+		FilesCounts = SourceList.size();
+
 		isRuning = false;
 		isOperationComplete = false;
 		// initialize view
 		initializeOperationView();
-	}
-
-	private void splitDirectory(Path treedirTargetPath, Path newDirPath) {
-		SourceList.add(newDirPath);
-		// null i.e. in case of dir we will create a directory not copy or move
-		// unused definition of this list just to not be null... can set null
-		// if not null.. in task
-		TargetDirLocList.add(treedirTargetPath);
-
-		ParentTochildren.put(newDirPath, new ArrayList<>());
-		FilesCounts++;
-		treedirTargetPath = treedirTargetPath.resolve(newDirPath.getFileName());
-		RecursiveFileWalker r = new RecursiveFileWalker(true);
-		try {
-			// Files.walkFileTree(p, EnumSet.of(FileVisitOption.FOLLOW_LINKS), 1, r);
-			final Path treedirTargetPathTemp = treedirTargetPath;
-			Files.walkFileTree(newDirPath, EnumSet.of(FileVisitOption.FOLLOW_LINKS), 1, r);
-			r.getAllFiles().stream().filter(path -> !path.equals(newDirPath)).forEach(path -> {
-				if (path.toFile().isDirectory()) {
-					splitDirectory(treedirTargetPathTemp, path);
-				} else {
-					SourceList.add(path);
-					ParentTochildren.get(newDirPath).add(path);
-					TargetDirLocList.add(treedirTargetPathTemp);
-					FilesCounts++;
-
-				}
-			});
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
-
 	}
 
 	private Thread getThread() {
@@ -209,7 +175,7 @@ public class FileHelperGUIOperation {
 		return currentThread = new Thread(getTask());
 	}
 
-	private Stack<Path> toDeleteLater = new Stack<>();
+	private Stack<PathLayer> toDeleteLater = new Stack<>();
 
 	private Task<Void> getTask() {
 		return new Task<Void>() {
@@ -224,43 +190,30 @@ public class FileHelperGUIOperation {
 					pind.progressProperty().bind(progressProperty());
 				});
 				while (isRuning && SourceList.size() != 0) {
-					Path srcPath = SourceList.get(0);
-					Path srcPathParent = srcPath.getParent();
-					File sourceFile = srcPath.toFile();
+					PathLayer srcPath = SourceList.peek();
+					PathLayer targetPathResolved = TargetList.peek();
 
-					File targetDirFile = TargetDirLocList.get(0).toFile();
-					Path targetPathResolved = targetDirFile.toPath().resolve(srcPath.getFileName());
-					LastCreatedFile = targetPathResolved.toFile();
+					LastCreatedFile = targetPathResolved;
 					updateProgress(updateMsgText(true), FilesCounts);
 
-					// target String resolve printing if targetdir was a root folder like D:\
-					String targetDisplayText = TargetDirectory.getRoot().equals(TargetDirectory)
-							? TargetDirectory.toString()
-							: TargetDirectory.getFileName().toString();
-					// String targetDisplayText = (targetDirFile.toPath().getNameCount() == 0)
-					// ? targetDirFile.toString()
-					// : targetDirFile.getName();
+					String targetDisplayText = targetPathResolved.getAbsolutePath();
 
 					if (Action.equals("Copy")) {
 
 						Platform.runLater(() -> {
 							btnControl.setText("Pause");
-							Main.ProcessTitle(
-									"Copying.. " + srcPath.getFileName().toString() + " To " + targetDisplayText);
+							Main.ProcessTitle("Copying.. " + srcPath.getName() + " To " + targetDisplayText);
 						});
 						try {
-							if (sourceFile.isDirectory()) {
-
-								Files.createDirectories(targetPathResolved);
-								// Files.createDirectories(TargetDirectory.resolve(sourceFile.getName()));
-								// FileUtils.copyDirectoryToDirectory(sourceFile, TargetDirectory.toFile());
+							if (srcPath.isDirectory()) {
+								targetPathResolved.mkdirs();
 							} else {
 								// this is access public restricted so added a new rule for it
 								// https://stackoverflow.com/questions/17083896/how-to-cancel-files-copy-in-java
 								// https://stackoverflow.com/questions/25222811/access-restriction-the-type-application-is-not-api-restriction-on-required-l
-								targetDirFile.mkdirs();
-								Files.copy(srcPath, targetPathResolved,
-										com.sun.nio.file.ExtendedCopyOption.INTERRUPTIBLE);
+								srcPath.copy(targetPathResolved);
+//								Files.copy(srcPath, targetPathResolved,
+//										com.sun.nio.file.ExtendedCopyOption.INTERRUPTIBLE);
 								// Files channel are giving access denied
 								// https://stackoverflow.com/questions/35875142/how-to-cancel-files-copy-in-java-while-not-using-a-non-api-class?noredirect=1&lq=1
 								// FileUtils.copyFileToDirectory(sourceFile, targetDirFile);
@@ -282,32 +235,14 @@ public class FileHelperGUIOperation {
 
 						Platform.runLater(() -> {
 							btnControl.setText("Pause");
-							Main.ProcessTitle(
-									"Moving.." + srcPath.getFileName().toString() + " To " + targetDisplayText);
+							Main.ProcessTitle("Moving.." + srcPath.getName().toString() + " To " + targetDisplayText);
 
 						});
 						try {
-							if (sourceFile.isDirectory()) {
-								Files.createDirectories(targetPathResolved);
+							if (srcPath.isDirectory()) {
+								targetPathResolved.mkdirs();
 							} else {
-								FileUtils.moveToDirectory(srcPath.toFile(), targetDirFile, true);
-								// ensure after moving all files from a directory delete this directory
-								if (ParentTochildren.containsKey(srcPathParent)) {
-									List<Path> myFamily = ParentTochildren.get(srcPathParent);
-									myFamily.remove(srcPath);
-									if (myFamily.size() == 0) {
-										ParentTochildren.remove(srcPathParent);
-										// to ensure no that src path field don't get deleted we stack them
-										// in reverse order
-										try {
-											Files.delete(srcPathParent);
-										} catch (Exception e) {
-											Platform.runLater(() -> Setting.printStackTrace(e));
-											toDeleteLater.push(srcPathParent);
-										}
-									}
-
-								}
+								srcPath.move(targetPathResolved);
 							}
 						} catch (Exception e) {
 							// https://stackoverflow.com/questions/1149703/how-can-i-convert-a-stack-trace-to-a-string
@@ -316,10 +251,7 @@ public class FileHelperGUIOperation {
 
 						}
 					}
-					// System.out.println(
-					// "i still here and my item is " + srcPath + " and size is " +
-					// SourceList.size());
-					// System.out.println("remaining " + SourceList);
+
 					// we done this element move to next
 					// note in case of interrupt the item can still exist with LastCreatedFile
 					// in case outside change to list like in cancel to check again
@@ -327,8 +259,8 @@ public class FileHelperGUIOperation {
 					if (SourceList.size() > 0) {
 						// Successful copy without interruption
 						// remove from queue
-						SourceList.remove(0);
-						TargetDirLocList.remove(0);
+						SourceList.poll();
+						TargetList.poll();
 					} else {
 						// in here button cancel get his action as no remove in this function
 						// so trust the other function i'm getting out here
@@ -365,8 +297,8 @@ public class FileHelperGUIOperation {
 		isOperationComplete = true;
 		Platform.runLater(() -> {
 			if (doDeleteLastElement) {
-				if (LastCreatedFile != null && LastCreatedFile.exists()) {
-					LastCreatedFile.deleteOnExit();
+				if (LastCreatedFile != null && LastCreatedFile.isLocal() && LastCreatedFile.exists()) {
+					LastCreatedFile.toFileIfLocal().deleteOnExit();
 				}
 			} else {
 				if (!btnCancel.getStyleClass().contains("danger")) {
@@ -377,7 +309,7 @@ public class FileHelperGUIOperation {
 			}
 			while (!toDeleteLater.empty()) {
 				try {
-					Files.deleteIfExists(toDeleteLater.pop());
+					toDeleteLater.pop().delete();
 				} catch (IOException e1) {
 					Setting.printStackTrace(e1);
 				}
@@ -410,9 +342,9 @@ public class FileHelperGUIOperation {
 		}
 		final double remaindisplayHelper = remaining;
 		// defining this tempName here as when run later source may be empty!
-		String tempName = SourceList.get(0).toFile().getName();
+		String tempName = SourceList.peek().getName();
 		Platform.runLater(() -> Msg.setText(" (" + remaindisplayHelper + "/" + FilesCounts + ") " + ActionInContinuous
-				+ " " + tempName + "\nTo " + TargetDirectory.toFile().getName()));
+				+ " " + tempName + "\nTo " + TargetDirectory.getName()));
 		return remaining;
 	}
 
@@ -512,7 +444,6 @@ public class FileHelperGUIOperation {
 				// Note this is platform thread
 				// we cannot join another thread here
 				SourceList.clear();
-				TargetDirLocList.clear();
 				btnCancel.setText("Canceled");
 				btnCancel.getStyleClass().remove("warning");
 				btnCancel.getStyleClass().add("danger");

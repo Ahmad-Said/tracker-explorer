@@ -1,17 +1,18 @@
 package application.system.tracker;
 
-import java.nio.file.Path;
 import java.util.HashSet;
+
+import application.system.file.PathLayer;
 
 public class FileTrackerMultipleReturn {
 
-	public HashSet<Path> trackedList;
-	public HashSet<Path> unTrackedList;
+	public HashSet<PathLayer> trackedList;
+	public HashSet<PathLayer> unTrackedList;
 	public boolean didTrackNewFolder;
 
 	public FileTrackerMultipleReturn() {
-		trackedList = new HashSet<Path>();
-		unTrackedList = new HashSet<Path>();
+		trackedList = new HashSet<PathLayer>();
+		unTrackedList = new HashSet<PathLayer>();
 		didTrackNewFolder = false;
 	}
 

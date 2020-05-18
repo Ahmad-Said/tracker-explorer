@@ -3,11 +3,11 @@ package application.system.services;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -22,6 +22,8 @@ import application.StringHelper;
 import application.controller.FilterVLCController;
 import application.datatype.MediaCutData;
 import application.datatype.Setting;
+import application.system.file.PathLayer;
+import application.system.file.local.FilePathLayer;
 import application.system.tracker.FileTracker;
 import application.system.tracker.FileTrackerHolder;
 import javafx.scene.control.Alert.AlertType;
@@ -44,7 +46,7 @@ public class VLC {
 	private static Path Path_Setup = null;
 	private static String FILE_NAME = "vlc.exe";
 
-	public static Map<Path, Integer> RecentTracker = new HashMap<Path, Integer>();
+	public static Map<URI, Integer> RecentTracker = new HashMap<>();
 
 	/**
 	 * @return the path_Setup
@@ -121,24 +123,24 @@ public class VLC {
 		return isAudio(name) || isVideo(name) || isPlaylist(name);
 	}
 
-	public static int pickTime(Path path, Duration resumeTime) {
+	public static int pickTime(URI pathURI, Duration resumeTime) {
 		try {
 			ReloadRecentMRL();
 			String Resume = "";
 			if (resumeTime != null) {
 				Resume = " --start-time " + resumeTime.toSeconds();
-			} else if (RecentTracker.containsKey(path)) {
-				Resume = " --start-time " + RecentTracker.get(path) / 1000;
+			} else if (RecentTracker.containsKey(pathURI)) {
+				Resume = " --start-time " + RecentTracker.get(pathURI) / 1000;
 			}
-			Process p = StartVlc(Resume + " " + path.toUri());
+			Process p = StartVlc(Resume + " " + pathURI);
 			if (p != null) {
 				p.waitFor();
 			}
 		} catch (InterruptedException e) {
 		}
 		ReloadRecentMRL();
-		if (RecentTracker.containsKey(path)) {
-			return RecentTracker.get(path);
+		if (RecentTracker.containsKey(pathURI)) {
+			return RecentTracker.get(pathURI);
 		} else {
 			DialogHelper.showAlert(AlertType.ERROR, "VLC Picker", "Something went wrong",
 					"Try Again.\nPossible Reason: \n - Recent mrl is turned Off."
@@ -183,7 +185,7 @@ public class VLC {
 				String lis = List_Parsed[i].trim();
 				lis = lis.replace("\"", "");
 				try {
-					RecentTracker.put(Paths.get(URI.create(lis)), Integer.parseInt(tim.trim()));
+					RecentTracker.put(URI.create(lis), Integer.parseInt(tim.trim()));
 				} catch (Exception e) {
 					// DialogHelper.showAlert(AlertType.ERROR, "Error", "Failed To parse VLC Config
 					// URI", lis);
@@ -202,32 +204,38 @@ public class VLC {
 	 * @param path         the Path fo media to run
 	 * @param MediaCutData 1 >> start; 2 >> end; 3 >> title
 	 */
-	public static File SavePlayListFile(Path path, ArrayList<MediaCutData> list, boolean isFullPath, boolean isfirst,
-			boolean notifyEnd) {
+	public static PathLayer SavePlayListFile(PathLayer path, ArrayList<MediaCutData> list, boolean isFullPath,
+			boolean isfirst, boolean notifyEnd) {
 
-		File tempFile = null;
+		PathLayer tempFile = null;
 		String mediaLocation = null;
-		String mediaName = path.getFileName().toString();
+		String mediaName = path.getName();
 
 		try {
 			if (isFullPath) // this run when testing from preview table
 			{
-				tempFile = File.createTempFile("Watch", ".xspf");
-				mediaLocation = path.toUri().toString();
+				tempFile = new FilePathLayer(File.createTempFile("Watch", ".xspf"));
+				mediaLocation = path.getAbsolutePath();
 			} else // this to generate the file next to media
 			{
 				String name = StringHelper.getBaseName(mediaName) + " [Filtered].xspf";
-				tempFile = path.getParent().resolve(name).toFile();
-				mediaLocation = path.toUri().toString().substring(path.toUri().toString().lastIndexOf('/') + 1);
+				tempFile = path.getParentPath().resolve(name);
+				mediaLocation = path.getName();
 			}
 			if (tempFile.exists()) {
 				tempFile.delete();
 			}
 			if (!isFullPath) {
-				FileTracker.appendTrackerData(tempFile.toPath(), new FileTrackerHolder(tempFile.getName())
+				FileTracker.appendTrackerData(tempFile, new FileTrackerHolder(tempFile.getName())
 						.setTimeToLiveDefaultMax().setSeen(false).setNoteText(list.size() + " Filtered Scene"), false);
 			}
-			OutputStreamWriter p = new OutputStreamWriter(new FileOutputStream(tempFile), StandardCharsets.UTF_8);
+			OutputStream outputPathLayer = tempFile.getOutputFileStream();
+			if (outputPathLayer == null) {
+				DialogHelper.showAlert(AlertType.ERROR, "VLC", "Unsupported operation in current path",
+						tempFile.toString());
+				return null;
+			}
+			OutputStreamWriter p = new OutputStreamWriter(outputPathLayer, StandardCharsets.UTF_8);
 			// initialize things: template
 			String initi = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\r\n" + "<playlist version=\"1\" \r\n"
 					+ "    xmlns=\"http://xspf.org/ns/0/\" \r\n"
@@ -279,8 +287,9 @@ public class VLC {
 			p.write("    </trackList>\r\n" + "</playlist>" + "\n\r");
 			p.close();
 			if (isFullPath) {
-				startXSPFInOrder(tempFile.toPath());
-				tempFile.deleteOnExit();
+				startXSPFInOrder(tempFile);
+				FilePathLayer tempFileReal = (FilePathLayer) tempFile;
+				tempFileReal.getFile().deleteOnExit();
 			}
 		} catch (IOException e) {
 			e.printStackTrace();
@@ -343,8 +352,8 @@ public class VLC {
 	 * @param arg
 	 * @return
 	 */
-	public static void startXSPFInOrder(Path path) {
-		watchWithRemote(path, "--no-random");
+	public static void startXSPFInOrder(PathLayer path) {
+		watchWithRemote(path.toURI(), "--no-random");
 	}
 
 	/**
@@ -358,9 +367,9 @@ public class VLC {
 	 * @param path        can be null
 	 * @param addArgument can be anything add at the last of command
 	 */
-	public static void watchWithRemote(Path path, String addArgument) {
-		if (path != null) {
-			addArgument += " " + path.toUri();
+	public static void watchWithRemote(URI uri, String addArgument) {
+		if (uri != null) {
+			addArgument += " " + uri;
 		}
 		// we do start watching in remote mode only in case
 		StartVlc(" --extraintf=http --http-password=" + Setting.getVLCHttpPass() + " --qt-recentplay-filter=watch*"

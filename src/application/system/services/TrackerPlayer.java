@@ -104,7 +104,7 @@ public class TrackerPlayer {
 
 	public static File openPlaylistInLnk(File playlistFile) throws IOException, ParseException {
 		if (VLC.isWellSetup() && VLC.isVLCMediaExt(playlistFile.getName())) {
-			VLC.watchWithRemote(playlistFile.toPath(), "");
+			VLC.watchWithRemote(playlistFile.toURI(), "");
 			System.gc();
 		} else {
 			if (WindowsShortcut.isPotentialValidLink(playlistFile)) {

@@ -1,8 +1,6 @@
 package application.controller;
 
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
@@ -23,6 +21,8 @@ import application.StringHelper;
 import application.fxGraphics.IntField;
 import application.model.RenameUtilityViewModel;
 import application.system.WatchServiceHelper;
+import application.system.file.PathLayer;
+import application.system.file.local.FilePathLayer;
 import application.system.operation.FileHelper;
 import application.system.operation.FileHelper.ActionOperation;
 import application.system.tracker.FileTracker;
@@ -155,7 +155,7 @@ public class RenameUtilityController {
 	private static Color REPLACE_COLOR = Color.rgb(255, 0, 255);
 	private static Color EXTENSION_COLOR = Color.rgb(0, 0, 255);
 
-	public RenameUtilityController(List<Path> sourceFiles) {
+	public RenameUtilityController(List<PathLayer> sourceFiles) {
 		// setup refreshing names on clicking CheckBox
 		// TODO set limit of removing things
 		// slider on each input
@@ -309,7 +309,7 @@ public class RenameUtilityController {
 				Dragboard db = event.getDragboard();
 				if (db.hasFiles()) {
 					db.getFiles().forEach(file3 -> {
-						DataTable.add(new RenameUtilityViewModel(file3.toPath()));
+						DataTable.add(new RenameUtilityViewModel(new FilePathLayer(file3)));
 					});
 				} else if (db.hasContent(DataFormat.URL)) {
 					// handle url create shortcuts
@@ -737,7 +737,7 @@ public class RenameUtilityController {
 	}
 
 	// Needed to Redo last modification rename
-	private LinkedList<HashMap<Path, Path>> NewToOldRename = new LinkedList<>();
+	private LinkedList<HashMap<PathLayer, PathLayer>> NewToOldRename = new LinkedList<>();
 
 	@FXML
 	public void doRename() {
@@ -746,14 +746,15 @@ public class RenameUtilityController {
 		String warningAlert = "";
 		if (ans) {
 			String renameError = "";
-			HashMap<Path, Path> currentNewToOldRename = new HashMap<>();
-			List<Path> sources = new ArrayList<Path>();
-			List<Path> targets = new ArrayList<Path>();
+			HashMap<PathLayer, PathLayer> currentNewToOldRename = new HashMap<>();
+			List<PathLayer> sources = new ArrayList<>();
+			List<PathLayer> targets = new ArrayList<>();
 			boolean renameOccur = false;
 			boolean isThereRealFile = false;
 			// TODO conserve status seen and notes!
 			WatchServiceHelper.setRuning(false);
-			Path oldFile = null, newFile = null;
+			PathLayer oldFile = null;
+			PathLayer newFile = null;
 
 			for (RenameUtilityViewModel t : DataTable) {
 				if (t.getConsiderCheckBox().isSelected()) {
@@ -768,13 +769,13 @@ public class RenameUtilityController {
 							newFile = t.getPathFile().resolveSibling(StringHelper.textFlowToString(t.getNewName()));
 							FileHelper.renameHelper(oldFile, newFile);
 							t.setPathFile(newFile);
-							t.setOldName(newFile.getFileName().toString());
+							t.setOldName(newFile.getName());
 							isThereRealFile = true;
 							currentNewToOldRename.put(newFile, oldFile);
 							sources.add(oldFile);
 							targets.add(newFile);
 						} catch (IOException e) {
-							renameError += t.getPathFile().getFileName() + " --> "
+							renameError += t.getPathFile().getName() + " --> "
 									+ StringHelper.textFlowToString(t.getNewName()) + "\n";
 							warningAlert += e.getClass() + ": " + e.getMessage() + "\n";
 							e.printStackTrace();
@@ -969,18 +970,18 @@ public class RenameUtilityController {
 		}
 		String changeReportFiles = "";
 		String notFoundFiles = "";
-		HashMap<Path, Path> lastNewToOldRename = NewToOldRename.peekLast();
-		Path workingDir = lastNewToOldRename.get(lastNewToOldRename.keySet().toArray()[0]).getParent();
+		HashMap<PathLayer, PathLayer> lastNewToOldRename = NewToOldRename.peekLast();
+		PathLayer workingDir = lastNewToOldRename.get(lastNewToOldRename.keySet().toArray()[0]).getParentPath();
 		int i = 0;
 		int found = 0;
-		for (Path newPath : lastNewToOldRename.keySet()) {
-			if (newPath.toFile().exists()) {
-				changeReportFiles += "*R" + (i + 1) + "- " + newPath.getFileName() + " --> "
-						+ lastNewToOldRename.get(newPath).getFileName() + "\n";
+		for (PathLayer newPath : lastNewToOldRename.keySet()) {
+			if (newPath.exists()) {
+				changeReportFiles += "*R" + (i + 1) + "- " + newPath.getName() + " --> "
+						+ lastNewToOldRename.get(newPath).getName() + "\n";
 				found++;
 			} else {
-				notFoundFiles += "*N" + (i + 1) + "- " + newPath.getFileName() + " !!->"
-						+ lastNewToOldRename.get(newPath).getFileName() + "\n";
+				notFoundFiles += "*N" + (i + 1) + "- " + newPath.getName() + " !!->"
+						+ lastNewToOldRename.get(newPath).getName() + "\n";
 			}
 			i++;
 		}
@@ -997,26 +998,25 @@ public class RenameUtilityController {
 			i = 0;
 			String renameError = "";
 			String warningAlert = "";
-			HashMap<Path, RenameUtilityViewModel> pathToTableView = new HashMap<>();
+			HashMap<PathLayer, RenameUtilityViewModel> pathToTableView = new HashMap<>();
 			for (RenameUtilityViewModel t : DataTable) {
 				if (lastNewToOldRename.containsKey(t.getPathFile())) {
 					pathToTableView.put(t.getPathFile(), t);
 				}
 			}
 			// new to old rename process
-			for (Path newPath : lastNewToOldRename.keySet()) {
+			for (PathLayer newPath : lastNewToOldRename.keySet()) {
 				try {
-					if (newPath.toFile().exists()) {
-						Path oldPath = lastNewToOldRename.get(newPath);
-						Files.move(newPath, oldPath);
+					if (newPath.exists()) {
+						PathLayer oldPath = lastNewToOldRename.get(newPath);
+						oldPath.move(newPath);
 						if (pathToTableView.containsKey(newPath)) {
 							pathToTableView.get(newPath).setPathFile(oldPath);
-							pathToTableView.get(newPath).setOldName(oldPath.getFileName().toString());
+							pathToTableView.get(newPath).setOldName(oldPath.getName().toString());
 						}
 					}
 				} catch (IOException e) {
-					renameError += newPath.getFileName() + " -->" + lastNewToOldRename.get(newPath).getFileName()
-							+ "\n";
+					renameError += newPath.getName() + " -->" + lastNewToOldRename.get(newPath).getName() + "\n";
 					warningAlert += e.getClass() + ": " + e.getMessage() + "\n";
 					e.printStackTrace();
 				}

@@ -11,7 +11,6 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.Duration;
 import java.time.Instant;
-import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
@@ -23,6 +22,7 @@ import org.apache.commons.io.FilenameUtils;
 import org.jetbrains.annotations.Nullable;
 
 import application.controller.splitview.SplitViewController;
+import application.system.file.PathLayer;
 import javafx.scene.Node;
 import javafx.scene.text.Text;
 import javafx.scene.text.TextFlow;
@@ -30,8 +30,8 @@ import javafx.stage.FileChooser;
 
 public class StringHelper {
 
-	public static Path InitialLeftPath;
-	public static Path InitialRightPath;
+	public static PathLayer InitialLeftPath;
+	public static PathLayer InitialRightPath;
 	public static Integer temp;
 	private static Map<String, String> KeyAsShiftDown = new HashMap<String, String>() {
 		/**
@@ -186,37 +186,20 @@ public class StringHelper {
 		return p;
 	}
 
-	public static class FileComparator implements Comparator<File> {
+	/**
+	 * Sort files by considering string as number("9"<"23") <br>
+	 * Sort files by separating real files from directory
+	 */
+	public static final Comparator<PathLayer> NaturalFileComparator = new Comparator<PathLayer>() {
 
 		@Override
-		public int compare(File f1, File f2) {
+		public int compare(PathLayer f1, PathLayer f2) {
 			if (f1.isDirectory() && f2.isDirectory() || f1.isFile() && f2.isFile()) {
-				return f1.compareTo(f2);
+				return WindowsExplorerComparator.getComparator().compare(f1.getName(), f2.getName());
 			}
 			return f1.isDirectory() ? -1 : 1;
 		}
-	}
-
-	public static class NaturalFileComparator implements Comparator<File> {
-		private final Comparator<String> NATURAL_SORT = new WindowsExplorerComparator();
-
-		@Override
-		public int compare(File f1, File f2) {
-
-			if (f1.isDirectory() && f2.isDirectory() || f1.isFile() && f2.isFile()) {
-				return NATURAL_SORT.compare(f1.getName(), f2.getName());
-			}
-			return f1.isDirectory() ? -1 : 1;
-		}
-	}
-
-	public static void SortArrayFiles(List<File> listFiles) {
-		Collections.sort(listFiles, new FileComparator());
-	}
-
-	public static void SortNaturalArrayFiles(List<File> listFiles) {
-		Collections.sort(listFiles, new NaturalFileComparator());
-	}
+	};
 
 	public static Map<String, String> getKeyAsShiftDown() {
 		return KeyAsShiftDown;
@@ -234,7 +217,7 @@ public class StringHelper {
 	private static long cumulativeDuration = 0;
 	private static long startMemoryInByte;
 	private static long cumlativeMemoryInByte = 0;
-	private static long count = 0;
+	private static long pingCount = 0;
 
 	public static void startTimer() {
 		startMemoryInByte = Runtime.getRuntime().totalMemory();
@@ -246,10 +229,14 @@ public class StringHelper {
 		cumulativeDuration += timeElapsed;
 		long allocatedMemory = Runtime.getRuntime().totalMemory() - startMemoryInByte;
 		cumlativeMemoryInByte += allocatedMemory;
-		System.out.println("--- Ping: " + count++ + " ---  Took about:  " + timeElapsed + "  ----- Cumlative Duration: "
-				+ cumulativeDuration + " --- Allocation:" + allocatedMemory + "  Bytes ----- Cumlative Allocation: "
-				+ cumlativeMemoryInByte / 1024 + " MB");
+		System.out.println("--- Ping: " + pingCount++ + " ---  Took about:  " + timeElapsed
+				+ "  ----- Cumlative Duration: " + cumulativeDuration + " --- Allocation:" + allocatedMemory
+				+ "  Bytes ----- Cumlative Allocation: " + cumlativeMemoryInByte / 1024 + " MB");
 		return timeElapsed;
+	}
+
+	public static long getPingCount() {
+		return pingCount;
 	}
 
 	public static void openFile(File resources) {
@@ -322,5 +309,14 @@ public class StringHelper {
 			format = String.format("%.1f MB", sizeInMB);
 		}
 		return format;
+	}
+
+	public static String getName(Path path) {
+		Path fileName = path.getFileName();
+		if (fileName != null) {
+			return fileName.toString();
+		} else {
+			return path.toString();
+		}
 	}
 }

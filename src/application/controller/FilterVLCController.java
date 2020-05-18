@@ -1,7 +1,6 @@
 package application.controller;
 
 import java.io.IOException;
-import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -12,6 +11,7 @@ import application.Main;
 import application.controller.splitview.SplitViewController;
 import application.datatype.MediaCutData;
 import application.model.FilterVLCViewModel;
+import application.system.file.PathLayer;
 import application.system.services.VLC;
 import application.system.tracker.FileTracker;
 import application.system.tracker.FileTrackerHolder;
@@ -108,7 +108,7 @@ public class FilterVLCController {
 
 	private ObservableList<FilterVLCViewModel> mDataTable = FXCollections.observableArrayList();
 	private FileTracker mfileTracker;
-	private Path mPath;
+	private PathLayer mPath;
 	private Stage filterStage; // defined to close it later
 
 	/**
@@ -135,11 +135,11 @@ public class FilterVLCController {
 	 * @param mfileTracker It's tracker came from it's parent
 	 *                     {@link SplitViewController#getFileTracker()}
 	 */
-	public FilterVLCController(Path path) {
+	public FilterVLCController(PathLayer path) {
 
 		mPath = path;
-		mfileTracker = new FileTracker(path.getParent(), null);
-		mfileTracker.loadMap(path.getParent(), true);
+		mfileTracker = new FileTracker(path.getParentPath(), null);
+		mfileTracker.loadMap(path.getParentPath(), true, null);
 		filterStage = new Stage();
 		filterStage.sizeToScene();
 		// didn't work as expected
@@ -171,7 +171,7 @@ public class FilterVLCController {
 
 			scene.getStylesheets().add("/css/bootstrap3.css");
 
-			filterStage.setTitle(mPath.getFileName() + "  Editor");
+			filterStage.setTitle(mPath.getName() + "  Editor");
 			filterStage.setScene(scene);
 
 			filterStage.getIcons().add(new Image(Main.class.getResourceAsStream("/img/filter_vlc.png")));
@@ -225,7 +225,7 @@ public class FilterVLCController {
 	private void initisalizeTable() {
 
 		// initialize data Table
-		FileTrackerHolder options = mfileTracker.getMapDetailsRevolved().get(mPath);
+		FileTrackerHolder options = mfileTracker.getMapDetails().get(mPath);
 		try {
 			if (options.getMediaCutDataUnPrased() != null && !options.getMediaCutDataUnPrased().isEmpty()) {
 				options.getMediaCutDataParsed().forEach(mCut -> mDataTable.add(new FilterVLCViewModel(mCut)));
@@ -427,7 +427,7 @@ public class FilterVLCController {
 
 	@FXML // this does save to hidden filetracker
 	public void saveToMapAndFile() {
-		FileTrackerHolder options = mfileTracker.getMapDetailsRevolved().get(mPath);
+		FileTrackerHolder options = mfileTracker.getMapDetails().get(mPath);
 		List<String> concatenatedOptions = new ArrayList<String>();
 		// clear all track data and get them from observable list
 		for (FilterVLCViewModel t : mDataTable) {
@@ -501,7 +501,7 @@ public class FilterVLCController {
 		if (resume.toSeconds() == 0) {
 			resume = null;
 		}
-		int sec = VLC.pickTime(mPath, resume);
+		int sec = VLC.pickTime(mPath.toURI(), resume);
 		// this transition can be used to get focus but annoying
 		// filterStage.hide();
 		// filterStage.show();
@@ -513,7 +513,7 @@ public class FilterVLCController {
 	public void getCopyRaw() {
 		// https://stackoverflow.com/questions/6710350/copying-text-to-the-clipboard-using-java
 		String myString = "Failed to copy";
-		myString = mfileTracker.getMapDetailsRevolved().get(mPath).getMediaCutDataUnPrased();
+		myString = mfileTracker.getMapDetails().get(mPath).getMediaCutDataUnPrased();
 		for (FilterVLCViewModel t : mDataTable) {
 			myString += ">" + t.getStart().toSeconds() + ">" + t.getEnd().toSeconds() + ">" + t.getDescription();
 		}
@@ -544,7 +544,7 @@ public class FilterVLCController {
 
 			List<String> options = Arrays.asList(myString.split(">"));
 			String Warn = "";
-			if (!options.get(0).equals(mPath.getFileName().toString())) {
+			if (!options.get(0).equals(mPath.getName().toString())) {
 				Warn += "\n- Remark there is a difference in file name.";
 			}
 			mDataTable.clear();

@@ -1,43 +1,26 @@
 package application.datatype;
 
-import java.io.File;
+import java.net.URISyntaxException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 
 import javax.xml.bind.annotation.XmlRootElement;
 
-import application.StringHelper;
+import application.system.file.PathLayer;
+import application.system.file.PathLayerHelper;
 import javafx.util.Pair;
 
-@XmlRootElement(name = "FavoritesList")
+@XmlRootElement
 public class FavoriteViewList {
-	public String Version = "5.0";
-	public Boolean BackSync = false;
-	public Boolean AutoExpand = true;
-	public Boolean LoadAllIcon = true;
-	public File LeftLastKnowLocation = null;
-	public File RightLastKnowLocation = null;
-	public Boolean ShowLeftNotesColumn = false;
-	public Boolean ShowRightNotesColumn = false;
-	public String ActiveUser = "default";
-	public String VLCHttpPass = "1234";
-	public int MaxLimitFilesRecursive = 10000;
-	public int MaxDepthFilesRecursive = 5;
-	public boolean isDebugMode = false;
-	public boolean autoRenameUTFFile = false;
-	public boolean useTeraCopyByDefault = false;
-	public boolean autoCloseClearDoneFileOperation = true;
-
 	// left location and titles are the key of favorites locations
-	private ArrayList<File> leftLocs, rightLocs;
+	private ArrayList<PathLayer> leftLocs, rightLocs;
 	private ArrayList<String> titles;
-	private Pair<String, File> lastRemovedKey;
+	private Pair<String, PathLayer> lastRemovedKey;
 
 	public FavoriteViewList() {
 		setLeftLoc(new ArrayList<>());
-		setRightLoc(new ArrayList<File>());
+		setRightLoc(new ArrayList<>());
 		setTitle(new ArrayList<String>());
 	}
 
@@ -55,15 +38,23 @@ public class FavoriteViewList {
 		}
 		int size = Math.min(Math.min(favoritesTitles.size(), favoritesLeftLocs.size()), favoritesRightLocs.size());
 		String title = "";
-		File left = null, right = null;
+		PathLayer left = null;
+		PathLayer right = null;
 
 		for (int i = 0; i < size; i++) {
+			title = "";
+			left = null;
+			right = null;
 			title = favoritesTitles.get(i);
 			if (title == null || title.isEmpty()) {
 				continue;
 			}
-			left = StringHelper.parseUriToPath(favoritesLeftLocs.get(i)).toFile();
-			right = StringHelper.parseUriToPath(favoritesRightLocs.get(i)).toFile();
+			try {
+				left = PathLayerHelper.parseURI(favoritesLeftLocs.get(i));
+				right = PathLayerHelper.parseURI(favoritesRightLocs.get(i));
+			} catch (URISyntaxException e) {
+				e.printStackTrace();
+			}
 			if (left == null || right == null) {
 				continue;
 			}
@@ -83,13 +74,13 @@ public class FavoriteViewList {
 		titles.clear();
 	}
 
-	public void addNewFovorite(String Title, File left, File right) {
+	public void addNewFovorite(String Title, PathLayer left, PathLayer right) {
 		titles.add(Title);
 		leftLocs.add(left);
 		rightLocs.add(right);
 	}
 
-	public void add(int i, String title, File leftFile, File rightFile) {
+	public void add(int i, String title, PathLayer leftFile, PathLayer rightFile) {
 		titles.add(i, title);
 		leftLocs.add(i, leftFile);
 		rightLocs.add(i, rightFile);
@@ -103,11 +94,11 @@ public class FavoriteViewList {
 		return titles.contains(title);
 	}
 
-	public boolean contains(File leftFile) {
+	public boolean contains(PathLayer leftFile) {
 		return leftLocs.contains(leftFile);
 	}
 
-	public void remove(File leftFile) {
+	public void remove(PathLayer leftFile) {
 		removeIndexI(leftLocs.indexOf(leftFile));
 	}
 
@@ -119,25 +110,25 @@ public class FavoriteViewList {
 		if (i < 0) {
 			return;
 		}
-		lastRemovedKey = new Pair<String, File>(titles.get(i), leftLocs.get(i));
+		lastRemovedKey = new Pair<String, PathLayer>(titles.get(i), leftLocs.get(i));
 		titles.remove(i);
 		leftLocs.remove(i);
 		rightLocs.remove(i);
 	}
 
-	public Pair<String, File> getLastRemoved() {
+	public Pair<String, PathLayer> getLastRemoved() {
 		return lastRemovedKey;
 	}
 
-	public String getTitleByLeft(File favoLeftFile) {
+	public String getTitleByLeft(PathLayer favoLeftFile) {
 		return titles.get(leftLocs.indexOf(favoLeftFile));
 	}
 
-	public File getLeftLocByTitle(String title) {
+	public PathLayer getLeftLocByTitle(String title) {
 		return leftLocs.get(titles.indexOf(title));
 	}
 
-	public File getRightLocByTitle(String title) {
+	public PathLayer getRightLocByTitle(String title) {
 		return leftLocs.get(titles.indexOf(title));
 	}
 
@@ -162,36 +153,35 @@ public class FavoriteViewList {
 	/**
 	 * @return the leftLoc
 	 */
-	public ArrayList<File> getLeftLoc() {
+	public ArrayList<PathLayer> getLeftLoc() {
 		return leftLocs;
 	}
 
 	/**
 	 * @param leftLoc the leftLoc to set
 	 */
-	public void setLeftLoc(ArrayList<File> leftLoc) {
+	public void setLeftLoc(ArrayList<PathLayer> leftLoc) {
 		leftLocs = leftLoc;
 	}
 
 	/**
 	 * @return the rightLoc
 	 */
-	public ArrayList<File> getRightLoc() {
+	public ArrayList<PathLayer> getRightLoc() {
 		return rightLocs;
 	}
 
 	/**
 	 * @param rightLoc the rightLoc to set
 	 */
-	public void setRightLoc(ArrayList<File> rightLoc) {
+	public void setRightLoc(ArrayList<PathLayer> rightLoc) {
 		rightLocs = rightLoc;
 	}
 
 	public void updateTitlesAndIndexs(HashMap<String, Pair<String, Integer>> oldToNewTitleAndIndex) {
-		ArrayList<File> nleftLocs = new ArrayList<>(Arrays.asList(new File[oldToNewTitleAndIndex.size()])),
-				nrightLocs = new ArrayList<>(Arrays.asList(new File[oldToNewTitleAndIndex.size()]));
-		ArrayList<String> ntitles = new ArrayList<>(Arrays.asList(new String[oldToNewTitleAndIndex.size()]));
-
+		ArrayList<PathLayer> nleftLocs = new ArrayList<>(leftLocs);
+		ArrayList<PathLayer> nrightLocs = new ArrayList<>(rightLocs);
+		ArrayList<String> ntitles = new ArrayList<>(titles);
 		for (int i = 0; i < titles.size(); i++) {
 			if (!oldToNewTitleAndIndex.containsKey(titles.get(i))) {
 				continue;

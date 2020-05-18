@@ -14,6 +14,7 @@ import java.util.List;
 import org.jetbrains.annotations.Nullable;
 
 import application.StringHelper;
+import application.system.file.local.FilePathLayer;
 
 /**
  * https://codesector.kayako.com/article/2-command-line
@@ -42,24 +43,31 @@ public class TeraCopy {
 		return false;
 	}
 
-	public static void copy(List<Path> source, Path targetDirectory) throws IOException {
+	/**
+	 * Normally support local files only {@link FileFilePathLayer}
+	 *
+	 * @param source
+	 * @param targetDirectory
+	 * @throws IOException
+	 */
+	public static void copy(List<FilePathLayer> source, FilePathLayer targetDirectory) throws IOException {
 		File tempFileList = getTempFileList(source);
 		StringHelper.RunRuntimeProcess(new String[] { Path_Setup.toString(), "Copy", "*" + tempFileList.toString(),
 				targetDirectory.toString() });
 	}
 
-	public static void move(List<Path> source, Path targetDirectory) throws IOException {
+	public static void move(List<FilePathLayer> source, FilePathLayer targetDirectory) throws IOException {
 		File tempFileList = getTempFileList(source);
 		StringHelper.RunRuntimeProcess(new String[] { Path_Setup.toString(), "Move", "*" + tempFileList.toString(),
 				targetDirectory.toString() });
 	}
 
-	private static File getTempFileList(List<Path> source) throws IOException {
+	private static File getTempFileList(List<FilePathLayer> source) throws IOException {
 		File tempFileList = File.createTempFile("teraList", ".txt");
 		// was using UTF 8 here but give problem with arabic letter since windows do not
 		// use it as default!
 		OutputStreamWriter p = new OutputStreamWriter(new FileOutputStream(tempFileList), Charset.defaultCharset());
-		for (Path path : source) {
+		for (FilePathLayer path : source) {
 			p.write(path.toString() + "\n");
 		}
 		p.close();

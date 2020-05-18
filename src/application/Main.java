@@ -11,6 +11,7 @@ import java.util.Map;
 
 import application.controller.WelcomeController;
 import application.datatype.Setting;
+import application.system.file.local.FilePathLayer;
 import application.system.operation.FileHelperGUIOperation;
 import application.system.services.TrackerPlayer;
 import application.system.tracker.FileTracker;
@@ -90,8 +91,8 @@ public class Main extends Application {
 			path = path.replace("\"", "");
 			File temp = new File(path);
 			if (temp.exists()) {
-				StringHelper.InitialLeftPath = temp.toPath();
-				StringHelper.InitialRightPath = temp.toPath();
+				StringHelper.InitialLeftPath = new FilePathLayer(temp);
+				StringHelper.InitialRightPath = new FilePathLayer(temp);
 			} else {
 				initializePath();
 			}
@@ -134,6 +135,9 @@ public class Main extends Application {
 	}
 
 	public static void main(String[] args) {
+//		File test = new File("\\\\192.168.0.105@8080\\DavWWWRoot\\sdcard"); // found
+//		File test = new File("http://192.168.0.104:8080/sdcard"); // not found
+//		File test = new File("\\\\192.168.0.104@12345\\DavWWWRoot\\sdcard");
 		launch(args);
 	}
 
@@ -168,8 +172,8 @@ public class Main extends Application {
 
 		if (!doneLeft) {
 			File[] roots = File.listRoots();
-			StringHelper.InitialLeftPath = roots[0].toPath();
-			StringHelper.InitialRightPath = roots[0].toPath();
+			StringHelper.InitialLeftPath = new FilePathLayer(roots[0]);
+			StringHelper.InitialRightPath = new FilePathLayer(roots[0]);
 		}
 	}
 
