@@ -75,3 +75,4 @@ local.properties
 build.fxbuild
 /build
 /nbproject/private/
+/target/

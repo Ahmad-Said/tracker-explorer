@@ -1,0 +1,65 @@
+/* Custom made */
+.tooltipHover{
+	-fx-background-color: #7F00FF;
+	-fx-text-fill: white;
+	-fx-font-size:15;
+	-fx-font-weight:bold;
+}
+.noteButton{
+	-fx-background-color: #7F00FF;
+	-fx-text-fill:white;
+	-fx-font-size:13;
+	-fx-font-weight:bold;
+}
+
+/* From bootstrapv3 */
+/*success*/
+
+.button.success,.split-menu-button.success,.toggle-button.success,.menu-button.success,
+.split-menu-button.success > .label, .split-menu-button.success > .arrow-button {
+	-fx-background-color: #5cb85c;
+}
+
+.button.success,.menu-button.success,.toggle-button.success,
+.split-menu-button.success > .label,.split-menu-button.success > .arrow-button {
+	-fx-border-color: #4cae4c;
+	-fx-text-fill: white;
+}
+/*info*/
+
+.button.info,.split-menu-button.info,.toggle-button.info,.menu-button.info,
+.split-menu-button.info > .label, .split-menu-button.info > .arrow-button {
+	-fx-background-color: #5bc0de;
+}
+
+.button.info,.menu-button.info,.toggle-button.info,
+.split-menu-button.info > .label,.split-menu-button.info > .arrow-button {
+	-fx-border-color: #46b8da;
+	-fx-text-fill: white;
+}
+
+/*warning*/
+
+.button.warning,.split-menu-button.warning,.toggle-button.warning,.menu-button.warning,
+.split-menu-button.warning > .label, .split-menu-button.warning > .arrow-button {
+	-fx-background-color: #f0ad4e;
+}
+
+.button.warning,.menu-button.warning,.toggle-button.warning,
+.split-menu-button.warning > .label,.split-menu-button.warning > .arrow-button {
+	-fx-border-color: #eea236;
+	-fx-text-fill: white;
+}
+
+/*danger*/
+
+.button.danger,.split-menu-button.danger,.toggle-button.danger,.menu-button.danger,
+.split-menu-button.danger > .label, .split-menu-button.danger > .arrow-button {
+	-fx-background-color: #d9534f;
+}
+
+.button.danger,.menu-button.danger,.toggle-button.danger,
+.split-menu-button.danger > .label,.split-menu-button.danger > .arrow-button {
+	-fx-border-color: #d43f3a;
+	-fx-text-fill: white;
+}
