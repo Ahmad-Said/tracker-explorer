@@ -115,6 +115,7 @@ public class WatchServiceHelper {
 			mWatchKey = newDirectory.register(mWatchService, StandardWatchEventKinds.ENTRY_CREATE,
 					StandardWatchEventKinds.ENTRY_DELETE, StandardWatchEventKinds.ENTRY_MODIFY);
 		} catch (IOException e) {
+			e.addSuppressed(new Exception("Was trying to watch:  " + newDirectory.toString()));
 			throw e;
 		}
 

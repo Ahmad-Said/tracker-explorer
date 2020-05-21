@@ -6,6 +6,7 @@ import java.io.File;
 import java.io.IOException;
 import java.net.MalformedURLException;
 import java.net.URI;
+import java.net.URISyntaxException;
 import java.net.URL;
 import java.nio.file.Path;
 import java.time.Duration;
@@ -37,6 +38,7 @@ import com.sun.javafx.scene.control.skin.TableColumnHeader;
 import javafx.application.Platform;
 import javafx.collections.FXCollections;
 import javafx.collections.ListChangeListener;
+import javafx.collections.MapChangeListener.Change;
 import javafx.collections.ObservableList;
 import javafx.collections.transformation.FilteredList;
 import javafx.collections.transformation.SortedList;
@@ -93,12 +95,13 @@ import said.ahmad.javafx.tracker.app.ResourcesHelper;
 import said.ahmad.javafx.tracker.app.StringHelper;
 import said.ahmad.javafx.tracker.app.ThreadExecutors;
 import said.ahmad.javafx.tracker.app.WindowsExplorerComparator;
+import said.ahmad.javafx.tracker.app.pref.Setting;
 import said.ahmad.javafx.tracker.controller.FilterVLCController;
 import said.ahmad.javafx.tracker.controller.PhotoViewerController;
 import said.ahmad.javafx.tracker.controller.RenameUtilityController;
 import said.ahmad.javafx.tracker.controller.WelcomeController;
+import said.ahmad.javafx.tracker.datatype.FavoriteView;
 import said.ahmad.javafx.tracker.datatype.MediaCutData;
-import said.ahmad.javafx.tracker.datatype.Setting;
 import said.ahmad.javafx.tracker.datatype.SplitViewState;
 import said.ahmad.javafx.tracker.model.TableViewModel;
 import said.ahmad.javafx.tracker.system.RecursiveFileWalker;
@@ -270,7 +273,7 @@ public class SplitViewController implements Initializable {
 	private String truePathField;
 
 	private ObservableList<TableViewModel> DataTable;
-	SortedList<TableViewModel> sortedData;
+	private SortedList<TableViewModel> sortedData;
 
 	public SplitViewController() {
 	}
@@ -308,7 +311,7 @@ public class SplitViewController implements Initializable {
 		initializePathField();
 		initializeSplitButton();
 
-		initializeFavorites();
+		Setting.registerOnFinishLoadingAction(() -> initializeFavorites());
 
 		watchServiceHelper = new WatchServiceHelper(this);
 
@@ -318,17 +321,12 @@ public class SplitViewController implements Initializable {
 		if (favoritesLocations == null) {
 			return;
 		}
-		reloadFavorites();
 		favoriteCheckBox.setOnAction(new EventHandler<ActionEvent>() {
 			@Override
 			public void handle(ActionEvent event) {
 				if (favoriteCheckBox.isSelected()) {
 					// ask for title here
 					String hint = getmDirectoryPath().getName();
-					if (Setting.getFavoritesLocations().getLastRemoved() != null && Setting.getFavoritesLocations()
-							.getLastRemoved().getValue().equals(getmDirectoryPath())) {
-						hint = Setting.getFavoritesLocations().getLastRemoved().getKey();
-					}
 					String title = DialogHelper.showTextInputDialog("Favorite Title",
 							"Please Enter the name of this Favorite View", "", hint);
 					if (title == null || title.trim().equals("")) {
@@ -340,57 +338,66 @@ public class SplitViewController implements Initializable {
 					if (rightViewNeighbor != null) {
 						rightPath = rightViewNeighbor.getmDirectoryPath();
 					}
-					AddandPriorizethisMenu(title, getmDirectoryPath(), rightPath);
+					AddandPriorizethisMenu(new FavoriteView(title, getmDirectoryPath(), rightPath));
 				} else {
 					removeFavorite(getmDirectoryPath());
 				}
 			}
 		});
+		manuallyLoadFavoritesMenus();
 	}
 
 	private Map<String, MenuItem> allMenuFavoriteLocation = new HashMap<String, MenuItem>();
 
-	public void reloadFavorites() {
+	public void onFavoriteChanges(Change<? extends String, ? extends FavoriteView> change) {
 		if (favoritesLocations == null) {
 			return;
 		}
-		favoritesLocations.getItems().clear();
-		allMenuFavoriteLocation.clear();
-		for (int i = Setting.getFavoritesLocations().size() - 1; i >= 0; i--) {
-			AddandPriorizethisMenu(Setting.getFavoritesLocations().getTitle().get(i),
-					Setting.getFavoritesLocations().getLeftLoc().get(i),
-					Setting.getFavoritesLocations().getRightLoc().get(i));
+		if (change.wasAdded()) {
+			onAddingFavorite(change.getValueAdded(), true);
+		} else if (change.wasRemoved()) {
+			onRemovingFavorite(change.getValueRemoved());
 		}
 	}
 
-	public void clearFavorites() {
-		favoritesLocations.getItems().clear();
-		allMenuFavoriteLocation.clear();
+	public void manuallyLoadFavoritesMenus() {
+		Setting.getFavoritesLocations().getList().values().forEach(f -> onAddingFavorite(f, false));
 	}
 
-	private void AddandPriorizethisMenu(String title, PathLayer leftPath, PathLayer rightPath) {
-		if (allMenuFavoriteLocation.containsKey(title)) {
-			removeFavorite(title);
+	private void onAddingFavorite(FavoriteView favoriteView, boolean addAtTop) {
+		String addedTitle = favoriteView.getTitle();
+		if (allMenuFavoriteLocation.containsKey(addedTitle)) {
+			favoritesLocations.getItems().remove(allMenuFavoriteLocation.get(addedTitle));
+			allMenuFavoriteLocation.remove(addedTitle);
 		}
-		MenuItem mx = new MenuItem(title);
-		mx.setOnAction(e -> parentWelcome.openFavoriteLocation(title, leftPath, rightPath, this));
-		allMenuFavoriteLocation.put(title, mx);
-		if (!Setting.getFavoritesLocations().contains(title)) {
-			Setting.getFavoritesLocations().add(0, title, leftPath, rightPath);
+		MenuItem mx = new MenuItem(addedTitle);
+		mx.setOnAction(e -> parentWelcome.openFavoriteLocation(favoriteView, this));
+		allMenuFavoriteLocation.put(favoriteView.getTitle(), mx);
+		if (addAtTop) {
+			favoritesLocations.getItems().add(0, mx);
+		} else {
+			favoritesLocations.getItems().add(mx);
 		}
-		favoritesLocations.getItems().add(0, mx);
+	}
+
+	private void onRemovingFavorite(FavoriteView favoriteView) {
+		String removedTitle = favoriteView.getTitle();
+		if (allMenuFavoriteLocation.containsKey(removedTitle)) {
+			favoritesLocations.getItems().remove(allMenuFavoriteLocation.get(removedTitle));
+			allMenuFavoriteLocation.remove(removedTitle);
+		}
+	}
+
+	private void AddandPriorizethisMenu(FavoriteView favoriteView) {
+		Setting.getFavoritesLocations().addAtFirst(favoriteView);
 	}
 
 	private void removeFavorite(PathLayer FavoLeftPath) {
-		removeFavorite(Setting.getFavoritesLocations().getTitleByLeft(FavoLeftPath));
+		removeFavorite(Setting.getFavoritesLocations().getByFirstLoc(FavoLeftPath).getTitle());
 	}
 
 	private void removeFavorite(String FavoTitle) {
-		if (Setting.getFavoritesLocations().contains(FavoTitle)) {
-			Setting.getFavoritesLocations().remove(FavoTitle);
-			favoritesLocations.getItems().remove(allMenuFavoriteLocation.get(FavoTitle));
-			allMenuFavoriteLocation.remove(FavoTitle);
-		}
+		Setting.getFavoritesLocations().removeByTitle(FavoTitle);
 	}
 
 	private void initializePathField() {
@@ -413,6 +420,10 @@ public class SplitViewController implements Initializable {
 
 	public void setPathFieldThenRefresh(String pathField) {
 		pathField = pathField.trim();
+		if (pathField.isEmpty()) {
+			refresh(null);
+			return;
+		}
 		final String pathFieldFinal = pathField;
 		if (pathFieldFinal.equals("cmd")) {
 			// system dependency
@@ -428,12 +439,14 @@ public class SplitViewController implements Initializable {
 				// Try to parse URI as Path Layer
 				URI parsedURI = new URI(pathFieldFinal);
 				// Ignore the query part of the input url
-				URI uriNoQuery = new URI(parsedURI.getScheme(), parsedURI.getAuthority(), parsedURI.getPath(), null,
+				URI uriNoQuery;
+				uriNoQuery = new URI(parsedURI.getScheme(), parsedURI.getAuthority(), parsedURI.getPath(), null,
 						parsedURI.getFragment());
 				targetPath = PathLayerHelper.parseURI(uriNoQuery);
-			} catch (Exception e) {
+			} catch (URISyntaxException e) {
 				e.printStackTrace();
 			}
+
 		}
 		// Important see there is navigate is not just a boolean ::
 		if (targetPath != null) {
@@ -1472,7 +1485,7 @@ public class SplitViewController implements Initializable {
 			favoriteCheckBox.setVisible(false);
 		} else {
 			favoriteCheckBox.setVisible(true);
-			favoriteCheckBox.setSelected(Setting.getFavoritesLocations().contains(getmDirectoryPath()));
+			favoriteCheckBox.setSelected(Setting.getFavoritesLocations().containsByFirstLoc(getmDirectoryPath()));
 		}
 	}
 

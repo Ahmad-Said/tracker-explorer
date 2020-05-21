@@ -28,13 +28,13 @@
 
 		<!-- Identifier ID used by system to separate between applications so when 
 			updating to a new version it deletes the old one based on this identifier -->
-			
+
 		<app.identifierID>${project.groupId}.${project.artifactId}</app.identifierID>
 
 		<app.name>${project.name}</app.name>
 		<app.Version>${project.version}</app.Version>
 		<app.README>${project.basedir}/README.md</app.README>
-		<app.vendor>${project.organization.name}</app.vendor>		
+		<app.vendor>${project.organization.name}</app.vendor>
 
 		<!-- Ant variable -->
 		<base.dir>${project.basedir}</base.dir>
@@ -43,6 +43,13 @@
 	</properties>
 
 	<dependencies>
+		<!-- https://mvnrepository.com/artifact/com.thoughtworks.xstream/xstream -->
+		<dependency>
+			<groupId>com.thoughtworks.xstream</groupId>
+			<artifactId>xstream</artifactId>
+			<version>1.4.12</version>
+		</dependency>
+
 		<!-- https://mvnrepository.com/artifact/org.jfxtras/jmetro -->
 		<dependency>
 			<groupId>org.jfxtras</groupId>

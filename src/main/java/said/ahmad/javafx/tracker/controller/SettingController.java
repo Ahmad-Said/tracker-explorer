@@ -5,6 +5,7 @@ import java.io.IOException;
 import java.nio.file.Path;
 import java.text.ParseException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Set;
@@ -38,7 +39,9 @@ import said.ahmad.javafx.tracker.app.Main;
 import said.ahmad.javafx.tracker.app.ResourcesHelper;
 import said.ahmad.javafx.tracker.app.StringHelper;
 import said.ahmad.javafx.tracker.app.ThemeManager;
-import said.ahmad.javafx.tracker.datatype.Setting;
+import said.ahmad.javafx.tracker.app.pref.Setting;
+import said.ahmad.javafx.tracker.datatype.FavoriteView;
+import said.ahmad.javafx.tracker.datatype.FavoriteViewList;
 import said.ahmad.javafx.tracker.fxGraphics.IntField;
 import said.ahmad.javafx.tracker.system.call.TeraCopy;
 import said.ahmad.javafx.tracker.system.operation.FileHelper;
@@ -106,7 +109,7 @@ public class SettingController {
 	private Label inputFavoriteNameError;
 
 	private ObservableList<String> favoritesData = FXCollections.observableArrayList();
-	private HashMap<String, String> favoritesCurrentToOldNames = new HashMap<>();
+	private HashMap<String, FavoriteView> favoritesViewByNewTitle = new HashMap<>();
 
 	// ----------------------------- Tracker Player -----------------------------
 	@FXML
@@ -264,9 +267,11 @@ public class SettingController {
 
 		// -----FFFFFFFFFFFFFFFFFFF----- Favorite Manager -----FFFFFFFFFFFFFFFFFFF-----
 		favoritesData.clear();
-		favoritesData.addAll(Setting.getFavoritesLocations().getTitle());
-		favoritesCurrentToOldNames.clear();
-		favoritesData.forEach(e -> favoritesCurrentToOldNames.put(e, e));
+		favoritesViewByNewTitle.clear();
+		for (FavoriteView favorite : Setting.getFavoritesLocations()) {
+			favoritesData.add(favorite.getTitle());
+			favoritesViewByNewTitle.put(favorite.getTitle(), favorite);
+		}
 		resetFavoriteRename();
 
 		// -----PPPPPPPPPPPPPPPPPPP----- Tracker Player -----PPPPPPPPPPPPPPPPPPP-----
@@ -413,7 +418,7 @@ public class SettingController {
 		if (ans) {
 			for (String string : favoritesListView.getSelectionModel().getSelectedItems()) {
 				favoritesData.remove(string);
-				favoritesCurrentToOldNames.remove(string);
+				favoritesViewByNewTitle.remove(string);
 			}
 			resetFavoriteRename();
 		}
@@ -446,9 +451,10 @@ public class SettingController {
 		favoritesListView.getSelectionModel().clearAndSelect(index);
 		inputFavoriteName.setText("");
 
-		String oldValue = favoritesCurrentToOldNames.get(targetString);
-		favoritesCurrentToOldNames.remove(targetString);
-		favoritesCurrentToOldNames.put(inputString, oldValue);
+		FavoriteView oldValue = favoritesViewByNewTitle.get(targetString);
+		favoritesViewByNewTitle.remove(targetString);
+		oldValue.setTitle(inputString);
+		favoritesViewByNewTitle.put(inputString, oldValue);
 	}
 
 	// ----------------------------- Tracker Player -----------------------------
@@ -635,12 +641,15 @@ public class SettingController {
 		}
 
 		// Favorites stuff
-		HashMap<String, Pair<String, Integer>> oldToNewTitleAndIndex = new HashMap<String, Pair<String, Integer>>();
-		for (String string : favoritesCurrentToOldNames.keySet()) {
-			oldToNewTitleAndIndex.put(favoritesCurrentToOldNames.get(string),
-					new Pair<String, Integer>(string, favoritesData.indexOf(string)));
+		FavoriteViewList toBeUpdatedFavoritesList = Setting.getFavoritesLocations();
+		// list of all favorites so we can add them all at once
+		// so listeners got less notified
+		List<FavoriteView> toBeAdded = new ArrayList<>();
+		for (String title : favoritesData) {
+			toBeAdded.add(favoritesViewByNewTitle.get(title));
 		}
-		Setting.getFavoritesLocations().updateTitlesAndIndexs(oldToNewTitleAndIndex);
+		Collections.reverse(toBeAdded);
+		toBeUpdatedFavoritesList.addAll(toBeAdded);
 
 		if (welcomeController != null) {
 			welcomeController.changeInSetting();

@@ -7,7 +7,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Stack;
 
-import said.ahmad.javafx.tracker.datatype.Setting;
+import said.ahmad.javafx.tracker.app.pref.Setting;
 import said.ahmad.javafx.tracker.system.file.PathLayer;
 import said.ahmad.javafx.tracker.system.file.PathLayerHelper;
 import said.ahmad.javafx.tracker.system.file.PathLayerVisitor;

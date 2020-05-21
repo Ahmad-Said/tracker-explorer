@@ -25,8 +25,8 @@ import org.jetbrains.annotations.Nullable;
 
 import javafx.scene.control.Alert.AlertType;
 import said.ahmad.javafx.tracker.app.DialogHelper;
+import said.ahmad.javafx.tracker.app.pref.Setting;
 import said.ahmad.javafx.tracker.controller.splitview.SplitViewController;
-import said.ahmad.javafx.tracker.datatype.Setting;
 import said.ahmad.javafx.tracker.system.file.PathLayer;
 import said.ahmad.javafx.tracker.system.file.PathLayerHelper;
 import said.ahmad.javafx.tracker.system.file.local.FilePathLayer;

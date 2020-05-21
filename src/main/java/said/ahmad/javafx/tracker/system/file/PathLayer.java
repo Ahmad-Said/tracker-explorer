@@ -178,13 +178,6 @@ public abstract class PathLayer {
 	}
 
 	/**
-	 * @param providerType the providerType to set
-	 */
-	public void setProviderType(ProviderType providerType) {
-		this.providerType = providerType;
-	}
-
-	/**
 	 *
 	 * @return True for file in local system
 	 */

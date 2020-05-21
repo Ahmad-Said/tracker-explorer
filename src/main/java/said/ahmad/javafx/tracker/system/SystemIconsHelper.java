@@ -11,7 +11,7 @@ import org.jetbrains.annotations.Nullable;
 
 import javafx.embed.swing.SwingFXUtils;
 import javafx.scene.image.Image;
-import said.ahmad.javafx.tracker.datatype.Setting;
+import said.ahmad.javafx.tracker.app.pref.Setting;
 
 public class SystemIconsHelper {
 

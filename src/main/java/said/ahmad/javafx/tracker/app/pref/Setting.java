@@ -1,5 +1,4 @@
-
-package said.ahmad.javafx.tracker.datatype;
+package said.ahmad.javafx.tracker.app.pref;
 
 import java.awt.Desktop;
 import java.io.File;
@@ -14,22 +13,28 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Scanner;
-import java.util.stream.Collectors;
 
 import javafx.scene.control.Alert.AlertType;
 import said.ahmad.javafx.tracker.app.DialogHelper;
 import said.ahmad.javafx.tracker.app.StringHelper;
+import said.ahmad.javafx.tracker.app.ThemeManager.THEME;
+import said.ahmad.javafx.tracker.app.ThemeManager.THEME_COLOR;
+import said.ahmad.javafx.tracker.datatype.FavoriteViewList;
 import said.ahmad.javafx.tracker.system.call.RunMenu;
 import said.ahmad.javafx.tracker.system.call.TeraCopy;
 import said.ahmad.javafx.tracker.system.file.PathLayer;
 import said.ahmad.javafx.tracker.system.file.PathLayerHelper;
 import said.ahmad.javafx.tracker.system.services.VLC;
+import said.ahmad.javafx.util.CallBackToDo;
 
 public class Setting {
-	// create later a controller for setting and fxml also
-	// this things are temporary solution later will use :
-	// lightbend refrence.conf see testimagewthatable project
-	// these initial definition are even if not initialized
+	// --------- Definitions ---------
+	private static final String PATH_SPLITTER = ";";
+	private static final File SETTING_FILE = new File(
+			System.getenv("APPDATA") + "\\Tracker Explorer\\TrackerExplorerSetting.txt");
+	public static final File SETTING_DIRECTORY = new File(System.getenv("APPDATA") + "\\Tracker Explorer");
+
+	// ---------------- Setting To be loaded as Part One ----------------
 	private static final String Version = "5.1";
 	/** @since v5.1 */
 	private static long ApplicationTimesLunched = 1;
@@ -48,48 +53,22 @@ public class Setting {
 	private static boolean autoRenameUTFFile = false;
 	private static boolean useTeraCopyByDefault = false;
 	private static boolean autoCloseClearDoneFileOperation = true;
+	private static ArrayList<String> userNames = new ArrayList<String>(Arrays.asList("default"));
+	private static THEME lastTheme = THEME.BOOTSTRAPV3;
+	private static THEME_COLOR lastThemeColor = THEME_COLOR.NONE;
 
+	// ---------------- Setting To be loaded as Part Two ----------------
 	private static boolean restoreLastOpenedFavorite = true;
-	private static ArrayList<Integer> lastOpenedFavoriteIndex = new ArrayList<Integer>();
+	private static ArrayList<String> lastOpenedFavoriteTitle = new ArrayList<>();
+	private static final FavoriteViewList favoritesLocations = new FavoriteViewList();
 
-	private static ArrayList<String> UserNames = new ArrayList<String>();
-	private static FavoriteViewList FavoritesLocations = new FavoriteViewList();
+	// ---------------- On finish Loading Functional services ----------------
+	private static ArrayList<CallBackToDo> onFinishLoadingAllPartToDo = new ArrayList<>();
+	private static boolean didLoadedAllPart = false;
 
-	/**
-	 * backsync > BackSync loadallicon > LoadAllIcon LeftLastKnowLocation >
-	 * LeftLastKnowLocation > RightLastKnowLocation
-	 *
-	 */
-	private static Map<String, String> mapOptions = new HashMap<String, String>();
-	private static String PATH_SPLITTER = ";";
-	private static final File mSettingFile = new File(
-			System.getenv("APPDATA") + "\\Tracker Explorer\\TrackerExplorerSetting.txt");
-	public static final File SETTING_DIRECTORY = new File(System.getenv("APPDATA") + "\\Tracker Explorer");
-
-	public static void initializeSetting() {
-		ApplicationTimesLunched = 1;
-		BackSync = false;
-		AutoExpand = true;
-		LoadAllIcon = true;
-
-		LeftLastKnowLocation = null;
-		RightLastKnowLocation = null;
-		ShowLeftNotesColumn = false;
-		ShowRightNotesColumn = false;
-		ActiveUser = "default";
-		MaxLimitFilesRecursive = 10000;
-		MaxDepthFilesRecursive = 5;
-		setVLCHttpPass("1234");
+	private static void callOnceLater() {
 		VLC.initializeDefaultVLCPath();
 		TeraCopy.initializeDefaultVLCPath();
-		UserNames.add("default");
-
-		isDebugMode = false;
-		autoRenameUTFFile = false;
-		useTeraCopyByDefault = false;
-		autoCloseClearDoneFileOperation = true;
-		restoreLastOpenedFavorite = true;
-
 		try {
 			RunMenu.initialize();
 			migrateOldSetting();
@@ -105,11 +84,11 @@ public class Setting {
 			if (!dirsetting.exists()) {
 				Files.createDirectory(dirsetting.toPath());
 			}
-			if (mSettingFile.exists()) {
-				mSettingFile.delete();
+			if (SETTING_FILE.exists()) {
+				SETTING_FILE.delete();
 			}
-			p = new PrintStream(mSettingFile.toString());
-			Files.setAttribute(mSettingFile.toPath(), "dos:hidden", true);
+			p = new PrintStream(SETTING_FILE.toString());
+			Files.setAttribute(SETTING_FILE.toPath(), "dos:hidden", true);
 			p.println("/this is a generated folder by application to Save Setting");
 			p.println("Version=" + Version);
 			p.println("ApplicationTimesLunched=" + ++ApplicationTimesLunched);
@@ -157,36 +136,26 @@ public class Setting {
 			} else {
 				p.println("RightLastKnowLocation=null");
 			}
-			p.println("UserNames=" + String.join(PATH_SPLITTER, UserNames));
-			p.println("lastOpenedFavoriteIndex=" + String.join(PATH_SPLITTER,
-					lastOpenedFavoriteIndex.stream().map(m -> m.toString()).collect(Collectors.toList())));
-
-			// check https://winterbe.com/posts/2014/07/31/java8-stream-tutorial-examples/
-			p.println("FavoritesTitlesLocations="
-					+ FavoritesLocations.getTitle().stream().map(s -> s).collect(Collectors.joining(PATH_SPLITTER)));
-
-			p.println("FavoritesLeftLocations=" + FavoritesLocations.getLeftLoc().stream()
-					.map(s -> s.isLocal() ? s.toFileIfLocal().toURI().toString() : s.toURI().toString())
-					.collect(Collectors.joining(PATH_SPLITTER)));
-
-			p.println("FavoritesRightLocations=" + FavoritesLocations.getRightLoc().stream()
-					.map(s -> s.isLocal() ? s.toFileIfLocal().toURI().toString() : s.toURI().toString())
-					.collect(Collectors.joining(PATH_SPLITTER)));
+			p.println("UserNames=" + String.join(PATH_SPLITTER, userNames));
+			p.println("lastTheme=" + lastTheme);
+			p.println("lastThemeColor=" + lastThemeColor);
 			p.close();
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
+		SettingSaver.saveSetting();
 	}
 
-	public static void loadSetting() {
-		initializeSetting();
-		if (!mSettingFile.exists()) {
+	@SuppressWarnings("deprecation")
+	public static void loadSettingPartOne() {
+		if (!SETTING_FILE.exists()) {
 			saveSetting(); // save initialized setting
 			return;
 		}
 		Scanner scan = null;
+		Map<String, String> mapOptions = new HashMap<String, String>();
 		try {
-			scan = new Scanner(mSettingFile);
+			scan = new Scanner(SETTING_FILE);
 			scan.nextLine(); // to ignore first comment line
 			String line;
 			List<String> options;
@@ -249,13 +218,12 @@ public class Setting {
 					} else if (key.equals("ActiveUser")) {
 						ActiveUser = value;
 					} else if (key.equals("UserNames")) {
-						UserNames.clear();
-						UserNames.addAll(Arrays.asList(value.split(PATH_SPLITTER)));
-					} else if (key.equals("lastOpenedFavoriteIndex")) {
-						lastOpenedFavoriteIndex.clear();
-						Arrays.asList(value.split(PATH_SPLITTER)).stream().mapToInt(m -> Integer.parseInt(m))
-								.forEach(e -> lastOpenedFavoriteIndex.add(e));
-
+						userNames.clear();
+						userNames.addAll(Arrays.asList(value.split(PATH_SPLITTER)));
+					} else if (key.equals("lastTheme")) {
+						lastTheme = THEME.valueOf(value);
+					} else if (key.equals("lastThemeColor")) {
+						lastThemeColor = THEME_COLOR.valueOf(value);
 					} else if (key.equals("FavoritesTitlesLocations")) {
 
 						// Favorites stuff to save for later and synchronize them
@@ -275,13 +243,40 @@ public class Setting {
 			}
 		}
 		scan.close();
-		FavoritesLocations.initializeFavoriteViewList(favoritesTitles, favoritesLeftLocs, favoritesRightLocs);
+		if (favoritesTitles != null) {
+			favoritesLocations.initializeFavoriteViewList(favoritesTitles, favoritesLeftLocs, favoritesRightLocs);
+		}
 	}
 
-	public static void migrateOldSetting() throws IOException {
+	public static void loadSettingPartTwo(CallBackToDo... onFinishLoadingLateSetting) {
+		onFinishLoadingAllPartToDo.add(() -> {
+			didLoadedAllPart = true;
+			callOnceLater();
+		});
+		onFinishLoadingAllPartToDo.addAll(Arrays.asList(onFinishLoadingLateSetting));
+		SettingSaver.loadSetting(onFinishLoadingAllPartToDo);
+	}
+
+	/**
+	 * If already finish loading setting, it just call action. <br>
+	 * other wise it add action to be called later by JavaFx Platform
+	 * {@link SettingSaver#loadSetting(List)}<br>
+	 * use {@link #isDidLoadedAllPart()} to distinguish between different states
+	 *
+	 * @param action
+	 */
+	public static void registerOnFinishLoadingAction(CallBackToDo action) {
+		if (didLoadedAllPart) {
+			action.call();
+		} else {
+			onFinishLoadingAllPartToDo.add(action);
+		}
+	}
+
+	private static void migrateOldSetting() throws IOException {
 		File oldSettingfile = new File(System.getenv("APPDATA") + "\\FileTrackerSetting.txt");
 		if (oldSettingfile.exists()) {
-			oldSettingfile.renameTo(mSettingFile);
+			oldSettingfile.renameTo(SETTING_FILE);
 			oldSettingfile.delete(); // if cannot move it delete it
 		}
 
@@ -306,35 +301,6 @@ public class Setting {
 	public static Boolean getBackSync() {
 		return BackSync;
 	}
-
-	// https://stackoverflow.com/questions/4350356/detect-if-java-application-was-run-as-a-windows-admin
-	// used for old way
-	// public static boolean isAdmin() {
-	// try {
-	// ProcessBuilder processBuilder = new ProcessBuilder("cmd.exe");
-	// Process process = processBuilder.start();
-	// PrintStream printStream = new PrintStream(process.getOutputStream(), true);
-	// Scanner scanner = new Scanner(process.getInputStream());
-	// printStream.println("@echo off");
-	// printStream.println(
-	// ">nul 2>&1 \"%SYSTEMROOT%\\system32\\cacls.exe\"
-	// \"%SYSTEMROOT%\\system32\\config\\system\"");
-	// printStream.println("echo %errorlevel%");
-	//
-	// boolean printedErrorlevel = false;
-	// while (true) {
-	// String nextLine = scanner.nextLine();
-	// if (printedErrorlevel) {
-	// int errorlevel = Integer.parseInt(nextLine);
-	// return errorlevel == 0;
-	// } else if (nextLine.equals("echo %errorlevel%")) {
-	// printedErrorlevel = true;
-	// }
-	// }
-	// } catch (IOException e) {
-	// return false;
-	// }
-	// }
 
 	/**
 	 * check for more <a href=
@@ -369,6 +335,7 @@ public class Setting {
 			p.println(add);
 			p.close();
 			Desktop.getDesktop().open(tempFile);
+			tempFile.deleteOnExit();
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
@@ -388,79 +355,11 @@ public class Setting {
 			p.println(add);
 			p.close();
 			Desktop.getDesktop().open(tempFile);
+			tempFile.deleteOnExit();
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
 	}
-
-	// old way require starting the application as admin instead do make a reg file
-	// and start it
-	// public static void AddToContextMenu() {
-	// if (isAdmin())
-	// try {
-	// // this need admin in process canceled will create a temporary reg file
-	// String add = "reg add
-	// \"HKEY_CLASSES_ROOT\\Directory\\Background\\shell\\Tracker Explorer\" /ve /d
-	// \"Tracker Explorer\"";
-	// Process p = Runtime.getRuntime().exec(add);
-	// p.waitFor();
-	// p.destroy();
-	// add = "reg add \"HKEY_CLASSES_ROOT\\Directory\\Background\\shell\\Tracker
-	// Explorer\" /v \"Icon\" /t REG_EXPAND_SZ /d \"%localappdata%\\Tracker
-	// Explorer\\Tracker Explorer.exe\"";
-	// p = Runtime.getRuntime().exec(add);
-	// p.waitFor();
-	// p.destroy();
-	// add = "reg add \"HKEY_CLASSES_ROOT\\Directory\\Background\\shell\\Tracker
-	// Explorer\\command\" /ve /t REG_EXPAND_SZ /d \"\\\"%localappdata%\\Tracker
-	// Explorer\\Tracker Explorer.exe\\\" \\\"%v\\\"\"";
-	// p = Runtime.getRuntime().exec(add);
-	// p.waitFor();
-	// p.destroy();
-	//
-	// DialogHelper.showAlert(AlertType.INFORMATION, "Add Context Menu", "Context
-	// Menu Added Successfully",
-	// "You can now right click anywhere and open me,Thanks you.");
-	// } catch (IOException | InterruptedException e) {
-	// // e.printStackTrace();
-	// }
-	// else
-	// DialogHelper.showAlert(AlertType.ERROR, "Add To context Menu", "Access
-	// Denied",
-	// "You need admin right to perform operation\nClose this application and
-	// restart"
-	// + " it as admin then try again.\nNote this will add the program to right
-	// click so"
-	// + " it can directly open the directory from within windows explorer without
-	// navigating.");
-	// }
-	//
-	// public static void RemoveFromContextMenu() {
-	//
-	// if (isAdmin())
-	// try {
-	// // this need admin in process canceled will create a temporary reg file
-	// String add = "reg delete
-	// \"HKEY_CLASSES_ROOT\\Directory\\Background\\shell\\Tracker Explorer\" /f";
-	// Process p = Runtime.getRuntime().exec(add);
-	// p.waitFor();
-	// p.destroy();
-	// DialogHelper.showAlert(AlertType.INFORMATION, "Remove Context Menu", "Context
-	// Removed Successfully",
-	// "Action rolled Back,Sorry For inconveniance\nThanks you.");
-	// } catch (IOException | InterruptedException e) {
-	// // e.printStackTrace();
-	// }
-	// else
-	// DialogHelper.showAlert(AlertType.ERROR, "Add To context Menu", "Access
-	// Denied",
-	// "You need admin right to perform operation\nClose this application and
-	// restart"
-	// + " it as admin then try again.\nNote this will add the program to right
-	// click so"
-	// + " it can directly open the directory from within windows explorer without
-	// navigating.");
-	// }
 
 	public static PathLayer getLeftLastKnowLocation() {
 		return LeftLastKnowLocation;
@@ -468,14 +367,6 @@ public class Setting {
 
 	public static void setLeftLastKnowLocation(PathLayer LeftLastKnowLocation) {
 		Setting.LeftLastKnowLocation = LeftLastKnowLocation;
-	}
-
-	public Map<String, String> getMapOptions() {
-		return mapOptions;
-	}
-
-	public void setMapOptions(Map<String, String> mapoptions) {
-		mapOptions = mapoptions;
 	}
 
 	public static PathLayer getRightLastKnowLocation() {
@@ -495,11 +386,11 @@ public class Setting {
 	}
 
 	public static ArrayList<String> getUserNames() {
-		return UserNames;
+		return userNames;
 	}
 
 	public static void setUserNames(ArrayList<String> userNames) {
-		UserNames = userNames;
+		Setting.userNames = userNames;
 	}
 
 	public static String getActiveUser() {
@@ -549,11 +440,7 @@ public class Setting {
 	}
 
 	public static FavoriteViewList getFavoritesLocations() {
-		return FavoritesLocations;
-	}
-
-	public static void setFavoritesLocations(FavoriteViewList favoritesLocations) {
-		FavoritesLocations = favoritesLocations;
+		return favoritesLocations;
 	}
 
 	/**
@@ -571,7 +458,7 @@ public class Setting {
 	}
 
 	public static File getmSettingFile() {
-		return mSettingFile;
+		return SETTING_FILE;
 	}
 
 	public static void printStackTrace(Exception e) {
@@ -611,14 +498,6 @@ public class Setting {
 		Setting.restoreLastOpenedFavorite = restoreLastOpenedFavorite;
 	}
 
-	public static ArrayList<Integer> getLastOpenedFavoriteIndex() {
-		return lastOpenedFavoriteIndex;
-	}
-
-	public static void setLastOpenedFavoriteIndex(ArrayList<Integer> lastOpenedFavoriteIndex) {
-		Setting.lastOpenedFavoriteIndex = lastOpenedFavoriteIndex;
-	}
-
 	public static void setAutoCloseClearDoneFileOperation(boolean value) {
 		autoCloseClearDoneFileOperation = value;
 	}
@@ -639,5 +518,54 @@ public class Setting {
 	 */
 	public static void setUseTeraCopyByDefault(boolean useTeraCopyByDefault) {
 		Setting.useTeraCopyByDefault = useTeraCopyByDefault;
+	}
+
+	/**
+	 * @return the didLoadedAllPart
+	 */
+	public static boolean isDidLoadedAllPart() {
+		return didLoadedAllPart;
+	}
+
+	/**
+	 * @return the lastOpenedFavoriteTitle
+	 */
+	public static ArrayList<String> getLastOpenedFavoriteTitle() {
+		return lastOpenedFavoriteTitle;
+	}
+
+	/**
+	 * @param lastOpenedFavoriteTitle the lastOpenedFavoriteTitle to set
+	 */
+	public static void setLastOpenedFavoriteTitle(ArrayList<String> lastOpenedFavoriteTitle) {
+		Setting.lastOpenedFavoriteTitle = lastOpenedFavoriteTitle;
+	}
+
+	/**
+	 * @return the lastTheme
+	 */
+	public static THEME getLastTheme() {
+		return lastTheme;
+	}
+
+	/**
+	 * @param lastTheme the lastTheme to set
+	 */
+	public static void setLastTheme(THEME lastTheme) {
+		Setting.lastTheme = lastTheme;
+	}
+
+	/**
+	 * @return the lastThemeColor
+	 */
+	public static THEME_COLOR getLastThemeColor() {
+		return lastThemeColor;
+	}
+
+	/**
+	 * @param lastThemeColor the lastThemeColor to set
+	 */
+	public static void setLastThemeColor(THEME_COLOR lastThemeColor) {
+		Setting.lastThemeColor = lastThemeColor;
 	}
 }

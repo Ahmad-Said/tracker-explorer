@@ -4,6 +4,7 @@ import javafx.scene.Scene;
 import javafx.scene.image.Image;
 import jfxtras.styles.jmetro.JMetro;
 import jfxtras.styles.jmetro.Style;
+import said.ahmad.javafx.tracker.app.pref.Setting;
 
 public class ThemeManager {
 	// icons stuff
@@ -73,6 +74,8 @@ public class ThemeManager {
 	public static void changeDefaultTheme(THEME THEME, THEME_COLOR THEME_COLORe) {
 		appliedTheme = THEME;
 		appliedThemeColor = THEME_COLORe == null ? THEME_COLOR.NONE : THEME_COLORe;
+		Setting.setLastTheme(appliedTheme);
+		Setting.setLastThemeColor(appliedThemeColor);
 	}
 
 	public static void changeThemeAndApply(Scene scene, THEME THEME, THEME_COLOR THEME_COLOR) {

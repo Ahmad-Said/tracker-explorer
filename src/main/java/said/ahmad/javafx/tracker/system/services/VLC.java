@@ -21,9 +21,9 @@ import javafx.scene.control.Alert.AlertType;
 import javafx.util.Duration;
 import said.ahmad.javafx.tracker.app.DialogHelper;
 import said.ahmad.javafx.tracker.app.StringHelper;
+import said.ahmad.javafx.tracker.app.pref.Setting;
 import said.ahmad.javafx.tracker.controller.FilterVLCController;
 import said.ahmad.javafx.tracker.datatype.MediaCutData;
-import said.ahmad.javafx.tracker.datatype.Setting;
 import said.ahmad.javafx.tracker.system.file.PathLayer;
 import said.ahmad.javafx.tracker.system.file.local.FilePathLayer;
 import said.ahmad.javafx.tracker.system.tracker.FileTracker;
@@ -86,11 +86,9 @@ public class VLC {
 		File file = new File(System.getenv("PROGRAMFILES") + "\\VideoLAN\\VLC\\vlc.exe");
 		if (!file.exists()) {
 			file = new File(System.getenv("ProgramFiles(x86)") + "\\VideoLAN\\VLC\\vlc.exe");
-			// if (file.exists())
-			// is86 = true;
 		}
 
-		// check existence of vlc in system
+		// check existence of VLC in system
 		if (file.exists()) {
 			Path_Setup = file.toPath();
 			return true;

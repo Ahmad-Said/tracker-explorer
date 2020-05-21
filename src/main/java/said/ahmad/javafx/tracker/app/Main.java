@@ -20,8 +20,8 @@ import javafx.scene.control.Alert.AlertType;
 import javafx.scene.control.Label;
 import javafx.stage.Stage;
 import javafx.stage.WindowEvent;
+import said.ahmad.javafx.tracker.app.pref.Setting;
 import said.ahmad.javafx.tracker.controller.WelcomeController;
-import said.ahmad.javafx.tracker.datatype.Setting;
 import said.ahmad.javafx.tracker.system.file.local.FilePathLayer;
 import said.ahmad.javafx.tracker.system.operation.FileHelperGUIOperation;
 import said.ahmad.javafx.tracker.system.services.TrackerPlayer;
@@ -38,7 +38,8 @@ public class Main extends Application {
 	@Override
 	public void start(Stage primStage) throws IOException {
 		primaryStage = primStage;
-		Setting.loadSetting();
+		StringHelper.startTimer();
+		Setting.loadSettingPartOne();
 		Parameters parameters = getParameters();
 
 		// argument in the form argument
@@ -108,15 +109,17 @@ public class Main extends Application {
 		Parent root = loader.getRoot();
 
 		Scene scene = new Scene(root);
+		ThemeManager.changeDefaultTheme(Setting.getLastTheme(), Setting.getLastThemeColor());
 		ThemeManager.applyTheme(scene);
 
 		primaryStage.setScene(scene);
 		primaryStage.getIcons().add(ThemeManager.DEFAULT_ICON_IMAGE);
 
 		primaryStage.show();
-
-		mWelcomeController.initializeViewStage(primaryStage, true);
-
+		System.out.println("took to show:");
+		StringHelper.endTimerAndDisplay();
+		ThreadExecutors.recursiveExecutor.execute(
+				() -> Setting.loadSettingPartTwo(() -> mWelcomeController.initializeViewStage(primaryStage, true)));
 		primaryStage.setOnCloseRequest(new EventHandler<WindowEvent>() {
 			@Override
 			public void handle(WindowEvent t) {

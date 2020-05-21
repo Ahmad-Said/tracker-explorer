@@ -20,6 +20,7 @@ import java.util.stream.Collectors;
 import org.jetbrains.annotations.Nullable;
 
 import javafx.application.Platform;
+import javafx.collections.MapChangeListener;
 import javafx.event.ActionEvent;
 import javafx.event.EventHandler;
 import javafx.fxml.FXML;
@@ -60,8 +61,9 @@ import said.ahmad.javafx.tracker.app.StringHelper;
 import said.ahmad.javafx.tracker.app.ThemeManager;
 import said.ahmad.javafx.tracker.app.ThemeManager.THEME;
 import said.ahmad.javafx.tracker.app.ThemeManager.THEME_COLOR;
+import said.ahmad.javafx.tracker.app.pref.Setting;
 import said.ahmad.javafx.tracker.controller.splitview.SplitViewController;
-import said.ahmad.javafx.tracker.datatype.Setting;
+import said.ahmad.javafx.tracker.datatype.FavoriteView;
 import said.ahmad.javafx.tracker.datatype.SplitViewState;
 import said.ahmad.javafx.tracker.fxGraphics.DraggableTab;
 import said.ahmad.javafx.tracker.fxGraphics.MenuItemFactory;
@@ -146,38 +148,35 @@ public class WelcomeController implements Initializable {
 
 	private Stack<SplitViewController> allSplitViewController;
 	private Stack<SplitViewController> allSplitViewControllerRemoved;
-	private String stageTitle = "";
+	private static final String STAGE_TITLE = "Tracker Explorer";
 	private Stage stage;
 
 	@Override
 	public void initialize(URL url, ResourceBundle rb) {
+		// for a faster show stage implementation was moved to initializeViewStage
+	}
+
+	/** To be called after setting a scene to the stage */
+	public void initializeViewStage(Stage stage, boolean doRefresh) {
+		initializeMenuBar();
 		try {
 			allSplitViewController = new Stack<>();
 			allSplitViewControllerRemoved = new Stack<>();
 			// Assign column to which property in model
 
-			initializeMenuBar();
-
 			addSplitView(StringHelper.InitialLeftPath, true);
 			addSplitView(StringHelper.InitialRightPath, false);
-			// Split view do refresh later on call of #initializeViewStage.. from main
-			// to faster showing stage first
-
-			// refresh is done since we switch to default tab
-			initializeTabs();
 		} catch (Exception e1) {
 			e1.printStackTrace();
 			DialogHelper.showException(e1);
 		}
-	}
-
-	/**
-	 * @param stage the stage to set having Scene
-	 */
-	public void initializeViewStage(Stage stage, boolean doRefreshView) {
 		this.stage = stage;
-		if (doRefreshView) {
-			allSplitViewController.forEach(sp -> sp.refresh(null));
+		Setting.getFavoritesLocations().addListener((MapChangeListener<String, FavoriteView>) change -> {
+			allSplitViewController.forEach(sp -> sp.onFavoriteChanges(change));
+		});
+		initializeTabs();
+		if (doRefresh) {
+			refreshAllSplitViews();
 		}
 		initializeStage();
 	}
@@ -324,12 +323,10 @@ public class WelcomeController implements Initializable {
 		activeActionTab(defaultTab);
 
 		if (Setting.isRestoreLastOpenedFavorite()) {
-			int sizeFavo = Setting.getFavoritesLocations().getTitle().size();
-			for (int i : Setting.getLastOpenedFavoriteIndex()) {
-				if (i >= 0 && i < sizeFavo) {
-					addTabOnly(Setting.getFavoritesLocations().getTitle().get(i),
-							Arrays.asList(Setting.getFavoritesLocations().getLeftLoc().get(i),
-									Setting.getFavoritesLocations().getRightLoc().get(i)));
+			for (String title : Setting.getLastOpenedFavoriteTitle()) {
+				if (Setting.getFavoritesLocations().containsByTitle(title)) {
+					FavoriteView favorite = Setting.getFavoritesLocations().getByTitle(title);
+					addTabOnly(favorite.getTitle(), favorite.getLocations());
 				}
 			}
 		}
@@ -527,7 +524,6 @@ public class WelcomeController implements Initializable {
 
 	public void changeInSetting() {
 		initializeMenuBar();
-		allSplitViewController.forEach(s -> s.reloadFavorites());
 		refreshAllSplitViews();
 	}
 
@@ -560,17 +556,16 @@ public class WelcomeController implements Initializable {
 			loader.setController(anotherWelcome);
 			loader.setLocation(ResourcesHelper.getResourceAsURL("/fxml/Welcome.fxml"));
 			try {
+				Stage anotherStage = new Stage();
 				loader.load();
 				Parent root = loader.getRoot();
 				Scene scene = new Scene(root);
 				ThemeManager.applyTheme(scene);
-
-				Stage anotherStage = new Stage();
 				anotherStage.setScene(scene);
 				ThemeManager.applyTheme(scene);
 				anotherStage.getIcons().add(ThemeManager.DEFAULT_ICON_IMAGE);
 				anotherStage.show();
-				anotherWelcome.initializeViewStage(anotherStage, false);
+				anotherWelcome.initializeViewStage(anotherStage, true);
 				for (int i = 0; i < allSplitViewController.size(); i++) {
 					if (anotherWelcome.allSplitViewController.size() < i + 1) {
 						anotherWelcome.addSplitView();
@@ -670,7 +665,6 @@ public class WelcomeController implements Initializable {
 								+ "\nOpen in the left view Then uncheck box \"Favorite Folder\"\nPress Ok to clear list. OtherWise cancel operation");
 				if (ans) {
 					Setting.getFavoritesLocations().clear();
-					allSplitViewController.forEach(s -> s.clearFavorites());
 				}
 			}
 		});
@@ -752,13 +746,13 @@ public class WelcomeController implements Initializable {
 				}
 
 				PathLayer dir = allSplitViewController.get(0).getmDirectoryPath();
-				StringHelper.setTemp(depth);
+				final int depths = depth;
 				Thread cleanerThread = new Thread() {
 					@Override
 					public void run() {
 						try {
 							RecursiveFileWalker r = new RecursiveFileWalker();
-							PathLayerHelper.walkFileTree(dir, StringHelper.getTemp(), false, r);
+							PathLayerHelper.walkFileTree(dir, depths, false, r);
 
 							r.getDirectories().forEach(p -> {
 								Platform.runLater(() -> Main.ProcessTitle(p.toString()));
@@ -814,23 +808,29 @@ public class WelcomeController implements Initializable {
 	}
 
 	// TODO later make favorites for all views
-	public void openFavoriteLocation(String title, PathLayer leftPath, PathLayer rightPath,
-			SplitViewController splitViewController) {
-		if (!leftPath.exists()) {
-			DialogHelper.showAlert(AlertType.INFORMATION, "Open Favorites", "File Doesn't exist!", leftPath.toString());
+	public void openFavoriteLocation(FavoriteView favoriteView, SplitViewController splitViewController) {
+		String error = "";
+		for (PathLayer path : favoriteView.getLocations()) {
+			if (!path.exists()) {
+				error += path.toString() + "\n\n";
+			}
 		}
-		if (!rightPath.exists()) {
-			DialogHelper.showAlert(AlertType.INFORMATION, "Open Favorites", "File Doesn't exist!",
-					rightPath.toString());
+		if (!error.isEmpty()) {
+			DialogHelper.showExpandableAlert(AlertType.INFORMATION, "Open Favorites", "Resources cannot be found",
+					"Directory gets moved/deleted, or system provider is offline", error);
 		}
 		if (splitViewController == allSplitViewController.get(0)) {
-			DraggableTab newTab = new DraggableTab(title, Arrays.asList(leftPath, rightPath));
+			DraggableTab newTab = new DraggableTab(favoriteView.getTitle(), favoriteView.getLocations());
 			activeActionTab(newTab);
 			tabPane.getTabs().add(newTab);
 			tabPane.getSelectionModel().select(newTab);
 		} else {
-			splitViewController.setmDirectoryThenRefresh(leftPath);
-			splitViewController.synctoRight(rightPath.toString());
+			int start = allSplitViewController.indexOf(splitViewController);
+			int end = Math.min(allSplitViewController.size(), start + favoriteView.getLocations().size());
+			int j = 0;
+			for (int i = start; i < end; i++) {
+				allSplitViewController.get(i).setmDirectoryThenRefresh(favoriteView.getLocations().get(j++));
+			}
 		}
 	}
 
@@ -1183,14 +1183,14 @@ public class WelcomeController implements Initializable {
 			depth = 1;
 			// e1.printStackTrace();
 		}
-		StringHelper.setTemp(depth);
+		final int depths = depth;
 		PathLayer dir = getMostLeftView().getmDirectoryPath();
 		Thread trackerThread = new Thread() {
 			@Override
 			public void run() {
 				try {
 					RecursiveFileWalker r = new RecursiveFileWalker();
-					PathLayerHelper.walkFileTree(dir, StringHelper.getTemp(), false, r);
+					PathLayerHelper.walkFileTree(dir, depths, false, r);
 					r.getDirectories().forEach(p -> {
 						Platform.runLater(() -> Main.ProcessTitle(p.toString()));
 						try {
@@ -1279,14 +1279,14 @@ public class WelcomeController implements Initializable {
 		Setting.setShowRightNotesColumn(getMostRightView().isNoteColumnVisible());
 		Setting.setAutoExpand(getMostLeftView().isAutoExpand());
 		if (Setting.isRestoreLastOpenedFavorite()) {
-			ArrayList<Integer> lastOpenedFavoritesIndex = new ArrayList<Integer>();
+			ArrayList<String> lastOpenedFavoritesIndex = new ArrayList<>();
 			for (Tab tab : tabPane.getTabs()) {
-				int index = Setting.getFavoritesLocations().getIndexByTitle(tab.getTooltip().getText());
-				if (index >= 0) {
-					lastOpenedFavoritesIndex.add(index);
+				String title = tab.getTooltip() == null ? null : tab.getTooltip().getText();
+				if (title != null && !title.isEmpty()) {
+					lastOpenedFavoritesIndex.add(title);
 				}
 			}
-			Setting.setLastOpenedFavoriteIndex(lastOpenedFavoritesIndex);
+			Setting.setLastOpenedFavoriteTitle(lastOpenedFavoritesIndex);
 		}
 	}
 
@@ -1309,19 +1309,21 @@ public class WelcomeController implements Initializable {
 	}
 
 	public void UpdateTitle(String toAdd) {
-		stageTitle = toAdd + " - Tracker Explorer";
-		stage.setTitle(stageTitle);
+		stage.setTitle(toAdd + " - " + STAGE_TITLE);
 	}
 
 	public void ResetTitle() {
-		stage.setTitle(stageTitle);
+		stage.setTitle(STAGE_TITLE);
 	}
 
-	private char pr = '\\';
-
 	public void ProcessTitle(String toAppend) {
-		pr = pr == '\\' ? '/' : '\\';
-		stage.setTitle(" " + pr + toAppend);
+		char flip = '/';
+		if (stage.getTitle() != null && !stage.getTitle().isEmpty() && stage.getTitle().charAt(0) == '\\') {
+			flip = '/';
+		} else {
+			flip = '\\';
+		}
+		stage.setTitle(" " + flip + toAppend);
 	}
 
 	public String GetTitle() {

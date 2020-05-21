@@ -32,7 +32,6 @@ public class StringHelper {
 
 	public static PathLayer InitialLeftPath;
 	public static PathLayer InitialRightPath;
-	public static Integer temp;
 	private static Map<String, String> KeyAsShiftDown = new HashMap<String, String>() {
 		/**
 		 *
@@ -203,14 +202,6 @@ public class StringHelper {
 
 	public static Map<String, String> getKeyAsShiftDown() {
 		return KeyAsShiftDown;
-	}
-
-	public static Integer getTemp() {
-		return temp;
-	}
-
-	public static void setTemp(Integer temp) {
-		StringHelper.temp = temp;
 	}
 
 	private static Instant startTime;
