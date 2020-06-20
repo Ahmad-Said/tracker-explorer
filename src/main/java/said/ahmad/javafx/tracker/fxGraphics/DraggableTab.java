@@ -23,7 +23,6 @@ import javafx.stage.Stage;
 import javafx.stage.StageStyle;
 import javafx.stage.WindowEvent;
 import said.ahmad.javafx.tracker.datatype.SplitViewState;
-import said.ahmad.javafx.tracker.system.file.PathLayer;
 
 /**
  * A draggable tab that can optionally be detached from its tab pane and shown
@@ -40,6 +39,7 @@ public class DraggableTab extends Tab {
 	// my Program added
 	private boolean isEnteringAction = true;
 	private ArrayList<SplitViewState> splitViewStates;
+	private int shownSplitViewSize;
 
 	private static final Set<TabPane> tabPanes = new HashSet<>();
 	private Label nameLabel;
@@ -65,9 +65,9 @@ public class DraggableTab extends Tab {
 	 *
 	 * @param text the text to appear on the tag label.
 	 */
-	public DraggableTab(String text, List<PathLayer> splitDirectories) {
-		splitViewStates = new ArrayList<>();
-		splitDirectories.forEach(p -> splitViewStates.add(new SplitViewState(p)));
+	public DraggableTab(String text, List<SplitViewState> splitStates) {
+		splitViewStates = new ArrayList<>(splitStates);
+		setShownSplitViewSize(splitStates.size());
 
 		setTooltip(new Tooltip(text));
 		nameLabel = new Label(text);
@@ -312,5 +312,19 @@ public class DraggableTab extends Tab {
 
 	public ArrayList<SplitViewState> getSplitViewStates() {
 		return splitViewStates;
+	}
+
+	/**
+	 * @return the shownSplitViewSize
+	 */
+	public int getShownSplitViewSize() {
+		return shownSplitViewSize;
+	}
+
+	/**
+	 * @param shownSplitViewSize the shownSplitViewSize to set
+	 */
+	public void setShownSplitViewSize(int shownSplitViewSize) {
+		this.shownSplitViewSize = shownSplitViewSize;
 	}
 }

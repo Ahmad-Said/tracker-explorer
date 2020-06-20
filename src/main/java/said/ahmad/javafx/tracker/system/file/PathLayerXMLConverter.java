@@ -8,7 +8,7 @@ import com.thoughtworks.xstream.converters.UnmarshallingContext;
 import com.thoughtworks.xstream.io.HierarchicalStreamReader;
 import com.thoughtworks.xstream.io.HierarchicalStreamWriter;
 
-public class PathLayerConverter implements Converter {
+public class PathLayerXMLConverter implements Converter {
 
 	@SuppressWarnings("rawtypes")
 	@Override

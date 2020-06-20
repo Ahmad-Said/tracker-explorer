@@ -14,7 +14,12 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import org.jetbrains.annotations.Nullable;
+
+import javafx.scene.input.DataFormat;
+import said.ahmad.javafx.tracker.system.file.ftp.FTPPathLayer;
 import said.ahmad.javafx.tracker.system.file.local.FilePathLayer;
+import said.ahmad.javafx.tracker.system.file.util.URIHelper;
 
 public class PathLayerHelper {
 	/**
@@ -22,6 +27,7 @@ public class PathLayerHelper {
 	 * format
 	 */
 	public static final String ON_DROP_URI_OPERATION_KEY = "ON_DROP_URI_OPERATION_KEY";
+	public static final DataFormat DATA_FORMAT_KEY = new DataFormat("TRACKER_EXPLORER_PATH_LAYER");
 	private static final String LINE_SEPARATOR = "\n";
 
 	/** @see PathLayerHelper#parseGeneratedOnDropString(String) */
@@ -62,12 +68,12 @@ public class PathLayerHelper {
 		return list;
 	}
 
-	/** return null if no match of any provider */
+	/** return null if no match of any provider or fail to create one */
+	@Nullable
 	public static PathLayer parseURI(URI uri) {
 		switch (uri.getScheme().toUpperCase()) {
 		case "FTP":
-			// this is an ftp
-			break;
+			return FTPPathLayer.parseURI(uri);
 		case "FILE":
 			return new FilePathLayer(new File(uri));
 		default:
@@ -78,7 +84,7 @@ public class PathLayerHelper {
 
 	public static PathLayer parseURI(String stringURI) throws URISyntaxException {
 		PathLayer parsed = null;
-		URI parsedURI = new URI(stringURI);
+		URI parsedURI = URIHelper.encodeToURI(stringURI);
 		parsed = parseURI(parsedURI);
 		return parsed;
 	}

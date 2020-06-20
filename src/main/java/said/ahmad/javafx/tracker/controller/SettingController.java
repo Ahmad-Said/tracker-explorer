@@ -5,7 +5,6 @@ import java.io.IOException;
 import java.nio.file.Path;
 import java.text.ParseException;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Set;
@@ -34,15 +33,15 @@ import javafx.stage.Modality;
 import javafx.stage.Stage;
 import javafx.util.Pair;
 import mslinks.ShellLinkException;
+import said.ahmad.javafx.fxGraphics.IntField;
 import said.ahmad.javafx.tracker.app.DialogHelper;
 import said.ahmad.javafx.tracker.app.Main;
 import said.ahmad.javafx.tracker.app.ResourcesHelper;
 import said.ahmad.javafx.tracker.app.StringHelper;
-import said.ahmad.javafx.tracker.app.ThemeManager;
+import said.ahmad.javafx.tracker.app.look.ThemeManager;
 import said.ahmad.javafx.tracker.app.pref.Setting;
 import said.ahmad.javafx.tracker.datatype.FavoriteView;
 import said.ahmad.javafx.tracker.datatype.FavoriteViewList;
-import said.ahmad.javafx.tracker.fxGraphics.IntField;
 import said.ahmad.javafx.tracker.system.call.TeraCopy;
 import said.ahmad.javafx.tracker.system.operation.FileHelper;
 import said.ahmad.javafx.tracker.system.services.TrackerPlayer;
@@ -268,7 +267,7 @@ public class SettingController {
 		// -----FFFFFFFFFFFFFFFFFFF----- Favorite Manager -----FFFFFFFFFFFFFFFFFFF-----
 		favoritesData.clear();
 		favoritesViewByNewTitle.clear();
-		for (FavoriteView favorite : Setting.getFavoritesLocations()) {
+		for (FavoriteView favorite : Setting.getFavoritesViews()) {
 			favoritesData.add(favorite.getTitle());
 			favoritesViewByNewTitle.put(favorite.getTitle(), favorite);
 		}
@@ -380,6 +379,7 @@ public class SettingController {
 		}
 		favoritesListView.getSelectionModel().clearSelection();
 		favoritesListView.getSelectionModel().selectIndices(-1, toSelect);
+		favoritesListView.scrollTo(toSelect.length != 0 ? toSelect[0] : 0);
 	}
 
 	@FXML
@@ -404,6 +404,7 @@ public class SettingController {
 		}
 		favoritesListView.getSelectionModel().clearSelection();
 		favoritesListView.getSelectionModel().selectIndices(-1, toSelect);
+		favoritesListView.scrollTo(toSelect.length != 0 ? toSelect[0] : 0);
 
 	}
 
@@ -641,15 +642,14 @@ public class SettingController {
 		}
 
 		// Favorites stuff
-		FavoriteViewList toBeUpdatedFavoritesList = Setting.getFavoritesLocations();
+		FavoriteViewList toBeUpdatedFavoritesList = Setting.getFavoritesViews();
 		// list of all favorites so we can add them all at once
 		// so listeners got less notified
 		List<FavoriteView> toBeAdded = new ArrayList<>();
 		for (String title : favoritesData) {
 			toBeAdded.add(favoritesViewByNewTitle.get(title));
 		}
-		Collections.reverse(toBeAdded);
-		toBeUpdatedFavoritesList.addAll(toBeAdded);
+		toBeUpdatedFavoritesList.clearThenAddAll(toBeAdded);
 
 		if (welcomeController != null) {
 			welcomeController.changeInSetting();

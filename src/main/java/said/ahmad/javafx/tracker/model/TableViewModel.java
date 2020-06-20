@@ -21,18 +21,23 @@ import said.ahmad.javafx.tracker.system.services.VLC;
  */
 public class TableViewModel {
 
-	private SimpleDoubleProperty FileSize;
-	private HBox hboxActions;
 	private ImageView imgIcon;
-	private ToggleButton MarkSeen;
-	private PathLayer filePath;
-	private Button noteButton;
+
 	private SimpleStringProperty name;
+
+	private SimpleStringProperty noteText;
+
+	private SimpleDoubleProperty FileSize;
+
+	private HBox hboxActions;
+	private ToggleButton MarkSeen;
+	private Button noteButton;
 	/// most important note that took me hours to catch
 	// all elements used in view property table must have
 	// getters and setters generate them with source !
-	private SimpleStringProperty noteText;
 	private Button openVLC;
+
+	private PathLayer filePath;
 	private boolean wasInitializedRowFactory;
 	private boolean readyToReuse = false;
 
@@ -169,12 +174,12 @@ public class TableViewModel {
 		}
 		initializeVLCFeatures();
 
-		Image fxImage = SystemIconsHelper.getFileIconIfCached(filePath.toString());
+		Image fxImage = SystemIconsHelper.getFileIconIfCached(filePath);
 		if (fxImage != null) {
 			imgIcon.setImage(fxImage);
 		} else {
 			ThreadExecutors.iconsLoader.execute(() -> {
-				Image fxImage2 = SystemIconsHelper.getFileIcon(filePath.toString());
+				Image fxImage2 = SystemIconsHelper.getFileIcon(filePath);
 				Platform.runLater(() -> imgIcon.setImage(fxImage2));
 			});
 		}

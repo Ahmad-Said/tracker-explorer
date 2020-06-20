@@ -26,7 +26,12 @@
             <RowConstraints maxHeight="39.0" minHeight="10.0" prefHeight="39.0" vgrow="SOMETIMES" />
         </rowConstraints>
          <children>
-            <Button fx:id="goDesktopButton" mnemonicParsing="false" onAction="#goDesktop" text="Desktop">
+      <Button fx:id="leftDominate" mnemonicParsing="false" onAction="#dominateLeft" styleClass="last" text="&lt;&lt;Dom" visible="false" GridPane.halignment="LEFT">
+         <GridPane.margin>
+            <Insets bottom="50.0" />
+         </GridPane.margin>
+      </Button>
+            <Button fx:id="desktopButton" mnemonicParsing="false" onAction="#goDesktop" text="Desktop">
                <GridPane.margin>
                   <Insets bottom="50.0" left="10.0" right="20.0" />
                </GridPane.margin>
@@ -151,6 +156,7 @@
                   <TableView fx:constant="CONSTRAINED_RESIZE_POLICY" />
                </columnResizePolicy>
             </TableView>
+      <Label fx:id="directoryNameLabel" alignment="CENTER" styleClass="nameLabel" text="Directory Name" GridPane.halignment="LEFT" GridPane.rowIndex="3" GridPane.valignment="CENTER" />
             <Label fx:id="labelItemsNumber" text="leftLabelItemsNumber" GridPane.halignment="CENTER" GridPane.rowIndex="3">
                <GridPane.margin>
                   <Insets />

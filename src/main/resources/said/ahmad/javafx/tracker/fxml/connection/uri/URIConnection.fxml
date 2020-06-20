@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.CheckBox?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.PasswordField?>
+<?import javafx.scene.control.TextField?>
+<?import javafx.scene.layout.ColumnConstraints?>
+<?import javafx.scene.layout.GridPane?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.RowConstraints?>
+<?import javafx.scene.layout.VBox?>
+<?import javafx.scene.text.Text?>
+<?import said.ahmad.javafx.fxGraphics.IntField?>
+
+<GridPane fx:id="viewPane" prefHeight="496.0" prefWidth="428.0" xmlns="http://javafx.com/javafx/8.0.171" xmlns:fx="http://javafx.com/fxml/1">
+    <children>
+      <VBox alignment="CENTER_RIGHT" prefHeight="200.0" prefWidth="100.0" spacing="20.0" GridPane.hgrow="ALWAYS" GridPane.vgrow="ALWAYS">
+         <children>
+                  <Label text="Server IP" />
+                  <Label text="Port:" />
+                  <Label text="Username" />
+                  <Label text="Password" />
+            <Label text="Anonymous" />
+         </children>
+         <GridPane.margin>
+            <Insets right="10.0" top="20.0" />
+         </GridPane.margin>
+      </VBox>
+      <VBox alignment="CENTER_LEFT" prefHeight="200.0" prefWidth="100.0" spacing="10.0" GridPane.columnIndex="1">
+         <children>
+            <HBox alignment="BOTTOM_CENTER" prefHeight="30.0" prefWidth="300.0" spacing="5.0">
+               <children>
+                  <IntField fx:id="ipPart1Field" maxValue="255" promptText="192" />
+                  <Label alignment="BOTTOM_CENTER" layoutX="148.0" layoutY="20.0" text="." />
+                  <IntField fx:id="ipPart2Field" layoutX="10.0" layoutY="10.0" maxValue="255" promptText="168" />
+                  <Label alignment="BOTTOM_CENTER" text="." />
+                  <IntField fx:id="ipPart3Field" layoutX="10.0" layoutY="10.0" maxValue="255" promptText="0" />
+                  <Label alignment="BOTTOM_CENTER" text="." />
+                  <IntField fx:id="ipPart4Field" layoutX="10.0" layoutY="10.0" promptText="104" />
+               </children>
+            </HBox>
+            <IntField fx:id="portField" maxValue="65535" promptText="21" />
+                  <TextField fx:id="usernameField" prefHeight="25.0" prefWidth="376.0" promptText="Your login" />
+                  <PasswordField fx:id="passwordField" promptText="Your password" />
+            <CheckBox fx:id="anonymousCheckBox" mnemonicParsing="false" text="Anonymous Log In">
+               <VBox.margin>
+                  <Insets top="7.0" />
+               </VBox.margin>
+            </CheckBox>
+         </children>
+         <GridPane.margin>
+            <Insets right="10.0" top="15.0" />
+         </GridPane.margin>
+      </VBox>
+      <Text fx:id="errorText" fill="RED" strokeType="OUTSIDE" strokeWidth="0.0" style="-fx-font-weight: bold;" text="Text" GridPane.columnSpan="2" GridPane.halignment="CENTER" GridPane.rowIndex="1" />
+     
+    </children>
+   <columnConstraints>
+      <ColumnConstraints percentWidth="30.0" />
+      <ColumnConstraints minWidth="10.0" percentWidth="70.0" prefWidth="100.0" />
+   </columnConstraints>
+   <rowConstraints>
+      <RowConstraints />
+      <RowConstraints />
+   </rowConstraints>
+ </GridPane>

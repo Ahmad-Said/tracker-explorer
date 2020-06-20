@@ -20,8 +20,12 @@ import javafx.scene.control.Alert.AlertType;
 import javafx.scene.control.Label;
 import javafx.stage.Stage;
 import javafx.stage.WindowEvent;
+import said.ahmad.javafx.tracker.app.look.ThemeManager;
 import said.ahmad.javafx.tracker.app.pref.Setting;
+import said.ahmad.javafx.tracker.controller.PhotoViewerController;
 import said.ahmad.javafx.tracker.controller.WelcomeController;
+import said.ahmad.javafx.tracker.system.SystemIconsHelper;
+import said.ahmad.javafx.tracker.system.file.PathLayer;
 import said.ahmad.javafx.tracker.system.file.local.FilePathLayer;
 import said.ahmad.javafx.tracker.system.operation.FileHelperGUIOperation;
 import said.ahmad.javafx.tracker.system.services.TrackerPlayer;
@@ -30,6 +34,7 @@ import said.ahmad.javafx.tracker.system.tracker.FileTracker;
 public class Main extends Application {
 	private static WelcomeController mWelcomeController;
 	private static Stage primaryStage;
+	private static boolean isPathArgumentPassed = false;
 
 	public static enum ArgsType {
 		player, silent
@@ -38,8 +43,9 @@ public class Main extends Application {
 	@Override
 	public void start(Stage primStage) throws IOException {
 		primaryStage = primStage;
-		StringHelper.startTimer();
 		Setting.loadSettingPartOne();
+		FileTracker.updateUserFileName(Setting.getActiveUser());
+
 		Parameters parameters = getParameters();
 
 		// argument in the form argument
@@ -90,16 +96,20 @@ public class Main extends Application {
 			// to resolve opening root dir
 			String path = unnamed.get(0);
 			path = path.replace("\"", "");
-			File temp = new File(path);
+			FilePathLayer temp = new FilePathLayer(new File(path));
 			if (temp.exists()) {
-				StringHelper.InitialLeftPath = new FilePathLayer(temp);
-				StringHelper.InitialRightPath = new FilePathLayer(temp);
+				String extension = temp.getExtensionUPPERCASE();
+				if (PhotoViewerController.ArrayIMGExt.contains(extension)) {
+					new PhotoViewerController(null, temp, null);
+					return;
+				}
+				isPathArgumentPassed = true;
+				Setting.setLeftLastKnowLocation(temp);
+				Setting.setRightLastKnowLocation(temp);
 			} else {
 				initializePath();
 			}
 		}
-
-		FileTracker.updateUserFileName(Setting.getActiveUser());
 		FXMLLoader loader = new FXMLLoader();
 //		 loader.setLocation(ResourcesHelper.getResourceAsURL("/fxml/bootstrap3.fxml"));
 		loader.setLocation(ResourcesHelper.getResourceAsURL("/fxml/Welcome.fxml"));
@@ -115,11 +125,15 @@ public class Main extends Application {
 		primaryStage.setScene(scene);
 		primaryStage.getIcons().add(ThemeManager.DEFAULT_ICON_IMAGE);
 
+		// TODO later resolve system icon helper to work with uppercase extension
+		PhotoViewerController.ArrayIMGExt
+				.forEach(ext -> SystemIconsHelper.addFileIcon(ext, PhotoViewerController.PHOTO_ICON_IMAGE));
+
+		primaryStage.setMaximized(Setting.isMaximized());
 		primaryStage.show();
-		System.out.println("took to show:");
-		StringHelper.endTimerAndDisplay();
+		mWelcomeController.initializePart2AddSplitView(primaryStage, true);
 		ThreadExecutors.recursiveExecutor.execute(
-				() -> Setting.loadSettingPartTwo(() -> mWelcomeController.initializeViewStage(primaryStage, true)));
+				() -> Setting.loadSettingPartTwo(() -> mWelcomeController.initializePart3AddTabs(primaryStage, false)));
 		primaryStage.setOnCloseRequest(new EventHandler<WindowEvent>() {
 			@Override
 			public void handle(WindowEvent t) {
@@ -141,36 +155,34 @@ public class Main extends Application {
 	private static void initializePath() {
 		boolean doneLeft = false, doneRight = false;
 		// priority to argument then last know location then root 0 (C)
-		File temp;
+		PathLayer temp;
 		if (Setting.getLeftLastKnowLocation() != null) {
 			// check if file still exist then distribute task and switch the missing one to
 			// the other
-			temp = new File(Setting.getLeftLastKnowLocation().toString());
+			temp = Setting.getLeftLastKnowLocation();
 			if (temp.exists()) {
-				StringHelper.InitialLeftPath = Setting.getLeftLastKnowLocation();
 				doneLeft = true;
 			}
 		}
 		if (Setting.getRightLastKnowLocation() != null) {
-			temp = new File(Setting.getRightLastKnowLocation().toString());
+			temp = Setting.getRightLastKnowLocation();
 			if (temp.exists()) {
-				StringHelper.InitialRightPath = Setting.getRightLastKnowLocation();
 				doneRight = true;
 				if (!doneLeft) {
-					StringHelper.InitialLeftPath = StringHelper.InitialRightPath;
+					Setting.setLeftLastKnowLocation(Setting.getRightLastKnowLocation());
 					doneLeft = true;
 				}
 			}
 		}
 		if (doneLeft && !doneRight) {
-			StringHelper.InitialRightPath = StringHelper.InitialLeftPath;
+			Setting.setRightLastKnowLocation(Setting.getLeftLastKnowLocation());
 			doneRight = true;
 		}
 
 		if (!doneLeft) {
 			File[] roots = File.listRoots();
-			StringHelper.InitialLeftPath = new FilePathLayer(roots[0]);
-			StringHelper.InitialRightPath = new FilePathLayer(roots[0]);
+			Setting.setLeftLastKnowLocation(new FilePathLayer(roots[0]));
+			Setting.setRightLastKnowLocation(new FilePathLayer(roots[0]));
 		}
 	}
 
@@ -206,6 +218,13 @@ public class Main extends Application {
 
 	public static String GetTitle() {
 		return primaryStage.getTitle();
+	}
+
+	/**
+	 * @return the isPathArgumentPassed
+	 */
+	public static boolean isPathArgumentPassed() {
+		return isPathArgumentPassed;
 	}
 
 	// about deploying as package independent check this :

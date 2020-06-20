@@ -33,8 +33,8 @@ public class WatchServiceHelper {
 		public void run() {
 			try {
 				TimeUnit.MILLISECONDS.sleep(500);
-				updateUI();
 				ignoreNextPone = false;
+				updateUI();
 				TimeUnit.MILLISECONDS.sleep(2000);
 				postPone = false;
 				if (postPoneAction) {

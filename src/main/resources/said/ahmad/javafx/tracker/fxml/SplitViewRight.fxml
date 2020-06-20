@@ -146,5 +146,6 @@
                </GridPane.margin>
             </TableView>
             <Label fx:id="labelItemsNumber" text="rightLabelItemsNumber" GridPane.halignment="CENTER" GridPane.rowIndex="3" />
+      <Label fx:id="directoryNameLabel" alignment="CENTER" styleClass="nameLabel" text="Directory Name" GridPane.halignment="LEFT" GridPane.rowIndex="3" GridPane.valignment="CENTER" />
          </children>
       </GridPane>

@@ -1,4 +1,4 @@
-package said.ahmad.javafx.tracker.fxGraphics;
+package said.ahmad.javafx.fxGraphics;
 
 import javafx.beans.property.IntegerProperty;
 import javafx.beans.property.SimpleIntegerProperty;
@@ -28,6 +28,7 @@ public class IntField extends TextField {
 	private int minValue;
 	private int maxValue;
 	private Slider slider = null;
+	private boolean canBeEmpty = false;
 
 	public IntField() {
 		this(0, Integer.MAX_VALUE, 0);
@@ -45,14 +46,13 @@ public class IntField extends TextField {
 			throw new IllegalArgumentException(
 					"IntField initialValue " + initialValue + " not between " + minValue + " and " + maxValue);
 		}
-
 		// initialize the field values.
 		this.minValue = minValue;
 		this.maxValue = maxValue;
 		value = new SimpleIntegerProperty(initialValue);
-		setText(initialValue + "");
-
-		final IntField intField = this;
+		if (!canBeEmpty) {
+			setText(value.get() + "");
+		}
 
 		// make sure the value property is clamped to the required range
 		// and update the field's text to be in sync with the value.
@@ -60,15 +60,15 @@ public class IntField extends TextField {
 			@Override
 			public void changed(ObservableValue<? extends Number> observableValue, Number oldValue, Number newValue) {
 				if (newValue == null) {
-					intField.setText("");
+					IntField.this.setText("");
 				} else {
-					if (newValue.intValue() < intField.minValue) {
-						value.setValue(intField.minValue);
+					if (newValue.intValue() < IntField.this.minValue) {
+						value.setValue(IntField.this.minValue);
 						return;
 					}
 
-					if (newValue.intValue() > intField.maxValue) {
-						value.setValue(intField.maxValue);
+					if (newValue.intValue() > IntField.this.maxValue) {
+						value.setValue(IntField.this.maxValue);
 						return;
 					}
 
@@ -76,7 +76,7 @@ public class IntField extends TextField {
 						// no action required, text property is already blank, we don't need to set it
 						// to 0.
 					} else {
-						intField.setText(newValue.toString());
+						IntField.this.setText(newValue.toString());
 					}
 				}
 			}
@@ -92,22 +92,37 @@ public class IntField extends TextField {
 			}
 		});
 
-		// ensure any entered values lie inside the required range.
-		textProperty().addListener(new ChangeListener<String>() {
-			@Override
-			public void changed(ObservableValue<? extends String> observableValue, String oldValue, String newValue) {
-				if (newValue == null || "".equals(newValue)) {
-					value.setValue(0);
+		focusedProperty().addListener((observable, oldFocus, isFocusEntering) -> {
+			if (isFocusEntering) {
+				// do nothing
+			} else {
+				if (getText().isEmpty() && canBeEmpty) {
 					return;
 				}
-
-				final int intValue = Integer.parseInt(newValue);
-
-				if (intField.minValue > intValue || intValue > intField.maxValue) {
-					textProperty().setValue(oldValue);
+				Integer intValue = null;
+				try {
+					intValue = Integer.parseInt(getText());
+					// trigger value change
+					value.set(intValue == 0 ? 1 : 0);
+					// set new value
+					value.set(intValue);
+				} catch (Exception e) {
+					// ignore parse exception
+					value.set(IntField.this.minValue);
 				}
-
-				value.set(Integer.parseInt(textProperty().get()));
+			}
+		});
+		textProperty().addListener((observable, oldText, newText) -> {
+			if (getText().isEmpty() && canBeEmpty) {
+				return;
+			}
+			Integer intValue = null;
+			try {
+				intValue = Integer.parseInt(getText());
+				// set new value
+				value.set(intValue);
+			} catch (Exception e) {
+				// ignore parse exception
 			}
 		});
 
@@ -188,4 +203,20 @@ public class IntField extends TextField {
 		setValue(getValue() - 1);
 	}
 
+	/**
+	 * @return the canBeEmpty
+	 */
+	public boolean isCanBeEmpty() {
+		return canBeEmpty;
+	}
+
+	/**
+	 * @param canBeEmpty the canBeEmpty to set
+	 */
+	public void setCanBeEmpty(boolean canBeEmpty) {
+		this.canBeEmpty = canBeEmpty;
+		if (!canBeEmpty) {
+			setText(value.get() + "");
+		}
+	}
 }

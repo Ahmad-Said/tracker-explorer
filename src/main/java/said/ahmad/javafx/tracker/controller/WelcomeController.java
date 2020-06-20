@@ -3,8 +3,6 @@ package said.ahmad.javafx.tracker.controller;
 import java.awt.Desktop;
 import java.io.File;
 import java.io.IOException;
-import java.net.DatagramSocket;
-import java.net.InetAddress;
 import java.net.URISyntaxException;
 import java.net.URL;
 import java.text.ParseException;
@@ -53,29 +51,28 @@ import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.GridPane;
 import javafx.stage.FileChooser;
 import javafx.stage.Stage;
-import javafx.util.Duration;
 import said.ahmad.javafx.tracker.app.DialogHelper;
 import said.ahmad.javafx.tracker.app.Main;
 import said.ahmad.javafx.tracker.app.ResourcesHelper;
 import said.ahmad.javafx.tracker.app.StringHelper;
-import said.ahmad.javafx.tracker.app.ThemeManager;
-import said.ahmad.javafx.tracker.app.ThemeManager.THEME;
-import said.ahmad.javafx.tracker.app.ThemeManager.THEME_COLOR;
+import said.ahmad.javafx.tracker.app.look.THEME;
+import said.ahmad.javafx.tracker.app.look.THEME_COLOR;
+import said.ahmad.javafx.tracker.app.look.ThemeManager;
 import said.ahmad.javafx.tracker.app.pref.Setting;
+import said.ahmad.javafx.tracker.controller.connection.ConnectionController;
+import said.ahmad.javafx.tracker.controller.connection.ConnectionController.ConnectionType;
 import said.ahmad.javafx.tracker.controller.splitview.SplitViewController;
 import said.ahmad.javafx.tracker.datatype.FavoriteView;
 import said.ahmad.javafx.tracker.datatype.SplitViewState;
 import said.ahmad.javafx.tracker.fxGraphics.DraggableTab;
 import said.ahmad.javafx.tracker.fxGraphics.MenuItemFactory;
-import said.ahmad.javafx.tracker.system.RecursiveFileWalker;
 import said.ahmad.javafx.tracker.system.file.PathLayer;
-import said.ahmad.javafx.tracker.system.file.PathLayerHelper;
 import said.ahmad.javafx.tracker.system.operation.FileHelper;
 import said.ahmad.javafx.tracker.system.operation.FileHelperGUIOperation;
 import said.ahmad.javafx.tracker.system.services.TrackerPlayer;
 import said.ahmad.javafx.tracker.system.services.VLC;
 import said.ahmad.javafx.tracker.system.tracker.FileTracker;
-import said.ahmad.javafx.tracker.system.tracker.FileTrackerHolder;
+import said.ahmad.javafx.util.IpAddress;
 
 public class WelcomeController implements Initializable {
 	static final KeyCombination SHORTCUT_OPEN_NEW_TAB = new KeyCodeCombination(KeyCode.T, KeyCombination.CONTROL_DOWN);
@@ -102,12 +99,9 @@ public class WelcomeController implements Initializable {
 	private Menu newEmbedWindow;
 	@FXML
 	private MenuItem newWindow;
+
 	@FXML
-	private MenuItem newFile;
-	@FXML
-	private MenuItem newFolder;
-	@FXML
-	private MenuItem deleteItem;
+	private Menu openConnectionMenu;
 
 	// Tracker SubMenus
 	@FXML
@@ -134,9 +128,6 @@ public class WelcomeController implements Initializable {
 	private Menu helpMenu;
 
 	@FXML
-	private MenuButton rightToolsMenu;
-
-	@FXML
 	private MenuButton rootsMenu;
 	private Menu subMenuActiveUser;
 	private Menu subMenuRemoveUser;
@@ -156,29 +147,46 @@ public class WelcomeController implements Initializable {
 		// for a faster show stage implementation was moved to initializeViewStage
 	}
 
-	/** To be called after setting a scene to the stage */
-	public void initializeViewStage(Stage stage, boolean doRefresh) {
-		initializeMenuBar();
+	public void initializePart2AddSplitView(Stage stage, boolean doRefresh) {
+		this.stage = stage;
 		try {
 			allSplitViewController = new Stack<>();
 			allSplitViewControllerRemoved = new Stack<>();
 			// Assign column to which property in model
-
-			addSplitView(StringHelper.InitialLeftPath, true);
-			addSplitView(StringHelper.InitialRightPath, false);
+			addSplitView(Setting.getLeftLastKnowLocation(), true);
+			addSplitView(Setting.getRightLastKnowLocation(), false);
 		} catch (Exception e1) {
 			e1.printStackTrace();
 			DialogHelper.showException(e1);
 		}
-		this.stage = stage;
-		Setting.getFavoritesLocations().addListener((MapChangeListener<String, FavoriteView>) change -> {
-			allSplitViewController.forEach(sp -> sp.onFavoriteChanges(change));
-		});
-		initializeTabs();
 		if (doRefresh) {
 			refreshAllSplitViews();
 		}
+	}
+
+	/** To be called after setting a scene to the stage */
+	public void initializePart3AddTabs(Stage stage, boolean doRefresh) {
+		initializeMenuBar();
+		Setting.getFavoritesViews().addListener((MapChangeListener<String, FavoriteView>) change -> {
+			allSplitViewController
+					.forEach(sp -> sp.onFavoriteChanges(change, Setting.getFavoritesViews().isReloadingMapOperation()));
+		});
+		initializeTabs();
 		initializeStage();
+
+		// Restoring last known view as it was
+		FavoriteView lastView = Setting.getLastOpenedView();
+		if (lastView != null && !Main.isPathArgumentPassed()) {
+			while (allSplitViewController.size() < lastView.getSplitStates().size()) {
+				// some auto configuration done is performed when adding splitView so done it
+				// outside below loop
+				addSplitView();
+			}
+			for (int i = 0; i < lastView.getSplitStates().size(); i++) {
+				allSplitViewController.get(i)
+						.restoreSplitViewState(new SplitViewState(lastView.getSplitStates().get(i)));
+			}
+		}
 	}
 
 	private void initializeStage() {
@@ -239,6 +247,11 @@ public class WelcomeController implements Initializable {
 
 		autoFitWidthSplitPane();
 		if (allSplitViewController.size() > 1) {
+			// if template was left hide Desktop button and show leftDominate
+			if (isLeftTemplate) {
+				newSplit.getDesktopButton().setVisible(false);
+				newSplit.getLeftDominate().setVisible(true);
+			}
 			// mean there exist left
 			SplitViewController leftNeighbor = allSplitViewController.get(allSplitViewController.size() - 2);
 			newSplit.setLeftViewNeighbor(leftNeighbor);
@@ -312,11 +325,14 @@ public class WelcomeController implements Initializable {
 		}
 	}
 
+	private static String DEFAULT_TAB_TITLE = "Default";
+
 	private void initializeTabs() {
 		// initialize tabs
 		tabPane.getTabs().clear();
-		DraggableTab defaultTab = new DraggableTab("Default",
-				Arrays.asList(StringHelper.InitialLeftPath, StringHelper.InitialRightPath));
+		DraggableTab defaultTab = new DraggableTab(DEFAULT_TAB_TITLE,
+				Arrays.asList(new SplitViewState(Setting.getLeftLastKnowLocation()),
+						new SplitViewState(Setting.getRightLastKnowLocation())));
 		defaultTab.setClosable(false);
 		defaultTab.flipisEnteringAction();
 		tabPane.getTabs().add(defaultTab);
@@ -324,13 +340,20 @@ public class WelcomeController implements Initializable {
 
 		if (Setting.isRestoreLastOpenedFavorite()) {
 			for (String title : Setting.getLastOpenedFavoriteTitle()) {
-				if (Setting.getFavoritesLocations().containsByTitle(title)) {
-					FavoriteView favorite = Setting.getFavoritesLocations().getByTitle(title);
-					addTabOnly(favorite.getTitle(), favorite.getLocations());
+				if (Setting.getFavoritesViews().containsByTitle(title)) {
+					FavoriteView favorite = Setting.getFavoritesViews().getByTitle(title);
+					addTabOnly(favorite.getTitle(), favorite.getSplitStatessInitializedCopy());
 				}
 			}
 		}
 	}
+
+	/**
+	 * Used when closing a tab to restore to previously selected one
+	 *
+	 * @see #closeCurrentTab()
+	 */
+	private DraggableTab lastSelectedTab;
 
 	private void activeActionTab(DraggableTab dragTab) {
 		dragTab.setOnSelectionChanged(e -> {
@@ -340,30 +363,41 @@ public class WelcomeController implements Initializable {
 			// and the leaving tab which will save it's state
 			ArrayList<SplitViewState> splitStates = dragTab.getSplitViewStates();
 
-			// Sync states size
-			int maxStates = splitStates.size();
-			int shownSplit = allSplitViewController.size();
-			// If showing split view more than saved add new Split States same as last split
-			// View
-			if (maxStates != shownSplit) {
-				PathLayer defaultDir = splitStates.get(splitStates.size() - 1).getmDirectory();
-				for (int i = maxStates - 1; i < shownSplit; i++) {
-					splitStates.add(new SplitViewState(defaultDir));
-				}
-			}
-
 			if (dragTab.isEnteringAction()) {
 				// the new tab switched to
 				// change queue for the corresponding tab
+				// Sync current shownSplit size to drag ShownSplitSize
+				// by adding/removing splitView
+				int toBeShownSplit = dragTab.getShownSplitViewSize();
+				int shownSplit = allSplitViewController.size();
+				// add or remove splitView as needed
+				while (toBeShownSplit != shownSplit) {
+					// add missing splitView
+					for (int i = allSplitViewController.size(); i < dragTab.getShownSplitViewSize(); i++) {
+						addSplitView();
+						shownSplit++;
+					}
+					// remove unnecessary splitView
+					while (allSplitViewController.size() > dragTab.getShownSplitViewSize()) {
+						removeSplitView(allSplitViewController.size() - 1);
+						shownSplit--;
+					}
+				}
+
 				for (int i = 0; i < shownSplit; i++) {
 					allSplitViewController.get(i).restoreSplitViewState(splitStates.get(i));
 				}
 			} else {
 				// the tab that is switched from
 				// will trigger code first
-				for (int i = 0; i < shownSplit; i++) {
+				dragTab.setShownSplitViewSize(allSplitViewController.size());
+				for (int i = 0; i < allSplitViewController.size(); i++) {
+					if (i >= splitStates.size()) {
+						splitStates.add(new SplitViewState());
+					}
 					allSplitViewController.get(i).saveStateToSplitState(splitStates.get(i));
 				}
+				lastSelectedTab = dragTab;
 			}
 			dragTab.flipisEnteringAction();
 		});
@@ -399,16 +433,17 @@ public class WelcomeController implements Initializable {
 
 	@FXML
 	private void plusTab() {
-		addTabAndSwitch("New Tab", getSplitDirectories());
-	}
-
-	private List<PathLayer> getSplitDirectories() {
-		return allSplitViewController.stream().map(spCon -> spCon.getmDirectoryPath()).collect(Collectors.toList());
+		addTabAndSwitch("New Tab", allSplitViewController.stream().map(sp -> new SplitViewState(sp.getmDirectoryPath()))
+				.collect(Collectors.toList()));
 	}
 
 	public void closeCurrentTab() {
 		if (tabPane.getSelectionModel().getSelectedItem().isClosable()) {
-			tabPane.getTabs().remove(tabPane.getSelectionModel().getSelectedItem());
+			Tab toBeRemoved = tabPane.getSelectionModel().getSelectedItem();
+			if (lastSelectedTab != null) {
+				tabPane.getSelectionModel().select(lastSelectedTab);
+			}
+			tabPane.getTabs().remove(toBeRemoved);
 		} else {
 			if (tabPane.getTabs().size() == 1) {
 				Platform.exit();
@@ -432,14 +467,14 @@ public class WelcomeController implements Initializable {
 
 	}
 
-	private DraggableTab addTabAndSwitch(String title, List<PathLayer> splitDirectories) {
-		DraggableTab tempTab = addTabOnly(title, splitDirectories);
+	private DraggableTab addTabAndSwitch(String title, List<SplitViewState> splitStates) {
+		DraggableTab tempTab = addTabOnly(title, splitStates);
 		tabPane.getSelectionModel().select(tempTab);
 		return tempTab;
 	}
 
-	private DraggableTab addTabOnly(String title, List<PathLayer> splitDirectories) {
-		DraggableTab tempTab = new DraggableTab(title, splitDirectories);
+	private DraggableTab addTabOnly(String title, List<SplitViewState> splitStates) {
+		DraggableTab tempTab = new DraggableTab(title, splitStates);
 		activeActionTab(tempTab);
 		tabPane.getTabs().add(tempTab);
 		return tempTab;
@@ -480,47 +515,6 @@ public class WelcomeController implements Initializable {
 			allSplitViewController.peek().requestFocus();
 		}
 	}
-
-	// public void focus_Switch_VIEW() {
-	// SplitViewController focusedPane = getunFocusedPane();
-	// if (focusedPane != null) {
-	// focusedPane.focusTable();
-	// } else {
-	// leftView.focusTable();
-	// }
-	// switcher = !switcher;
-	// }
-	//
-	//
-	// public void focus_VIEW() {
-	// SplitViewController focusedPane = getFocusedPane();
-	// if (focusedPane != null) {
-	// focusedPane.focusTable();
-	// } else {
-	// if (switcher) {
-	// leftView.focusTable();
-	// } else {
-	// rightView.focusTable();
-	// }
-	// switcher = !switcher;
-	// }
-	// }
-	//
-	// public void focusSearchField() {
-	// SplitViewController focusedPane = getFocusedPane();
-	// if (focusedPane != null) {
-	// focusedPane.focusSearchField();
-	// } else {
-	// leftView.focusSearchField();
-	// }
-	// }
-	//
-	// public void focusTextField() {
-	// SplitViewController focusedPane = getFocusedPane();
-	// if (focusedPane != null) {
-	// focusedPane.getPathField().requestFocus();
-	// }
-	// }
 
 	public void changeInSetting() {
 		initializeMenuBar();
@@ -565,7 +559,8 @@ public class WelcomeController implements Initializable {
 				ThemeManager.applyTheme(scene);
 				anotherStage.getIcons().add(ThemeManager.DEFAULT_ICON_IMAGE);
 				anotherStage.show();
-				anotherWelcome.initializeViewStage(anotherStage, true);
+				anotherWelcome.initializePart2AddSplitView(anotherStage, true);
+				anotherWelcome.initializePart3AddTabs(anotherStage, false);
 				for (int i = 0; i < allSplitViewController.size(); i++) {
 					if (anotherWelcome.allSplitViewController.size() < i + 1) {
 						anotherWelcome.addSplitView();
@@ -577,6 +572,16 @@ public class WelcomeController implements Initializable {
 				e1.printStackTrace();
 			}
 		});
+
+		/**
+		 * Set up connection menu
+		 */
+		for (ConnectionType connectionType : ConnectionType.values()) {
+			MenuItem mn = new MenuItem(connectionType.toString());
+			mn.setOnAction(e -> new ConnectionController(connectionType,
+					path -> allSplitViewController.get(0).setmDirectoryThenRefresh(path)));
+			openConnectionMenu.getItems().add(mn);
+		}
 
 		/**
 		 * set up Operation Stage
@@ -617,15 +622,8 @@ public class WelcomeController implements Initializable {
 		MenuItem settingController = new MenuItem("Setting preference");
 		TrackerMenu.getItems().add(settingController);
 
-		MenuItem trackLeftRecusivlyMenuItem = new MenuItem("Track left view Recursivly");
-		trackLeftRecusivlyMenuItem.setOnAction(e -> leftTrackRecusivly());
-		TrackerMenu.getItems().add(trackLeftRecusivlyMenuItem);
-
 		MenuItem clearFavorite = new MenuItem("Clear Favorites	(!-!)");
 		TrackerMenu.getItems().add(clearFavorite);
-
-		MenuItem CleanRecursively = new MenuItem("Clean Recursively");
-		TrackerMenu.getItems().add(CleanRecursively);
 
 		MenuItem addTocontextMenu = new MenuItem("Add Tracker To Context Menu");
 		addTocontextMenu.setOnAction(e -> AddToContextMenu());
@@ -664,7 +662,7 @@ public class WelcomeController implements Initializable {
 						"This Cannot be undone!!\nIn case you get bothered of specific item,"
 								+ "\nOpen in the left view Then uncheck box \"Favorite Folder\"\nPress Ok to clear list. OtherWise cancel operation");
 				if (ans) {
-					Setting.getFavoritesLocations().clear();
+					Setting.getFavoritesViews().clear();
 				}
 			}
 		});
@@ -720,56 +718,6 @@ public class WelcomeController implements Initializable {
 			AddRemoveUser(user);
 		}
 
-		// Clean Recursively
-		CleanRecursively.setOnAction(new EventHandler<ActionEvent>() {
-
-			@Override
-			public void handle(ActionEvent event) {
-				String depthANS = DialogHelper.showTextInputDialog("Recursive Cleaner", "From Left Depth to consider",
-						"Enter depht value to consider begining from left view folder and track all sub directory in it\n"
-								+ "Input must be a number format if anything goes wrong '0' is the default value",
-						"0");
-				if (depthANS == null) {
-					return;
-				}
-				Integer depth;
-				try {
-					depth = Integer.parseInt(depthANS);
-				} catch (NumberFormatException e1) {
-					depth = 0;
-					// e1.printStackTrace();
-				}
-				String user = DialogHelper.showTextInputDialog("Recursive Cleaner", "User Name To clean for",
-						"Enter User name (it Work even if The user wasn't in the list)", Setting.getActiveUser());
-				if (user == null) {
-					return;
-				}
-
-				PathLayer dir = allSplitViewController.get(0).getmDirectoryPath();
-				final int depths = depth;
-				Thread cleanerThread = new Thread() {
-					@Override
-					public void run() {
-						try {
-							RecursiveFileWalker r = new RecursiveFileWalker();
-							PathLayerHelper.walkFileTree(dir, depths, false, r);
-
-							r.getDirectories().forEach(p -> {
-								Platform.runLater(() -> Main.ProcessTitle(p.toString()));
-								FileTracker.deleteOutFile(p, user);
-							});
-
-							// Main.ResetTitle();
-							Platform.runLater(() -> refreshAllSplitViews());
-						} catch (IOException e) {
-							// e.printStackTrace();
-						}
-					}
-				};
-				cleanerThread.start();
-			}
-		});
-
 		MenuItem showConflict = new MenuItem("Show Conflict Log");
 		showConflict.setOnAction(new EventHandler<ActionEvent>() {
 
@@ -807,11 +755,10 @@ public class WelcomeController implements Initializable {
 		TrackerPlayer.openTrackerSettingGUI();
 	}
 
-	// TODO later make favorites for all views
 	public void openFavoriteLocation(FavoriteView favoriteView, SplitViewController splitViewController) {
 		String error = "";
-		for (PathLayer path : favoriteView.getLocations()) {
-			if (!path.exists()) {
+		for (SplitViewState path : favoriteView.getSplitStates()) {
+			if (!path.getmDirectory().exists()) {
 				error += path.toString() + "\n\n";
 			}
 		}
@@ -819,17 +766,18 @@ public class WelcomeController implements Initializable {
 			DialogHelper.showExpandableAlert(AlertType.INFORMATION, "Open Favorites", "Resources cannot be found",
 					"Directory gets moved/deleted, or system provider is offline", error);
 		}
+		List<SplitViewState> splitStates = favoriteView.getSplitStatessInitializedCopy();
 		if (splitViewController == allSplitViewController.get(0)) {
-			DraggableTab newTab = new DraggableTab(favoriteView.getTitle(), favoriteView.getLocations());
+			DraggableTab newTab = new DraggableTab(favoriteView.getTitle(), splitStates);
 			activeActionTab(newTab);
 			tabPane.getTabs().add(newTab);
 			tabPane.getSelectionModel().select(newTab);
 		} else {
 			int start = allSplitViewController.indexOf(splitViewController);
-			int end = Math.min(allSplitViewController.size(), start + favoriteView.getLocations().size());
+			int end = Math.min(allSplitViewController.size(), start + splitStates.size());
 			int j = 0;
 			for (int i = start; i < end; i++) {
-				allSplitViewController.get(i).setmDirectoryThenRefresh(favoriteView.getLocations().get(j++));
+				allSplitViewController.get(i).restoreSplitViewState(splitStates.get(j++));
 			}
 		}
 	}
@@ -983,9 +931,8 @@ public class WelcomeController implements Initializable {
 
 		// ask user if he want to test it
 		// https://stackoverflow.com/questions/9481865/getting-the-ip-address-of-the-current-machine-using-java?rq=1
-		try (final DatagramSocket socket = new DatagramSocket()) {
-			socket.connect(InetAddress.getByName("8.8.8.8"), 10002);
-			String ip = socket.getLocalAddress().getHostAddress();
+		try {
+			String ip = IpAddress.getLocalAddress();
 			Desktop.getDesktop().browse(new URL("http://" + ip + ":8080").toURI());
 
 			// this run later to request focus after starting empty web
@@ -1153,7 +1100,7 @@ public class WelcomeController implements Initializable {
 				+ "\n - Ctrl + W      = Close Current Tab" + "\n - Ctrl + T   = Open New Tab"
 				+ "\n - F3      = Switch Focus between Tables" + "\n - Alt + Up || BackSpace = Go To parent Directory"
 				+ "\n - Alt + Left Arrow      = Go Back To Previous Folder" + "\n - Alt + Right Arrow     = Go Next"
-				+ "\n - Alt + Shift + R       = Reveal in Windows Explorer"
+				+ "\n - Alt + Shift + R       = Reveal in System Explorer"
 				+ "\n - Shift + D             = Focus On Path Field"
 				+ "\n - Ctrl + Shift + F      = Mark Folder As Favorite"
 				+ "\n - Shift + F             = Open Favorite Menu"
@@ -1165,47 +1112,6 @@ public class WelcomeController implements Initializable {
 				+ "\n - Left / Right = Dominate Other Table View"
 				+ "\n - Trick        = Scroll up/down with mouse on clear button to toggle seen/unseen";
 		DialogHelper.showAlert(AlertType.INFORMATION, "KeyBoard Shortcuts", "KeyBoard Shortcuts", ky);
-	}
-
-	@FXML
-	public void leftTrackRecusivly() {
-		String answer = DialogHelper.showTextInputDialog("Recursive Tracker", "Depth to consider",
-				"Enter depht value to consider begining from left view folder and track all sub directory in it\n"
-						+ "Input must be a number format if anything goes wrong '1' is the default value",
-				"1");
-		if (answer == null) {
-			return;
-		}
-		Integer depth;
-		try {
-			depth = Integer.parseInt(answer);
-		} catch (NumberFormatException e1) {
-			depth = 1;
-			// e1.printStackTrace();
-		}
-		final int depths = depth;
-		PathLayer dir = getMostLeftView().getmDirectoryPath();
-		Thread trackerThread = new Thread() {
-			@Override
-			public void run() {
-				try {
-					RecursiveFileWalker r = new RecursiveFileWalker();
-					PathLayerHelper.walkFileTree(dir, depths, false, r);
-					r.getDirectories().forEach(p -> {
-						Platform.runLater(() -> Main.ProcessTitle(p.toString()));
-						try {
-							getMostLeftView().getFileTracker().trackNewOutFolder(p);
-						} catch (IOException e) {
-							e.printStackTrace();
-						}
-					});
-					Platform.runLater(() -> refreshAllSplitViews());
-				} catch (IOException e) {
-					// e.printStackTrace();
-				}
-			}
-		};
-		trackerThread.start();
 	}
 
 	@FXML
@@ -1222,56 +1128,7 @@ public class WelcomeController implements Initializable {
 		}
 	}
 
-	@FXML
-	void rightBulkRemoveIntro(ActionEvent event) {
-		SplitViewController rightView = getMostRightView();
-		if (rightView.isOutOfTheBoxHelper()) {
-			DialogHelper.showAlert(AlertType.INFORMATION, "Bulk Intro Remover", "Recursive Mode Restriction",
-					"this feature is unavailable in recursive mode,\r\n"
-							+ "Please turn it off then try again.\nIf you like it to be contact developpers!");
-			return;
-		}
-		String answer = DialogHelper.showTextInputDialog("Bulk Intro Remover", "Time To exclude from start?",
-				"Enter the time to exclude From the begining, "
-						+ "\nthis will apply on all selected Media file in Right View."
-						+ "\nAlso will clear previous configured filters"
-						+ "\nInput must be in duration format: ss or mm:ss or hh:mm:ss (example: 234 or 3:54)",
-				"00     :00     :00");
-		if (answer == null) {
-			return;
-		}
-		Duration ans = FilterVLCController.studyFormat(answer, " Feild", true);
-		if (ans == null || ans.toSeconds() <= 0) {
-			return;
-		}
-
-		if (!rightView.getFileTracker().isTracked()) {
-			try {
-				rightView.getFileTracker().trackNewFolder();
-			} catch (IOException e) {
-				e.printStackTrace();
-				DialogHelper.showException(e);
-				return;
-			}
-		}
-
-		List<PathLayer> paths = rightView.getSelection();
-		if (paths.size() <= 1) {
-			paths = rightView.getShownFilesList();
-		}
-		String start = "" + 0;
-		String end = "" + (int) ans.toSeconds();
-		for (PathLayer path : paths) {
-			if (VLC.isAudioOrVideo(path.getName())) {
-				FileTrackerHolder optionItem = rightView.getFileTracker().getMapDetails().get(path);
-				String desc = path.getName() + " [Skipped Intro]";
-				String finalFormat = ">" + start + ">" + end + ">" + desc;
-				optionItem.setMediaCutDataUnPrased(finalFormat);
-			}
-		}
-		rightView.getFileTracker().writeMap();
-	}
-
+	/** @see #initializePart3AddTabs(Stage, boolean) */
 	public void saveSetting() {
 		Setting.setLeftLastKnowLocation(getLeftLastKnowLocation());
 		Setting.setRightLastKnowLocation(getRightLastKnowLocation());
@@ -1288,6 +1145,13 @@ public class WelcomeController implements Initializable {
 			}
 			Setting.setLastOpenedFavoriteTitle(lastOpenedFavoritesIndex);
 		}
+		Setting.setMaximized(stage.isMaximized());
+
+		Setting.setLastOpenedView(new FavoriteView(DEFAULT_TAB_TITLE, allSplitViewController.stream().map(sp -> {
+			SplitViewState state = new SplitViewState();
+			sp.saveStateToSplitState(state);
+			return state;
+		}).collect(Collectors.toList())));
 	}
 
 	public void switchRecursive() {

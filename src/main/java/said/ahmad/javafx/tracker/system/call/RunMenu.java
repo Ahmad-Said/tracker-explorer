@@ -7,6 +7,8 @@ import java.io.InputStream;
 import java.nio.file.Files;
 import java.util.List;
 
+import org.apache.commons.lang3.SystemUtils;
+
 import said.ahmad.javafx.tracker.app.ResourcesHelper;
 import said.ahmad.javafx.tracker.app.StringHelper;
 
@@ -37,15 +39,17 @@ public class RunMenu {
 	}
 
 	public static void showMenu(List<File> toShow) {
-		String[] cmdArray = new String[toShow.size() + 2];
-		int j = 0;
-		cmdArray[j++] = runmenuFile.toString();
-		cmdArray[j++] = "/show";
-		for (File path : toShow) {
-			cmdArray[j++] = path.getAbsolutePath();
+		if (SystemUtils.IS_OS_WINDOWS) {
+			String[] cmdArray = new String[toShow.size() + 2];
+			int j = 0;
+			cmdArray[j++] = runmenuFile.toString();
+			cmdArray[j++] = "/show";
+			for (File path : toShow) {
+				cmdArray[j++] = path.getAbsolutePath();
+			}
+			// https://stackoverflow.com/questions/1105085/runtime-exec-with-absolute-directory
+			StringHelper.RunRuntimeProcess(cmdArray);
 		}
-		// https://stackoverflow.com/questions/1105085/runtime-exec-with-absolute-directory
-		StringHelper.RunRuntimeProcess(cmdArray);
 	}
 
 }

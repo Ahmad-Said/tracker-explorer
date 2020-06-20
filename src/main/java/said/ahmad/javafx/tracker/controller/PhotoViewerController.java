@@ -46,7 +46,7 @@ import javafx.util.Pair;
 import said.ahmad.javafx.tracker.app.DialogHelper;
 import said.ahmad.javafx.tracker.app.ResourcesHelper;
 import said.ahmad.javafx.tracker.app.StringHelper;
-import said.ahmad.javafx.tracker.app.ThemeManager;
+import said.ahmad.javafx.tracker.app.look.ThemeManager;
 import said.ahmad.javafx.tracker.datatype.ImagePosition;
 import said.ahmad.javafx.tracker.fxGraphics.ImageGridItem;
 import said.ahmad.javafx.tracker.system.file.PathLayer;
@@ -162,7 +162,7 @@ public class PhotoViewerController {
 	private ImageGridItem initialGridItem;
 	private ArrayList<ImageGridItem> allGridItems = new ArrayList<>();
 
-	public static final Image PHOTO_ICON_IMAGE = new Image(ResourcesHelper.getResourceAsStream("/img/icon.png"));
+	public static final Image PHOTO_ICON_IMAGE = new Image(ResourcesHelper.getResourceAsStream("/img/photo_Icon.png"));
 
 	public static HashSet<String> ArrayIMGExt = new HashSet<String>(
 			Arrays.asList("PNG", "GIF", "JPG", "JPS", "MPO", "BMP", "WEBMP", "JPEG"));
@@ -177,9 +177,9 @@ public class PhotoViewerController {
 	 * size so after setting this viewport rectangle it will be scaled to imageView
 	 * where image is being shown.
 	 *
-	 * @param list
+	 * @param list                    can be null
 	 * @param filePath
-	 * @param welcomeToRefreshCanNull
+	 * @param welcomeToRefreshCanNull can be null
 	 */
 	public PhotoViewerController(List<PathLayer> list, PathLayer filePath, WelcomeController welcomeToRefreshCanNull) {
 		try {
@@ -809,9 +809,7 @@ public class PhotoViewerController {
 		if (ans) {
 			PathLayer parentPath = ImgResources.get(rollerPhoto).getParentPath();
 			try {
-				if (fileTracker.trackNewOutFolder(parentPath)) {
-					fileTracker.loadMap(parentPath, false, null);
-				}
+				fileTracker.trackNewOutFolder(parentPath, true, false);
 			} catch (IOException e) {
 				e.printStackTrace();
 				DialogHelper.showException(e);

@@ -51,7 +51,9 @@ public class RecursiveFileWalker implements PathLayerVisitor<PathLayer> {
 
 	@Override
 	public FileVisitResult visitFile(PathLayer file) throws IOException {
-		directoriesToFiles.get(rootDirListing.peek()).add(file);
+		if (rootDirListing.size() != 0) {
+			directoriesToFiles.get(rootDirListing.peek()).add(file);
+		}
 		return FileVisitResult.CONTINUE;
 	}
 
@@ -80,5 +82,11 @@ public class RecursiveFileWalker implements PathLayerVisitor<PathLayer> {
 	 */
 	public HashMap<PathLayer, ArrayList<PathLayer>> getDirectoriesToFiles() {
 		return directoriesToFiles;
+	}
+
+	public void clearAllRecords() {
+		rootDirListing.clear();
+		directoriesToFiles.clear();
+		directories.clear();
 	}
 }

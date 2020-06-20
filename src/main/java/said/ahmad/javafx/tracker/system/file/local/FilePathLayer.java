@@ -33,8 +33,8 @@ public class FilePathLayer extends PathLayer {
 	}
 
 	public FilePathLayer(File file) {
-		super(file.getAbsolutePath(), file.getName(), ProviderType.LOCAL, file.isDirectory(), file.lastModified(),
-				file.length());
+		super(file.getAbsolutePath(), file.getName(), ProviderType.LOCAL,
+				file.isDirectory() ? FileType.DIRECTORY : FileType.FILE, file.lastModified(), file.length());
 		this.file = file;
 	}
 
@@ -157,16 +157,18 @@ public class FilePathLayer extends PathLayer {
 				targetDirectory.toPath().resolve(getName()).toFile().mkdirs();
 			}
 			return true;
+		} else {
+			return super.copyTo(targetDirectory);
 		}
-		return false;
 	}
 
 	@Override
 	public boolean moveTo(PathLayer targetDirectory) throws IOException {
 		if (targetDirectory.isLocal()) {
 			return moveTo((FilePathLayer) targetDirectory);
+		} else {
+			return super.moveTo(targetDirectory);
 		}
-		return false;
 	}
 
 	public boolean moveTo(FilePathLayer targetDirectory) throws IOException {
@@ -183,8 +185,9 @@ public class FilePathLayer extends PathLayer {
 		if (compareTo(targetPathLayer) != 0 && targetPathLayer.isLocal()) {
 			Files.move(toPath(), targetPathLayer.toPath());
 			return true;
+		} else {
+			return super.move(targetPathLayer);
 		}
-		return false;
 	}
 
 	@Override
@@ -192,8 +195,9 @@ public class FilePathLayer extends PathLayer {
 		if (targetPathLayer.isLocal()) {
 			Files.copy(file.toPath(), targetPathLayer.toPath(), com.sun.nio.file.ExtendedCopyOption.INTERRUPTIBLE);
 			return true;
+		} else {
+			return super.copy(targetPathLayer);
 		}
-		return false;
 	}
 
 	@Override

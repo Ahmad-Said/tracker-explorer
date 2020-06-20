@@ -1,9 +1,10 @@
-package said.ahmad.javafx.tracker.app;
+package said.ahmad.javafx.tracker.app.look;
 
 import javafx.scene.Scene;
 import javafx.scene.image.Image;
 import jfxtras.styles.jmetro.JMetro;
 import jfxtras.styles.jmetro.Style;
+import said.ahmad.javafx.tracker.app.ResourcesHelper;
 import said.ahmad.javafx.tracker.app.pref.Setting;
 
 public class ThemeManager {
@@ -13,40 +14,6 @@ public class ThemeManager {
 	// themes stuff
 	private static THEME appliedTheme = THEME.BOOTSTRAPV3;
 	private static THEME_COLOR appliedThemeColor = THEME_COLOR.LIGHT;
-
-	/**
-	 *
-	 * @see THEME
-	 */
-	public static enum THEME_COLOR {
-		NONE, LIGHT, DARK
-	}
-
-	/**
-	 * Themes:
-	 * <ul>
-	 * <li><b>MODENAFX</b> Built in no style sheet, no THEME_COLOR</li>
-	 *
-	 * <li><b>BOOTSTRAPV3</b> bootstrapv3 css style sheet, no THEME_COLOR</li>
-	 *
-	 * <li><b>WINDOWS</b> JMetro theme Windows style, require refreshing the view.
-	 * <br>
-	 * Available {@link THEME_COLOR}:
-	 * <ul>
-	 * <li>{@link THEME_COLOR#LIGHT}</li>
-	 * <li>{@link THEME_COLOR#DARK}</li>
-	 * </ul>
-	 * </li>
-	 *
-	 * </ul>
-	 *
-	 *
-	 */
-	public static enum THEME {
-		MODENAFX, // default theme no style sheet
-		BOOTSTRAPV3, // bootstrapv3 css style sheet
-		WINDOWS, // JMetro theme LIGHT or DARK
-	}
 
 	/** @return applied theme */
 	public static THEME applyTheme(Scene scene) {

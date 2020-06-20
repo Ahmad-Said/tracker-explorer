@@ -28,7 +28,7 @@ public class RenameUtilityViewModel {
 		setPathFile(path);
 		ConsiderCheckBox = new CheckBox();
 		ConsiderCheckBox.setSelected(true);
-		Image fxImage = SystemIconsHelper.getFileIcon(PathFile.toString());
+		Image fxImage = SystemIconsHelper.getFileIcon(PathFile);
 		imgIcon = new ImageView(fxImage);
 	}
 
@@ -39,7 +39,7 @@ public class RenameUtilityViewModel {
 		setPathFile(null);
 		ConsiderCheckBox = new CheckBox();
 		ConsiderCheckBox.setSelected(true);
-		Image fxImage = SystemIconsHelper.getFileIcon("test.SomethingNotAnextention");
+		Image fxImage = SystemIconsHelper.getFileIcon("TXT");
 		imgIcon = new ImageView(fxImage);
 	}
 

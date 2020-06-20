@@ -35,7 +35,8 @@ import javafx.scene.text.TextFlow;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
 import javafx.util.Pair;
-import said.ahmad.javafx.tracker.fxGraphics.IntField;
+import said.ahmad.javafx.fxGraphics.IntField;
+import said.ahmad.javafx.tracker.app.look.ThemeManager;
 
 public class DialogHelper {
 

@@ -28,6 +28,8 @@ import said.ahmad.javafx.tracker.app.StringHelper;
 import said.ahmad.javafx.tracker.controller.SettingController;
 import said.ahmad.javafx.tracker.system.SystemIconsHelper;
 import said.ahmad.javafx.tracker.system.WindowsShortcut;
+import said.ahmad.javafx.tracker.system.file.PathLayer;
+import said.ahmad.javafx.tracker.system.file.local.FilePathLayer;
 
 /**
  * The use of Playlist in this class mean the file that shortcut point to (that
@@ -69,13 +71,14 @@ public class TrackerPlayer {
 		} else {
 			try {
 				// creating icon
-				String ext = SystemIconsHelper.getFileExt(playlist.toString());
-				File iconFile = ICON_DIRECTORY.resolve(ext.substring(1) + ".ico").toFile();
+				PathLayer pathLayer = new FilePathLayer(playlist.toFile());
+				String ext = pathLayer.getExtension();
+				File iconFile = ICON_DIRECTORY.resolve(ext + ".ico").toFile();
 				if (!iconFile.exists()) {
 					if (!ICON_DIRECTORY.toFile().exists()) {
 						ICON_DIRECTORY.toFile().mkdirs();
 					}
-					Image iconImage = SystemIconsHelper.getFileIcon(playlist.toString());
+					Image iconImage = SystemIconsHelper.getFileIcon(pathLayer);
 					BufferedImage bImage = SwingFXUtils.fromFXImage(iconImage, null);
 					ICOEncoder.write(bImage, iconFile);
 				}

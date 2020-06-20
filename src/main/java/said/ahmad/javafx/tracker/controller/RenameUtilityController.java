@@ -49,18 +49,22 @@ import javafx.scene.paint.Color;
 import javafx.scene.text.Text;
 import javafx.scene.text.TextFlow;
 import javafx.stage.Stage;
+import javafx.util.Pair;
+import said.ahmad.javafx.fxGraphics.IntField;
 import said.ahmad.javafx.tracker.app.DialogHelper;
 import said.ahmad.javafx.tracker.app.ResourcesHelper;
 import said.ahmad.javafx.tracker.app.StringHelper;
-import said.ahmad.javafx.tracker.app.ThemeManager;
-import said.ahmad.javafx.tracker.fxGraphics.IntField;
+import said.ahmad.javafx.tracker.app.look.ThemeManager;
 import said.ahmad.javafx.tracker.model.RenameUtilityViewModel;
 import said.ahmad.javafx.tracker.system.WatchServiceHelper;
 import said.ahmad.javafx.tracker.system.file.PathLayer;
+import said.ahmad.javafx.tracker.system.file.PathLayerHelper;
 import said.ahmad.javafx.tracker.system.file.local.FilePathLayer;
 import said.ahmad.javafx.tracker.system.operation.FileHelper;
 import said.ahmad.javafx.tracker.system.operation.FileHelper.ActionOperation;
 import said.ahmad.javafx.tracker.system.tracker.FileTracker;
+import said.ahmad.javafx.util.CallBackToDo;
+import said.ahmad.javafx.util.CallBackVoid;
 
 public class RenameUtilityController {
 
@@ -75,7 +79,7 @@ public class RenameUtilityController {
 	private ComboBox<MoveRemovedAction> MoveRemoved;
 
 	@FXML
-	private Button undoLastRename;
+	private Button undoLastRenameButton;
 	@FXML
 	private TextField searchField;
 
@@ -158,11 +162,20 @@ public class RenameUtilityController {
 
 	public static final Image RENAME_ICON_IMAGE = new Image(ResourcesHelper.getResourceAsStream("/img/rename-512.png"));
 
+	// Needed to Redo last modification of current rename
+	private LinkedList<HashMap<PathLayer, PathLayer>> newToOldRename = new LinkedList<>();
+
+	// Needed to Undo last modification of any bulk rename
+	private static final LinkedList<HashMap<PathLayer, PathLayer>> allNewToOldRename = new LinkedList<>();
+	private static final String UNDO_TITLE = "Undo Bulk Rename";
+	private static final String UNDO_SUMMARY_DESCRIPTION = "This action is used when wrongly bulk renamed "
+			+ "\nIn that case a report of rename match will be displayed for to be confirmed.";
+
+	/**
+	 *
+	 * @param sourceFiles initial file selection
+	 */
 	public RenameUtilityController(List<PathLayer> sourceFiles) {
-		// setup refreshing names on clicking CheckBox
-		// TODO set limit of removing things
-		// slider on each input
-		// TODO set up/down key and scroll up down to increment field by 1
 		Parent root;
 		Scene scene;
 		renameStage = new Stage();
@@ -209,6 +222,9 @@ public class RenameUtilityController {
 			initializeSearchField();
 			initializeTable();
 			renameStage.show();
+			if (allNewToOldRename.size() != 0) {
+				undoLastRenameButton.setDisable(false);
+			}
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
@@ -739,11 +755,8 @@ public class RenameUtilityController {
 		generateNewNames();
 	}
 
-	// Needed to Redo last modification rename
-	private LinkedList<HashMap<PathLayer, PathLayer>> NewToOldRename = new LinkedList<>();
-
 	@FXML
-	public void doRename() {
+	public void rename() {
 		boolean ans = DialogHelper.showConfirmationDialog("Confirm Rename", "Are you sure you want to apply rename?",
 				"You can redo rename if anything goes wrong.");
 		String warningAlert = "";
@@ -808,8 +821,9 @@ public class RenameUtilityController {
 				return;
 			}
 			// specific to real file only
-			NewToOldRename.add(currentNewToOldRename);
-			undoLastRename.setDisable(false);
+			newToOldRename.add(currentNewToOldRename);
+			allNewToOldRename.add(currentNewToOldRename);
+			undoLastRenameButton.setDisable(false);
 			if (!renameError.isEmpty()) {
 				DialogHelper.showExpandableAlert(AlertType.ERROR, "Confirm Rename",
 						"Some Content were not renamed Successfully!",
@@ -962,83 +976,138 @@ public class RenameUtilityController {
 
 	@FXML
 	public void undoRename() {
-		String summary = "This action is used when wrongly renamed."
-				+ "\nIn that case a report of redo will be displayed for to be confirmed.";
-		String title = "Redo Last Paste Names";
-		// due to disable status it will never enter this if, but just in case more
-		// check...
-		if (NewToOldRename.size() == 0) {
-			DialogHelper.showAlert(AlertType.INFORMATION, title, "No recent modification applied.", summary);
+		HashMap<PathLayer, PathLayer> lastNewToOldRename = newToOldRename.peekLast();
+		if (allNewToOldRename.size() == 0) {
+			DialogHelper.showAlert(AlertType.INFORMATION, UNDO_TITLE, "No recent modification applied.",
+					UNDO_SUMMARY_DESCRIPTION);
 			return;
 		}
-		String changeReportFiles = "";
-		String notFoundFiles = "";
-		HashMap<PathLayer, PathLayer> lastNewToOldRename = NewToOldRename.peekLast();
-		PathLayer workingDir = lastNewToOldRename.get(lastNewToOldRename.keySet().toArray()[0]).getParentPath();
+		if (newToOldRename.size() == 0) {
+			undoLastRename(null, null);
+			return;
+		}
+		HashMap<PathLayer, RenameUtilityViewModel> pathToTableView = new HashMap<>();
+		for (RenameUtilityViewModel t : DataTable) {
+			if (lastNewToOldRename.containsKey(t.getPathFile())) {
+				pathToTableView.put(t.getPathFile(), t);
+			}
+		}
+		undoRenameMap(lastNewToOldRename, () -> {
+			newToOldRename.remove(lastNewToOldRename);
+			tableRename.refresh();
+			resetAllField();
+			if (allNewToOldRename.size() == 0) {
+				undoLastRenameButton.setDisable(true);
+			}
+		}, onSuccesMove_foreachNewToOld -> {
+			PathLayer newPath = onSuccesMove_foreachNewToOld.getKey();
+			PathLayer oldPath = onSuccesMove_foreachNewToOld.getValue();
+			if (pathToTableView.containsKey(newPath)) {
+				pathToTableView.get(newPath).setPathFile(oldPath);
+				pathToTableView.get(newPath).setOldName(oldPath.getName().toString());
+			}
+		});
+	}
+
+	public static void undoRenameMap(HashMap<PathLayer, PathLayer> newToOldRename, CallBackToDo onSuccefullUndo,
+			CallBackVoid<Pair<PathLayer, PathLayer>> onSuccesMove_foreachNewToOld) {
+
+		// Generating report for confirmation
+		HashMap<PathLayer, List<PathLayer>> newParentsToChildren = PathLayerHelper
+				.getParentTochildren(new ArrayList<>(newToOldRename.keySet()));
 		int i = 0;
 		int found = 0;
-		for (PathLayer newPath : lastNewToOldRename.keySet()) {
-			if (newPath.exists()) {
-				changeReportFiles += "*R" + (i + 1) + "- " + newPath.getName() + " --> "
-						+ lastNewToOldRename.get(newPath).getName() + "\n";
-				found++;
-			} else {
-				notFoundFiles += "*N" + (i + 1) + "- " + newPath.getName() + " !!->"
-						+ lastNewToOldRename.get(newPath).getName() + "\n";
+		StringBuilder report = new StringBuilder();
+		for (PathLayer newParent : newParentsToChildren.keySet()) {
+			report.append("\n---------------");
+			report.append("Working in:  " + newParent + "\n\nModifications:\n");
+			StringBuilder changeReportFiles = new StringBuilder();
+			StringBuilder notFoundFiles = new StringBuilder("Not Found Files:\n");
+			boolean notFoundExist = false;
+			for (PathLayer newSon : newParentsToChildren.get(newParent)) {
+				if (newSon.exists()) {
+					changeReportFiles.append("*R" + (i + 1) + "- " + newSon.getName() + " --> "
+							+ newToOldRename.get(newSon).getName() + "\n");
+					found++;
+				} else {
+					notFoundFiles.append("*N" + (i + 1) + "- " + newSon.getName() + " !!->"
+							+ newToOldRename.get(newSon).getName() + "\n");
+					notFoundExist = true;
+				}
+				i++;
 			}
-			i++;
+			report.append(changeReportFiles);
+			if (notFoundExist) {
+				report.append(notFoundFiles);
+			}
 		}
-		if (!notFoundFiles.isEmpty()) {
-			notFoundFiles = "Not Found Files:\n" + notFoundFiles;
-		}
-		boolean ans = DialogHelper.showExpandableConfirmationDialog(title,
-				"Preview Change" + "\nPending -----   " + found + " ----- Changes Pair Rename"
-						+ (i - found != 0 ? "\nNot Found -----   " + (i - found) + " ----- Files (renamed or moved)\n"
-								: ""),
-				summary,
-				"Working in:  " + workingDir + "\n\nModifications:\n" + changeReportFiles + "\n" + notFoundFiles);
+		boolean ans = DialogHelper.showExpandableConfirmationDialog(UNDO_TITLE, "Preview Change" + "\nPending -----   "
+				+ found + " ----- Changes Pair Rename"
+				+ (i - found != 0 ? "\nNot Found -----   " + (i - found) + " ----- Files (renamed or moved)\n" : ""),
+				UNDO_SUMMARY_DESCRIPTION, report.toString());
 		if (ans) {
 			i = 0;
 			String renameError = "";
 			String warningAlert = "";
-			HashMap<PathLayer, RenameUtilityViewModel> pathToTableView = new HashMap<>();
-			for (RenameUtilityViewModel t : DataTable) {
-				if (lastNewToOldRename.containsKey(t.getPathFile())) {
-					pathToTableView.put(t.getPathFile(), t);
-				}
-			}
+
+			List<PathLayer> sources = new ArrayList<>();
+			List<PathLayer> targets = new ArrayList<>();
 			// new to old rename process
-			for (PathLayer newPath : lastNewToOldRename.keySet()) {
+			for (PathLayer newPath : newToOldRename.keySet()) {
 				try {
 					if (newPath.exists()) {
-						PathLayer oldPath = lastNewToOldRename.get(newPath);
-						oldPath.move(newPath);
-						if (pathToTableView.containsKey(newPath)) {
-							pathToTableView.get(newPath).setPathFile(oldPath);
-							pathToTableView.get(newPath).setOldName(oldPath.getName().toString());
+						PathLayer oldPath = newToOldRename.get(newPath);
+						newPath.move(oldPath);
+						sources.add(newPath);
+						targets.add(oldPath);
+						if (onSuccesMove_foreachNewToOld != null) {
+							onSuccesMove_foreachNewToOld.call(new Pair<PathLayer, PathLayer>(newPath, oldPath));
 						}
 					}
 				} catch (IOException e) {
-					renameError += newPath.getName() + " -->" + lastNewToOldRename.get(newPath).getName() + "\n";
+					renameError += newPath.getName() + " -->" + newToOldRename.get(newPath).getName() + "\n";
 					warningAlert += e.getClass() + ": " + e.getMessage() + "\n";
 					e.printStackTrace();
 				}
 				i++;
 			}
-			NewToOldRename.removeLast();
-			tableRename.refresh();
-			resetAllField();
-			if (NewToOldRename.size() == 0) {
-				undoLastRename.setDisable(true);
+			allNewToOldRename.remove(newToOldRename);
+			if (onSuccefullUndo != null) {
+				onSuccefullUndo.call();
 			}
+
+			FileTracker.operationUpdateAsList(sources, targets, ActionOperation.RENAME);
+
 			if (!renameError.isEmpty()) {
-				DialogHelper.showExpandableAlert(AlertType.ERROR, title, "Some Content were not renamed Successfully!",
+				DialogHelper.showExpandableAlert(AlertType.ERROR, UNDO_TITLE,
+						"Some Content were not renamed Successfully!",
 						"This may be caused by illegal character names. \n",
 						warningAlert + "\nSource File --> Rename expected:\n" + renameError);
 			}
 
 		}
+	}
 
+	/**
+	 *
+	 * @param onSuccefullUndo_LastNewToOldRename can be null
+	 * @param onSuccesMove_foreachOldToNew       can be null
+	 * @see
+	 */
+	public static void undoLastRename(CallBackVoid<HashMap<PathLayer, PathLayer>> onSuccefullUndo_LastNewToOldRename,
+			CallBackVoid<Pair<PathLayer, PathLayer>> onSuccesMove_foreachOldToNew) {
+
+		String title = "Undo Last Bulk Rename";
+		if (allNewToOldRename.size() == 0) {
+			DialogHelper.showAlert(AlertType.INFORMATION, title, "No recent modification applied.",
+					UNDO_SUMMARY_DESCRIPTION);
+			return;
+		}
+		HashMap<PathLayer, PathLayer> lastNewToOldRename = allNewToOldRename.peekLast();
+		undoRenameMap(lastNewToOldRename,
+				onSuccefullUndo_LastNewToOldRename == null ? null
+						: () -> onSuccefullUndo_LastNewToOldRename.call(lastNewToOldRename),
+				onSuccesMove_foreachOldToNew);
 	}
 
 	@FXML
@@ -1058,4 +1127,7 @@ public class RenameUtilityController {
 		}
 	}
 
+	public static LinkedList<HashMap<PathLayer, PathLayer>> getAllNewToOldRename() {
+		return allNewToOldRename;
+	}
 }

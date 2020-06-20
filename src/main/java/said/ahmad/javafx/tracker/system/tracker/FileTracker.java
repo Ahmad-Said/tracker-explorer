@@ -10,7 +10,6 @@ import java.io.OutputStreamWriter;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -108,15 +107,16 @@ public class FileTracker {
 	 * character Format In Order: <br>
 	 * 		'|' (CommandOption) '>' (value)
 	 * Example:<br>
-	 * 		|TimeToLive>43>Udemy>0>
+	 * 		Udemy>0>note>|TimeToLive>43
 	 * </pre>
 	 */
 	public enum CommandOption {
 		TimeToLive
 	}
 
-	// Used when doing a file operation and need to clear map immediately
-	// so when TimeToLive reach 0 it git ignored
+	// Used when doing a file operation and no need to clear map immediately
+	// Time to live will decrement by one each time map is written to file
+	// so when TimeToLive reach 0 tracker record get discarded
 	public final static int TIME_TO_LIVE_MAX = 64;
 
 	// ---------------------- Initializing Section ----------------------
@@ -150,6 +150,22 @@ public class FileTracker {
 	 */
 	public PathLayer getWorkingDir() {
 		return workingDirPath;
+	}
+
+	/**
+	 * Use with caution
+	 *
+	 * Used to determine if map {@link #isLoadedOtherThanWorkingDir} that is used to
+	 * ensure {@link #commitTrackerDataChange()} is writing map correctly in a
+	 * single directory when loading one directory<br>
+	 * {@link #isLoadedOtherThanWorkingDir} become true after call of
+	 * {@link #loadMap(PathLayer, boolean, Map)} with no clear option and with
+	 * PathLayer directory other than the previously loaded
+	 *
+	 * @param workingDirPath the workingDirPath to set
+	 */
+	public void setWorkingDirPath(PathLayer workingDirPath) {
+		this.workingDirPath = workingDirPath;
 	}
 
 	/**
@@ -262,10 +278,14 @@ public class FileTracker {
 	 *                                PathLayer by resolving name from tracker data
 	 *                                with dirPath
 	 *
-	 * @return <code>true</code> if load was successful
+	 * @return loaded map in directory provided, (null if directory is not tracked
+	 *         or failed to load it due to permission reading file)
 	 * @see {@link PathLayerHelper#getAbsolutePathToPaths(List)}
 	 */
-	public boolean loadMap(PathLayer dirPath, boolean doclear, Map<String, PathLayer> cachedPathsForKeysInMap) {
+	@Nullable
+	public HashMap<PathLayer, FileTrackerHolder> loadMap(PathLayer dirPath, boolean doclear,
+			Map<String, PathLayer> cachedPathsForKeysInMap) {
+		HashMap<PathLayer, FileTrackerHolder> loadedMap = new HashMap<>();
 		if (doclear) {
 			mapDetailsRevolved.clear();
 		}
@@ -278,14 +298,14 @@ public class FileTracker {
 		workingDirPath = dirPath;
 		PathLayer file = dirPath.resolve(UserFileName);
 		if (!file.exists()) {
-			return false;
+			return null;
 		}
 		BufferedReader in = null;
 		String line = "";
 		try {
 			InputStream inputPathLayer = file.getInputFileStream();
 			if (inputPathLayer == null) {
-				return false;
+				return null;
 			}
 
 			in = new BufferedReader(new InputStreamReader(inputPathLayer, "UTF8"));
@@ -338,6 +358,7 @@ public class FileTracker {
 				// this allow file operation enough time to exist
 				if (!mapDetailsRevolved.containsKey(keyInMap)
 						|| optionsItem.getTimeToLive() >= mapDetailsRevolved.get(keyInMap).getTimeToLive()) {
+					loadedMap.put(keyInMap, optionsItem);
 					mapDetailsRevolved.put(keyInMap, optionsItem);
 				}
 			}
@@ -345,9 +366,9 @@ public class FileTracker {
 		} catch (IOException e1) {
 			e1.printStackTrace();
 			Setting.printStackTrace(e1);
-			return false;
+			return null;
 		}
-		return true;
+		return loadedMap;
 	}
 
 	/**
@@ -382,6 +403,11 @@ public class FileTracker {
 		}
 	}
 
+	/**
+	 * Just load list of path with default tracker data
+	 *
+	 * @param listOfPaths
+	 */
 	public void loadEmptyMapOfList(List<PathLayer> listOfPaths) {
 		// add untracked data folder here require listing dir again
 		for (PathLayer p : listOfPaths) {
@@ -465,25 +491,31 @@ public class FileTracker {
 	 * @param DirtoTrack     Directory to track
 	 * @param onFinishAction to do after finish writing map, can be null
 	 *
-	 * @return <code>true</code> if write was successful<br>
-	 *         <code>false</code> if tracker data already exist
+	 * @return <code>Map</code> The written map if write was successful<br>
+	 *         <code>null</code> if tracker data already exist or failed to write
 	 * @throws IOException
 	 */
-	private static boolean writeNewDefaultMap(PathLayer DirtoTrack, OnWriteMapFinishCallBack<PathLayer> onFinishAction)
-			throws IOException {
+	@Nullable
+	private static HashMap<PathLayer, FileTrackerHolder> writeNewDefaultMap(PathLayer DirtoTrack,
+			OnWriteMapFinishCallBack<PathLayer> onFinishAction) throws IOException {
 		PathLayer file = DirtoTrack.resolve(UserFileName);
 		if (file.exists()) {
-			return false;
+			return null;
 		}
 		OutputStream outputPathLayer = file.getOutputFileStream();
+		if (outputPathLayer == null) {
+			return null;
+		}
 		OutputStreamWriter writer = new OutputStreamWriter(outputPathLayer, StandardCharsets.UTF_8);
 		List<PathLayer> listFiles = DirtoTrack.listNoHiddenPathLayers();
 		StringBuilder content = new StringBuilder(getAverageCountContentCharacters(listFiles.size()));
+		HashMap<PathLayer, FileTrackerHolder> mapWritten = new HashMap<>();
 		content.append(FIRST_LINE_TRACKER);
 		for (PathLayer singleFile : listFiles) {
 			if (!singleFile.getName().equals(UserFileName)) {
-				content.append(String.join(">", Arrays.asList(singleFile.getName(), "0", " ")));
-				content.append("\r\n");
+				FileTrackerHolder dataHolder = new FileTrackerHolder(singleFile.getName());
+				mapWritten.put(singleFile, dataHolder);
+				content.append(dataHolder.toString());
 			}
 		}
 		writer.write(content.toString());
@@ -492,44 +524,67 @@ public class FileTracker {
 			onFinishAction.handle(DirtoTrack);
 		}
 		file.setHidden(true);
-		return true;
+
+		return mapWritten;
 	}
 
 	/**
+	 * -> Trying to track {@link #workingDirPath}<br>
+	 * -> Clear current map <br>
 	 * -> Track a new Folder with default option <br>
-	 * -> Load tracker data into current map<br>
+	 * -> If already tracked do nothing <br>
+	 * -> Otherwise load written map into current map<br>
 	 * <br>
 	 * More Details about initial data saved at<br>
 	 * {@link #writeNewDefaultMap(Path, OnWriteMapFinishCallBack)}
 	 *
-	 * @return true if successfully write data
+	 * @return <code>Map</code> The written map if successfully write data<br>
+	 *         <code>null</code> otherwise
+	 * @see #trackNewOutFolder(PathLayer, boolean, boolean)
 	 * @throws IOException
 	 */
-	public boolean trackNewFolder() throws IOException {
+	@Nullable
+	public HashMap<PathLayer, FileTrackerHolder> trackNewFolder(boolean loadIfSuccessIntoCurrentMap,
+			boolean clearPerviousMap) throws IOException {
 		// prevent wipe is checked in write
-		boolean isSuccess = writeNewDefaultMap(workingDirPath, onWriteMapAction);
-		if (isSuccess) {
-			loadMap(workingDirPath, true, null);
+		@Nullable
+		HashMap<PathLayer, FileTrackerHolder> writtenMap = writeNewDefaultMap(workingDirPath, onWriteMapAction);
+		if (clearPerviousMap) {
+			mapDetailsRevolved.clear();
 		}
-		return isSuccess;
+		if (writtenMap != null && loadIfSuccessIntoCurrentMap) {
+			mapDetailsRevolved.putAll(writtenMap);
+		}
+		return writtenMap;
 	}
 
 	/**
-	 * If directory already tracked do nothing <br>
-	 * if you wish to load map after folder being tracked call
-	 * {@link #loadMap(Path, boolean)} <br>
-	 *
+	 * -> Clear current map <br>
+	 * -> Track a new Folder with default option <br>
+	 * -> If already tracked do nothing <br>
+	 * -> Otherwise load written map into current map<br>
+	 * <br>
 	 * More Details about initial data saved at<br>
 	 * {@link #writeNewDefaultMap(Path, OnWriteMapFinishCallBack)}
 	 *
 	 * @param DirtoTrack
-	 * @return <code>true</code> if write was successful<br>
-	 *         <code>false</code> if tracker data already exist
+	 * @return <code>Map</code> The written map if successfully write data<br>
+	 *         <code>null</code> otherwise
 	 * @throws IOException
 	 */
-	public boolean trackNewOutFolder(PathLayer DirtoTrack) throws IOException {
+	@Nullable
+	public HashMap<PathLayer, FileTrackerHolder> trackNewOutFolder(PathLayer DirtoTrack,
+			boolean loadIfSuccessIntoCurrentMap, boolean clearPerviousMap) throws IOException {
 		// write prevent wipe old data is done in the call
-		return writeNewDefaultMap(DirtoTrack, null);
+		@Nullable
+		HashMap<PathLayer, FileTrackerHolder> writtenMap = writeNewDefaultMap(DirtoTrack, null);
+		if (clearPerviousMap) {
+			mapDetailsRevolved.clear();
+		}
+		if (writtenMap != null && loadIfSuccessIntoCurrentMap) {
+			mapDetailsRevolved.putAll(writtenMap);
+		}
+		return writtenMap;
 	}
 
 	/**
@@ -556,8 +611,9 @@ public class FileTracker {
 		String error = "";
 		for (PathLayer path : DirstoTrack) {
 			try {
-				if (trackNewOutFolder(path)) {
-					loadMap(path, false, null);
+				@Nullable
+				HashMap<PathLayer, FileTrackerHolder> writtenMap = trackNewOutFolder(path, true, false);
+				if (writtenMap != null) {
 					toReturn.didTrackNewFolder = true;
 				}
 				toReturn.trackedList.add(path);
@@ -627,18 +683,21 @@ public class FileTracker {
 	 * compare data in {@link #mapDetailsRevolved} with given parameter
 	 * listToCompareWith:<br>
 	 * ---> will clear all useless data in map (moved/deleted files) <br>
-	 * ---> add missing files. (newly created)<br>
+	 * ---> add missing files to map. (newly created)<br>
+	 * ---> if any conflict occur will rewrite map details in
+	 * {@link #getWorkingDir()}<br>
 	 * Just a note {@link SplitViewController#refresh(String)} do call this function
 	 * after loading map {@link #loadMap(Path, boolean)} and before loading views
 	 * stuff
 	 *
-	 * @return same set given in parameter
+	 * @return conflict description if conflict occur<br>
+	 *         <code>null</code> otherwise
 	 * @see #resolveConflict()
 	 * @throws IOException
 	 */
-	public Set<PathLayer> resolveConflict(Set<PathLayer> listToCompareWith) {
+	public String resolveConflict(Set<PathLayer> listToCompareWith) {
 		if (!isTracked()) {
-			return listToCompareWith;
+			return null;
 		}
 		String currentConflict = "";
 		ArrayList<PathLayer> toremove = new ArrayList<>();
@@ -660,8 +719,10 @@ public class FileTracker {
 				}
 				continue;
 			} else if (!listToCompareWith.contains(key)) {
+				// if time to live reach 0 -> silent remove
+				// log otherwise
 				if (mapDetailsRevolved.get(key).getTimeToLive() != 0) {
-					currentConflict = "  - Del \t" + key + "\n" + currentConflict;
+					currentConflict = "  - Del \t" + key.getName() + "\n" + currentConflict;
 				}
 				toremove.add(key);
 			}
@@ -675,8 +736,9 @@ public class FileTracker {
 		}
 		if (!currentConflict.isEmpty()) {
 			writeMapDir(workingDirPath, false);
+			return currentConflict;
 		}
-		return listToCompareWith;
+		return null;
 	}
 
 	/**
@@ -692,7 +754,9 @@ public class FileTracker {
 	 */
 	public Set<PathLayer> resolveConflictInworkingDir() throws IOException {
 		List<PathLayer> dirListAsList = workingDirPath.listNoHiddenPathLayers();
-		return resolveConflict(new HashSet<>(dirListAsList));
+		HashSet<PathLayer> set = new HashSet<>(dirListAsList);
+		resolveConflict(set);
+		return set;
 	}
 
 	// ---------------------- File Operation (Copy..) Section ----------------------
@@ -753,6 +817,10 @@ public class FileTracker {
 			allSrcParent.forEach(parentSrc -> {
 				miniFileTracker.loadMap(parentSrc, false, null);
 			});
+			if (miniFileTracker.mapDetailsRevolved.size() == 0) {
+				// no data to bring
+				break;
+			}
 			// append MAXIMUM time to live option in target directory files of targets list
 			// Path
 			HashMap<PathLayer, PathLayer> srcToTarget = new HashMap<>();
@@ -828,9 +896,19 @@ public class FileTracker {
 		if (source.size() == 0) {
 			return allUpdatedSources;
 		}
+		// collect all tracked parents if none end this function;
+		HashSet<PathLayer> trackedParents = new HashSet<>();
+		parentToFiles.keySet().forEach(p -> {
+			if (isTrackedOutFolder(p)) {
+				trackedParents.add(p);
+			}
+		});
+
+		if (trackedParents.size() == 0) {
+			return allUpdatedSources;
+		}
 		// instance of file tracker to read/write tracker data
 		FileTracker senderFileTracker = new FileTracker(null, null);
-
 		tryBlock: try {
 			PathLayer trackerFile = null;
 			Holder<OutputStreamWriter> writer = new Holder<OutputStreamWriter>(null);
@@ -848,47 +926,52 @@ public class FileTracker {
 				}
 				writer.value = new OutputStreamWriter(outputAppendPathLayer, StandardCharsets.UTF_8);
 			}
-			parentToFiles.forEach((parent, brotherList) -> {
+			trackedParents.forEach(parent -> {
+				List<PathLayer> brotherList = parentToFiles.get(parent);
+
 				senderFileTracker.workingDirPath = parent;
-				if (senderFileTracker.isTracked()) {
-					// parent Tracker file exist -> Data sources exist
-					senderFileTracker.loadMap(parent, true, null);
-					try {
-						// Append Data to parent Tracker file with some time to live
-						if (operation.equals(ActionOperation.DELETE)) {
-							if (writer.value != null) {
-								writer.value.close();
-							}
-							// data source output stream
-							OutputStream outputSrcToClearConflict = senderFileTracker.getTrackerFileInWorkingDir()
-									.getOutputAppendFileStream();
-							if (outputSrcToClearConflict == null) {
-								return;
-							}
-							writer.value = new OutputStreamWriter(outputSrcToClearConflict, StandardCharsets.UTF_8);
+				// parent Tracker file exist -> Data sources exist
+				senderFileTracker.loadMap(parent, true, null);
+				try {
+					// Append Data to parent Tracker file with some time to live
+					if (operation.equals(ActionOperation.DELETE)) {
+						if (writer.value != null) {
+							writer.value.close();
 						}
-						brotherList.forEach(son -> {
-							try {
-								if (operation.equals(ActionOperation.DELETE)) {
-									writer.value
-											.write(senderFileTracker.getTrackerData(son).setTimeToLive(5).toString());
-								} else {
+						// data source output stream
+						OutputStream outputSrcToClearConflict = senderFileTracker.getTrackerFileInWorkingDir()
+								.getOutputAppendFileStream();
+						if (outputSrcToClearConflict == null) {
+							return;
+						}
+						writer.value = new OutputStreamWriter(outputSrcToClearConflict, StandardCharsets.UTF_8);
+					}
+
+					brotherList.forEach(son -> {
+						try {
+							if (operation.equals(ActionOperation.DELETE)) {
+								writer.value.write(senderFileTracker.getTrackerData(son).setTimeToLive(5).toString());
+							} else {
+								// it is possible that sender tracker hasn't resolved conflict
+								if (senderFileTracker.getTrackerData(son) != null) {
 									writer.value.write(senderFileTracker.getTrackerData(son)
 											.setTimeToLive(TIME_TO_LIVE_MAX).toString());
 									allUpdatedSources.put(son, senderFileTracker.getTrackerData(son));
 								}
-							} catch (IOException e) {
-								// sons try catch
-								e.printStackTrace();
 							}
-						});
-					} catch (IOException e) {
-						// parent try catch
-						e.printStackTrace();
-					}
+						} catch (IOException e) {
+							// sons try catch
+							e.printStackTrace();
+						}
+					});
+				} catch (IOException e) {
+					// parent try catch
+					e.printStackTrace();
 				}
 			});
-			writer.value.close();
+			if (writer.value != null) {
+				writer.value.close();
+			}
 		} catch (IOException e) {
 			// all function try catch
 			e.printStackTrace();

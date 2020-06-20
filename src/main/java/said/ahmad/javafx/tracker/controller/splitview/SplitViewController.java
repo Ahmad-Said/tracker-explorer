@@ -2,6 +2,8 @@ package said.ahmad.javafx.tracker.controller.splitview;
 
 import java.awt.Desktop;
 import java.awt.HeadlessException;
+import java.awt.MouseInfo;
+import java.awt.Point;
 import java.io.File;
 import java.io.IOException;
 import java.net.MalformedURLException;
@@ -9,7 +11,6 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
 import java.nio.file.Path;
-import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -17,6 +18,7 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -26,11 +28,11 @@ import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 import javax.xml.ws.Holder;
 
 import org.apache.commons.io.FilenameUtils;
+import org.apache.commons.lang3.SystemUtils;
 import org.jetbrains.annotations.Nullable;
 
 import com.sun.javafx.scene.control.skin.TableColumnHeader;
@@ -55,6 +57,7 @@ import javafx.scene.control.Button;
 import javafx.scene.control.CheckBox;
 import javafx.scene.control.ContextMenu;
 import javafx.scene.control.Label;
+import javafx.scene.control.Menu;
 import javafx.scene.control.MenuButton;
 import javafx.scene.control.MenuItem;
 import javafx.scene.control.ProgressIndicator;
@@ -88,18 +91,25 @@ import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
 import javafx.scene.text.Text;
 import javafx.scene.text.TextFlow;
+import javafx.util.Duration;
 import javafx.util.Pair;
 import mslinks.ShellLink;
 import said.ahmad.javafx.tracker.app.DialogHelper;
+import said.ahmad.javafx.tracker.app.Main;
 import said.ahmad.javafx.tracker.app.ResourcesHelper;
 import said.ahmad.javafx.tracker.app.StringHelper;
 import said.ahmad.javafx.tracker.app.ThreadExecutors;
 import said.ahmad.javafx.tracker.app.WindowsExplorerComparator;
+import said.ahmad.javafx.tracker.app.look.ContextMenuLook;
 import said.ahmad.javafx.tracker.app.pref.Setting;
 import said.ahmad.javafx.tracker.controller.FilterVLCController;
 import said.ahmad.javafx.tracker.controller.PhotoViewerController;
 import said.ahmad.javafx.tracker.controller.RenameUtilityController;
 import said.ahmad.javafx.tracker.controller.WelcomeController;
+import said.ahmad.javafx.tracker.controller.connection.ConnectionController;
+import said.ahmad.javafx.tracker.controller.connection.ConnectionController.ConnectionType;
+import said.ahmad.javafx.tracker.controller.connection.ftp.FTPConnectionController;
+import said.ahmad.javafx.tracker.datatype.ConnectionAccount;
 import said.ahmad.javafx.tracker.datatype.FavoriteView;
 import said.ahmad.javafx.tracker.datatype.MediaCutData;
 import said.ahmad.javafx.tracker.datatype.SplitViewState;
@@ -108,9 +118,11 @@ import said.ahmad.javafx.tracker.system.RecursiveFileWalker;
 import said.ahmad.javafx.tracker.system.WatchServiceHelper;
 import said.ahmad.javafx.tracker.system.WindowsShortcut;
 import said.ahmad.javafx.tracker.system.call.RunMenu;
+import said.ahmad.javafx.tracker.system.call.SystemExplorer;
 import said.ahmad.javafx.tracker.system.file.PathLayer;
 import said.ahmad.javafx.tracker.system.file.PathLayerHelper;
 import said.ahmad.javafx.tracker.system.file.local.FilePathLayer;
+import said.ahmad.javafx.tracker.system.file.util.URIHelper;
 import said.ahmad.javafx.tracker.system.operation.FileHelper;
 import said.ahmad.javafx.tracker.system.operation.FileHelper.ActionOperation;
 import said.ahmad.javafx.tracker.system.services.TrackerPlayer;
@@ -135,7 +147,13 @@ public class SplitViewController implements Initializable {
 			KeyCombination.SHIFT_DOWN);
 
 	static final KeyCombination SHORTCUT_COPY = new KeyCodeCombination(KeyCode.C, KeyCombination.CONTROL_DOWN);
+	static final String COPY_CLIPBOARD_ACTION = "COPY_CLIPBOARD_ACTION";
+
 	static final KeyCombination SHORTCUT_MOVE = new KeyCodeCombination(KeyCode.X, KeyCombination.CONTROL_DOWN);
+	static final String MOVE_CLIPBOARD_ACTION = "MOVE_CLIPBOARD_ACTION";
+
+	static final KeyCombination SHORTCUT_PASTE = new KeyCodeCombination(KeyCode.V, KeyCombination.CONTROL_DOWN);
+
 	public static final KeyCombination SHORTCUT_RENAME = new KeyCodeCombination(KeyCode.F2);
 	public static final KeyCombination SHORTCUT_DELETE = new KeyCodeCombination(KeyCode.DELETE);
 
@@ -161,13 +179,13 @@ public class SplitViewController implements Initializable {
 	static final KeyCombination SHORTCUT_OPEN_FAVORITE = new KeyCodeCombination(KeyCode.F, KeyCombination.SHIFT_DOWN);
 
 	static final String ON_DROP_CREATE_SHORTCUT_KEY = "ON_DROP_CREATE_SHORTCUT_KEY";
-
+	private static final String PATH_FIELD_LIST_ROOTS = "This PC";
 	@FXML
 	private GridPane viewPane;
 
 	@FXML
 	@Nullable
-	private Button goDesktopButton;
+	private Button desktopButton;
 
 	@FXML
 	@Nullable
@@ -240,6 +258,9 @@ public class SplitViewController implements Initializable {
 	private TableColumn<TableViewModel, HBox> hBoxActionsCol;
 
 	@FXML
+	private Label directoryNameLabel;
+
+	@FXML
 	private Label labelItemsNumber;
 
 	@FXML
@@ -275,10 +296,6 @@ public class SplitViewController implements Initializable {
 	private ObservableList<TableViewModel> DataTable;
 	private SortedList<TableViewModel> sortedData;
 
-	public SplitViewController() {
-	}
-
-	// TableColumn<TableViewModel, ImageView> colIconTestResize;
 	public SplitViewController(PathLayer path, Boolean isLeft, WelcomeController parent) {
 		DataTable = FXCollections.observableArrayList();
 		this.isLeft = isLeft;
@@ -334,11 +351,15 @@ public class SplitViewController implements Initializable {
 						return;
 					}
 					title = title.replaceAll(";", "_");
-					PathLayer rightPath = getmDirectoryPath();
-					if (rightViewNeighbor != null) {
-						rightPath = rightViewNeighbor.getmDirectoryPath();
-					}
-					AddandPriorizethisMenu(new FavoriteView(title, getmDirectoryPath(), rightPath));
+					FavoriteView newFavoriteView = new FavoriteView(title);
+					SplitViewController splitView = SplitViewController.this;
+					do {
+						SplitViewState state = new SplitViewState(splitView.mDirectory);
+						splitView.saveStateToSplitState(state);
+						newFavoriteView.getSplitStates().add(state);
+						splitView = splitView.getRightViewNeighbor();
+					} while (splitView != null);
+					AddandPriorizethisMenu(newFavoriteView);
 				} else {
 					removeFavorite(getmDirectoryPath());
 				}
@@ -349,19 +370,24 @@ public class SplitViewController implements Initializable {
 
 	private Map<String, MenuItem> allMenuFavoriteLocation = new HashMap<String, MenuItem>();
 
-	public void onFavoriteChanges(Change<? extends String, ? extends FavoriteView> change) {
+	public void onFavoriteChanges(Change<? extends String, ? extends FavoriteView> change,
+			Holder<Boolean> isReloadingAllOperation) {
 		if (favoritesLocations == null) {
 			return;
 		}
 		if (change.wasAdded()) {
-			onAddingFavorite(change.getValueAdded(), true);
+			if (isReloadingAllOperation.value) {
+				onAddingFavorite(change.getValueAdded(), false);
+			} else {
+				onAddingFavorite(change.getValueAdded(), true);
+			}
 		} else if (change.wasRemoved()) {
 			onRemovingFavorite(change.getValueRemoved());
 		}
 	}
 
 	public void manuallyLoadFavoritesMenus() {
-		Setting.getFavoritesLocations().getList().values().forEach(f -> onAddingFavorite(f, false));
+		Setting.getFavoritesViews().getList().values().forEach(f -> onAddingFavorite(f, false));
 	}
 
 	private void onAddingFavorite(FavoriteView favoriteView, boolean addAtTop) {
@@ -389,15 +415,15 @@ public class SplitViewController implements Initializable {
 	}
 
 	private void AddandPriorizethisMenu(FavoriteView favoriteView) {
-		Setting.getFavoritesLocations().addAtFirst(favoriteView);
+		Setting.getFavoritesViews().addAtFirst(favoriteView);
 	}
 
 	private void removeFavorite(PathLayer FavoLeftPath) {
-		removeFavorite(Setting.getFavoritesLocations().getByFirstLoc(FavoLeftPath).getTitle());
+		removeFavorite(Setting.getFavoritesViews().getByFirstLoc(FavoLeftPath).getTitle());
 	}
 
 	private void removeFavorite(String FavoTitle) {
-		Setting.getFavoritesLocations().removeByTitle(FavoTitle);
+		Setting.getFavoritesViews().removeByTitle(FavoTitle);
 	}
 
 	private void initializePathField() {
@@ -423,11 +449,14 @@ public class SplitViewController implements Initializable {
 		if (pathField.isEmpty()) {
 			refresh(null);
 			return;
+		} else if (pathField.toLowerCase().equals(PATH_FIELD_LIST_ROOTS.toLowerCase())) {
+			OutOfTheBoxListRoots(null);
+			return;
 		}
 		final String pathFieldFinal = pathField;
 		if (pathFieldFinal.equals("cmd")) {
-			// system dependency
-			StringHelper.RunRuntimeProcess(new String[] { "cmd.exe", " /c start cd /d", mDirectory.toString() });
+			SystemExplorer.startCMDInDir(mDirectory.toFileIfLocal());
+			this.pathField.setText(mDirectory.getAbsolutePath() + getQueryOptions());
 			return;
 		}
 		File file = new File(getQueryPathFromEmbed(pathField));
@@ -437,12 +466,21 @@ public class SplitViewController implements Initializable {
 		} else {
 			try {
 				// Try to parse URI as Path Layer
-				URI parsedURI = new URI(pathFieldFinal);
-				// Ignore the query part of the input url
+				URI parsedURI = URIHelper.encodeToURI(pathField);
+				// Ignore the query part of the input URL
 				URI uriNoQuery;
 				uriNoQuery = new URI(parsedURI.getScheme(), parsedURI.getAuthority(), parsedURI.getPath(), null,
 						parsedURI.getFragment());
+				ConnectionAccount account = new ConnectionAccount(uriNoQuery);
 				targetPath = PathLayerHelper.parseURI(uriNoQuery);
+				if (targetPath == null && account.getScheme().toUpperCase().equals("FTP")) {
+					ConnectionController newConnection = new ConnectionController(ConnectionType.FTP,
+							p -> setPathFieldThenRefresh(p.toString()));
+					FTPConnectionController ftpController = (FTPConnectionController) newConnection
+							.getCurrentConnection();
+					ftpController.setInputFields(account);
+					return;
+				}
 			} catch (URISyntaxException e) {
 				e.printStackTrace();
 			}
@@ -459,7 +497,7 @@ public class SplitViewController implements Initializable {
 			if (SpecialPath.stream().anyMatch(sp -> pathFieldFinal.contains(sp))) {
 
 				// out of the box
-				if (pathField.equals("/")) {
+				if (pathField.equals(PATH_FIELD_LIST_ROOTS)) {
 					resetForm();
 					OutOfTheBoxListRoots(null);
 				} else if (pathField.contains("?")) {
@@ -630,6 +668,9 @@ public class SplitViewController implements Initializable {
 
 			@Override
 			public void handle(ActionEvent event) {
+				if (!mDirectory.isLocal()) {
+					return;
+				}
 				if (!isOutOfTheBoxHelper || isOutOfTheBoxRecursive()) {
 					int index;
 					index = table.getSelectionModel().getFocusedIndex();
@@ -637,26 +678,16 @@ public class SplitViewController implements Initializable {
 						TableViewModel test = sortedData.get(index);
 
 						try {
-							StringHelper
-									.RunRuntimeProcess(
-											new String[] { "explorer.exe", "/select,", test.getFilePath().toString() })
-									.waitFor();
+							SystemExplorer.select(test.getFilePath().toFileIfLocal()).waitFor();
 						} catch (InterruptedException e) {
 							e.printStackTrace();
 						}
 					} else {
-						if (mDirectory.isLocal()) {
-							StringHelper.openFile(((FilePathLayer) mDirectory).getFile());
-						}
+						StringHelper.openFile(mDirectory.toFileIfLocal());
 					}
 				} else {
-					if (truePathField.equals("/")) {
-						String cmd = "explorer.exe /select," + DataTable.get(0).getFilePath();
-						try {
-							Runtime.getRuntime().exec(cmd);
-						} catch (IOException e) {
-							e.printStackTrace();
-						}
+					if (truePathField.equals(PATH_FIELD_LIST_ROOTS)) {
+						SystemExplorer.select(DataTable.get(0).getFilePath().toFileIfLocal());
 					}
 				}
 			}
@@ -678,27 +709,7 @@ public class SplitViewController implements Initializable {
 		sortedData.comparatorProperty().bind(table.comparatorProperty());
 		table.setItems(sortedData);
 
-		DataTable.addListener((ListChangeListener<TableViewModel>) c -> {
-			while (c.next()) {
-				if (c.wasRemoved()) {
-					rowMap.clear();
-				}
-				if (c.wasAdded()) {
-					// String key = keyStringMapper(c);
-					for (TableViewModel t : c.getAddedSubList()) {
-						FileTrackerHolder option = fileTracker.getTrackerData(t.getFilePath());
-						if (option != null) {
-							// TODO when adding new files to current directory null pointer exception is
-							// detected
-							t.setSeenText(option.isSeen());
-							t.setNoteText(option.getNoteText());
-						} else {
-							t.emptyCell();
-						}
-					}
-				}
-			}
-		});
+		initializeDataTableListenerTracker();
 
 		table.getSelectionModel().selectedItemProperty().addListener((obs, oldSelection, newSelection) -> {
 			if (table.getSelectionModel().getSelectedItems().size() > 1) {
@@ -833,6 +844,34 @@ public class SplitViewController implements Initializable {
 
 		refreshButton.setOnAction(e -> {
 			resetForm();
+		});
+	}
+
+	/** @see #initializeTableRowFactory() */
+	private void initializeDataTableListenerTracker() {
+		DataTable.addListener((ListChangeListener<TableViewModel>) c -> {
+			while (c.next()) {
+				if (c.wasRemoved()) {
+					rowMap.clear();
+				}
+				if (c.wasAdded()) {
+					// String key = keyStringMapper(c);
+					for (TableViewModel t : c.getAddedSubList()) {
+						FileTrackerHolder option = fileTracker.getTrackerData(t.getFilePath());
+						if (option != null) {
+							// TODO when adding new files to current directory null pointer exception is
+							// detected
+							t.setSeenText(option.isSeen());
+							t.setNoteText(option.getNoteText());
+						} else {
+							t.emptyCell();
+						}
+					}
+				}
+			}
+			// Sort may be done based on new tracker data like note
+			// since sort is done only after adding to datatable but before this function
+			table.sort();
 		});
 	}
 
@@ -992,7 +1031,7 @@ public class SplitViewController implements Initializable {
 				predictNavigation.setText("");
 				break;
 			case CONTEXT_MENU:
-				showContextMenu();
+				showContextMenuSystem();
 				break;
 			// TODO check declaration there is a lot of key to define
 			default:
@@ -1081,9 +1120,13 @@ public class SplitViewController implements Initializable {
 					});
 					ContextMenu mn = new ContextMenu();
 					if (ToOperatePath.size() != 0) {
-						MenuItem mnCopy = new MenuItem("Copy");
-						MenuItem mnMove = new MenuItem("Move");
+						MenuItem mnCopy = new MenuItem("Copy Here");
+						mnCopy.setGraphic(new ImageView(ContextMenuLook.copyIcon));
+						MenuItem mnMove = new MenuItem("Move Here");
+						mnMove.setGraphic(new ImageView(ContextMenuLook.moveIcon));
 						MenuItem mnCancel = new MenuItem("Cancel");
+						mnCancel.setGraphic(new ImageView(ContextMenuLook.cancelIcon));
+
 						mnMove.setOnAction(e -> FileHelper.move(ToOperatePath, getmDirectoryPath()));
 						mnCopy.setOnAction(e -> FileHelper.copy(ToOperatePath, getmDirectoryPath()));
 						if (Setting.isUseTeraCopyByDefault() && targetDirAsFile != null) {
@@ -1111,7 +1154,9 @@ public class SplitViewController implements Initializable {
 							PathLayer targetPath = t.getFilePath();
 							if (t.getFilePath().isDirectory()) {
 								MenuItem mnCopy = new MenuItem("Copy To \n\t\"" + targetFileName + "\"");
+								mnCopy.setGraphic(new ImageView(ContextMenuLook.copyIcon));
 								MenuItem mnMove = new MenuItem("Move To \n\t\"" + targetFileName + "\"");
+								mnMove.setGraphic(new ImageView(ContextMenuLook.moveIcon));
 								mnCopy.setOnAction(e -> FileHelper.copy(ToOperatePathSameDir, targetPath));
 								mnMove.setOnAction(e -> FileHelper.move(ToOperatePathSameDir, targetPath));
 								if (Setting.isUseTeraCopyByDefault() && targetDirAsFile != null) {
@@ -1130,7 +1175,9 @@ public class SplitViewController implements Initializable {
 							}
 						}
 						MenuItem mnCopy = new MenuItem("Create Copy Here");
+						mnCopy.setGraphic(new ImageView(ContextMenuLook.copyIcon));
 						MenuItem mnCancel = new MenuItem("Cancel");
+						mnCancel.setGraphic(new ImageView(ContextMenuLook.cancelIcon));
 						mnCopy.setOnAction(e -> {
 							List<File> targetFiles = new ArrayList<>();
 							for (FilePathLayer file : ToOperatePathSameDir) {
@@ -1211,13 +1258,18 @@ public class SplitViewController implements Initializable {
 			}
 		});
 
-		viewPane.addEventFilter(KeyEvent.KEY_RELEASED, e -> {
-			if (SHORTCUT_REVEAL_IN_EXPLORER.match(e)) {
-				RevealINExplorer();
-			} else if (SHORTCUT_COPY.match(e)) {
+		table.addEventFilter(KeyEvent.KEY_RELEASED, e -> {
+			if (SHORTCUT_COPY.match(e)) {
 				copy();
 			} else if (SHORTCUT_MOVE.match(e)) {
 				move();
+			} else if (SHORTCUT_PASTE.match(e)) {
+				paste();
+			}
+		});
+		viewPane.addEventFilter(KeyEvent.KEY_RELEASED, e -> {
+			if (SHORTCUT_REVEAL_IN_EXPLORER.match(e)) {
+				RevealINExplorer();
 			} else if (SHORTCUT_RENAME.match(e)) {
 				rename();
 			} else if (SHORTCUT_DELETE.match(e)) {
@@ -1246,7 +1298,9 @@ public class SplitViewController implements Initializable {
 				toggleFavorite();
 			}
 		});
-
+		table.setOnTouchStationary(e -> {
+			showContextMenu();
+		});
 		table.setOnMouseClicked(m -> {
 			TableViewModel t = table.getSelectionModel().getSelectedItem();
 			if (m.getButton().equals(MouseButton.SECONDARY)) {
@@ -1317,6 +1371,8 @@ public class SplitViewController implements Initializable {
 
 	/**
 	 * this row factory only work when user do scroll to show the correspond row
+	 *
+	 * @see #initializeDataTableListenerTracker()
 	 */
 	private void initializeTableRowFactory() {
 		// https://stackoverflow.com/questions/26220896/showing-tooltips-in-javafx-at-specific-row-position-in-the-tableview
@@ -1420,6 +1476,7 @@ public class SplitViewController implements Initializable {
 			refreshIsOutOfTheBox();
 			// refresh state
 			parentWelcome.UpdateTitle(truePathField);
+			directoryNameLabel.setText("");
 		} else {
 			long thisCall = ++displayInThisCall;
 			DataTable.clear();
@@ -1458,21 +1515,31 @@ public class SplitViewController implements Initializable {
 					if (thisCall != displayInThisCall) {
 						return;
 					}
-					fileTracker.loadMap(getmDirectoryPath(), true,
+					// notice loading map then resolving conflicts will cause new elements to appear
+					// as untracked so user may need to refresh view again to operate
+					// with them. but the useful things is they get
+					// white action button so easy recognizable also
+					@Nullable
+					HashMap<PathLayer, FileTrackerHolder> isLoaded = fileTracker.loadMap(getmDirectoryPath(), true,
 							PathLayerHelper.getAbsolutePathToPaths(currentFileList));
 					if (thisCall != displayInThisCall) {
 						return;
 					}
-					fileTracker.resolveConflict(new HashSet<>(currentFileList));
-					if (thisCall != displayInThisCall) {
-						return;
+					if (isLoaded != null) {
+						fileTracker.resolveConflict(new HashSet<>(currentFileList));
 					}
-					Platform.runLater(() -> showList(currentFileList));
+					Platform.runLater(() -> {
+						if (thisCall != displayInThisCall) {
+							return;
+						}
+						showList(currentFileList);
+					});
 				} catch (IOException e) {
 					e.printStackTrace();
 				}
 			});
 			parentWelcome.UpdateTitle(mDirectory.getName());
+			directoryNameLabel.setText(mDirectory.getName());
 		}
 		if (isLeft) {
 			updateFavoriteCheckBox(isOutOfTheBoxHelper);
@@ -1485,11 +1552,11 @@ public class SplitViewController implements Initializable {
 			favoriteCheckBox.setVisible(false);
 		} else {
 			favoriteCheckBox.setVisible(true);
-			favoriteCheckBox.setSelected(Setting.getFavoritesLocations().containsByFirstLoc(getmDirectoryPath()));
+			favoriteCheckBox.setSelected(Setting.getFavoritesViews().containsByFirstLoc(getmDirectoryPath()));
 		}
 	}
 
-	private static List<String> SpecialPath = Arrays.asList("/", "?", "&", "|");
+	private static List<String> SpecialPath = Arrays.asList(PATH_FIELD_LIST_ROOTS, "?", "&", "|");
 
 	private boolean refreshIsOutOfTheBox() {
 		// System.out.println((isLeft) ? "I'm left " : "i'm right");
@@ -1516,7 +1583,8 @@ public class SplitViewController implements Initializable {
 	private String onRefreshAsPathFieldAutoScrollToName = null;
 
 	/**
-	 * Show list of path layer in table with default tracker data
+	 * Show list of path layer in table with default tracker data.<br>
+	 * Does not clear currently shown list
 	 *
 	 * @see #initializeTableRowFactory()
 	 * @see #initializeTable()
@@ -1524,12 +1592,10 @@ public class SplitViewController implements Initializable {
 	 */
 	private void showList(List<PathLayer> list) {
 		table.setPlaceholder(noContentTablePlaceHolder);
-		for (PathLayer file : list) {
-			TableViewModel t = new TableViewModel(" ", file.getName(), file);
-			// check also initializeTableRowFactory for generating table row action
-			// and DataTable.addListener for adding search parameters
-			DataTable.add(t);
-		}
+		// check also initializeTableRowFactory for generating table row action
+		// and DataTable.addListener for adding search parameters
+		DataTable.addAll(
+				list.stream().map(file -> new TableViewModel(" ", file.getName(), file)).collect(Collectors.toList()));
 
 		labelItemsNumber.setText(" #" + DataTable.size() + " items");
 		reloadSearchField();
@@ -1634,14 +1700,14 @@ public class SplitViewController implements Initializable {
 			// recursiveSearch.fire();
 			switchRecursive();
 		}
-		refresh("/");
+		refresh(PATH_FIELD_LIST_ROOTS);
 		if (oldmDirectory != null && !roots.contains(oldmDirectory)) {
 			roots.add(oldmDirectory);
 		}
 		DataTable.clear();
 
 		for (PathLayer root : roots) {
-			TableViewModel t = new TableViewModel(" ", root.getName(), root);
+			TableViewModel t = new TableViewModel(" ", root.getAbsolutePath(), root);
 			t.getHboxActions().getChildren().clear();
 			DataTable.add(t);
 		}
@@ -1679,7 +1745,7 @@ public class SplitViewController implements Initializable {
 					DataTable.clear();
 				});
 				outOfTheBoxRecursive = true;
-				boolean doSort = false;
+				boolean didReachLimit = false;
 
 				// TODO check UTF Validity
 				// mfileTracker.OutofTheBoxAddToMapRecusive(dir);
@@ -1706,64 +1772,70 @@ public class SplitViewController implements Initializable {
 					} else {
 						PathLayerHelper.walkFileTree(dir, Integer.MAX_VALUE, false, rWalker);
 					}
+					List<PathLayer> paths = rWalker.getDirectories().stream().collect(Collectors.toList());
+
 					if (rWalker.getFilesCount() > Setting.getMaxLimitFilesRecursive()) {
-						doSort = true;
-					}
-					Stream<PathLayer> paths = rWalker.getDirectories().stream();
-					if (doSort) {
-						paths = paths.sorted((p1, p2) -> {
+						didReachLimit = true;
+						Collections.sort(paths, (p1, p2) -> {
 							// sort directory as traversal BFS not DFS
 							return p1.getNameCount() - p2.getNameCount();
 						});
 					}
 
-					for (PathLayer p : paths.collect(Collectors.toList())) {
+					FileTracker trackerLoader = new FileTracker(null, null);
+
+					for (PathLayer p : paths) {
 						if (!recursiveSearch.isSelected()) {
 							break;
 						}
-						if (!fileTracker.loadMap(p, false,
-								PathLayerHelper.getAbsolutePathToPaths(rWalker.getDirectoriesToFiles().get(p)))) {
-							// load empty map if cannot loadMap of directory
-							fileTracker.loadEmptyMapOfList(rWalker.getDirectoriesToFiles().get(p));
-						}
-						if (fileTracker.getMapDetails().size() > Setting.getMaxLimitFilesRecursive()) {
-							break;
+						try {
+							@Nullable
+							HashMap<PathLayer, FileTrackerHolder> loadedMap = trackerLoader.loadMap(p, false,
+									PathLayerHelper.getAbsolutePathToPaths(rWalker.getDirectoriesToFiles().get(p)));
+							if (loadedMap == null) {
+								// load empty map if cannot loadMap of directory
+								fileTracker.loadEmptyMapOfList(rWalker.getDirectoriesToFiles().get(p));
+							} else {
+								// resolve conflict in map
+								trackerLoader.setWorkingDirPath(p);
+								trackerLoader.resolveConflict(new HashSet<>(rWalker.getDirectoriesToFiles().get(p)));
+								fileTracker.getMapDetails().putAll(trackerLoader.getMapDetails());
+
+								trackerLoader.getMapDetails().clear();
+							}
+
+							if (fileTracker.getMapDetails().size() > Setting.getMaxLimitFilesRecursive()) {
+								break;
+							}
+						} catch (Exception e) {
+							// failed to load some directory
+							e.printStackTrace();
 						}
 					}
-					// TODO working here
-					// this is faster than walk but couldn't handle exception access denied like
-					// this
-					// File file = new
-					// File("D:\\$RECYCLE.BIN\\S-1-5-21-2010406997-1771076405-2024525556-1007");
-					//
-					// System.out.println(file.isHidden());
-
-					// Files.find(dir, Integer.MAX_VALUE,
-					// (filePath, fileAttr) -> fileAttr.isDirectory() &&
-					// !filePath.toFile().isHidden())
-					// .forEach(p -> {
-					// r.getParent().add(p);
-					// });
-
-					// r.getDirSet().stream().forEach(p -> {
-					// mfileTracker.OutofTheBoxAddToMapRecusive(p);
-					// });
 				} catch (IOException e) {
 					Platform.runLater(() -> RecursiveHelperUpdateTitle(e.getMessage()));
 				}
-				List<TableViewModel> allThem = RecursiveHelperGetData();
+				List<TableViewModel> allRowModel = new ArrayList<>();
+				for (PathLayer pathItem : fileTracker.getMapDetails().keySet()) {
+					if (pathItem != null && fileTracker.getMapDetails().get(pathItem).getTimeToLive() < 0) {
+						allRowModel.add(new TableViewModel(" ", pathItem.getName(), pathItem));
+					}
+				}
+
 				Platform.runLater(() -> {
-					RecursiveHelperLoadDataTable(allThem);
+					RecursiveHelperLoadDataTable(allRowModel);
 					table.setPlaceholder(noContentTablePlaceHolder);
+					reloadSearchField();
 				});
 
 				finish = Instant.now();
 				WatchServiceHelper.setRuning(true);
 
-				timeElapsed = Duration.between(start, finish).toMillis(); // in millis
-				msg = "Showing " + allThem.size() + " Files Indexed " + (doSort ? "of " + rWalker.getFilesCount() : "")
-						+ " in " + timeElapsed + " milliseconds!"
-						+ (doSort ? "\nYou Can Change Limit File count in menu Tracker Setting" : "")
+				timeElapsed = java.time.Duration.between(start, finish).toMillis(); // in millis
+				msg = "Showing " + allRowModel.size() + " Files Indexed "
+						+ (didReachLimit ? "of " + rWalker.getFilesCount() : "") + " in " + timeElapsed
+						+ " milliseconds!"
+						+ (didReachLimit ? "\nYou Can Change Limit File count in menu Tracker Setting" : "")
 						+ (!recursiveSearch.isSelected()
 								? "\nSearch Stopped To Reset View (do/un)check me Again, Or double click on Clear Button"
 								: "");
@@ -2040,283 +2112,555 @@ public class SplitViewController implements Initializable {
 		}
 	};
 
-	// Needed to Undo last modification rename
-	private static LinkedList<HashMap<PathLayer, PathLayer>> NewToOldRename = new LinkedList<>();
-
 	private void initializeToolsMenu() {
+		toolsMenu.getItems().addAll(getContextMenuList());
+	}
+
+	private List<MenuItem> getContextMenuList() {
+		// File Operation On Selection
+		MenuItem openFiles = new MenuItem("Open");
+		openFiles.setOnAction(e -> open());
+		openFiles.setGraphic(new ImageView(ContextMenuLook.openIcon));
+
+		MenuItem copyFiles = new MenuItem("Copy");
+		copyFiles.setOnAction(e -> copy());
+		copyFiles.setGraphic(new ImageView(ContextMenuLook.copyIcon));
+
+		MenuItem moveFiles = new MenuItem("Cut");
+		moveFiles.setOnAction(e -> move());
+		moveFiles.setGraphic(new ImageView(ContextMenuLook.moveIcon));
+
+		MenuItem pasteFiles = new MenuItem("Paste");
+		pasteFiles.setOnAction(e -> paste());
+		pasteFiles.setGraphic(new ImageView(ContextMenuLook.clipboardIcon));
+
+		MenuItem renameSelection = new MenuItem("Rename");
+		renameSelection.setOnAction(e -> rename());
+		renameSelection.setGraphic(new ImageView(ContextMenuLook.renameIcon));
+
+		// Name Copier Section
+		Menu nameCopier = new Menu("Bulk Rename");
 		MenuItem copyBaseNames = new MenuItem("Copy Base Names");
 		MenuItem pasteBaseNames = new MenuItem("Paste Base Names");
-		MenuItem undoLastPasteNames = new MenuItem("Undo Last Paste Names");
-		MenuItem renameAction = new MenuItem("Rename Selected");
-		MenuItem newFileAction = new MenuItem("Create New File");
-		MenuItem newFolderAction = new MenuItem("Create New Folder");
+		MenuItem renameUtility = new MenuItem("Rename Utility");
+		MenuItem undoLastPasteNames = new MenuItem("Undo Last batch Rename");
+
+		copyBaseNames.setOnAction(e -> copyBaseNames());
+		copyBaseNames.setGraphic(new ImageView(ContextMenuLook.copyBaseNameIcon));
+		pasteBaseNames.setOnAction(e -> pasteBaseNames());
+		pasteBaseNames.setGraphic(new ImageView(ContextMenuLook.pasteBaseNameIcon));
+
+		renameUtility.setOnAction(e -> new RenameUtilityController(getSelection()));
+		renameUtility.setGraphic(new ImageView(ContextMenuLook.bulkRenameIcon));
+
+		undoLastPasteNames.setOnAction(e -> RenameUtilityController.undoLastRename(null, null));
+		undoLastPasteNames.setGraphic(new ImageView(ContextMenuLook.undoIcon));
+
+		nameCopier.setGraphic(new ImageView(ContextMenuLook.bulkRenameIcon));
+		nameCopier.getItems().addAll(copyBaseNames, pasteBaseNames, renameUtility, undoLastPasteNames);
+
+		// New File Section
+		Menu newItemCreation = new Menu("New");
+		MenuItem newFile = new MenuItem("Create New File");
+		MenuItem newFolder = new MenuItem("Create New Folder");
+		newFile.setOnAction(e -> createFile());
+		newFile.setGraphic(new ImageView(ContextMenuLook.fileIcon));
+
+		newFolder.setOnAction(e -> createDirectory());
+		newFolder.setGraphic(new ImageView(ContextMenuLook.folderIcon));
+
+		newItemCreation.setGraphic(new ImageView(ContextMenuLook.newIcon));
+		newItemCreation.getItems().addAll(newFile, newFolder);
+
+		MenuItem delete = new MenuItem("Delete");
+		delete.setOnAction(e -> delete());
+		delete.setGraphic(new ImageView(ContextMenuLook.deleteIcon));
+
+		// Tracker Section
+		Menu tracker = new Menu("Tracker");
+
+		// File Tracker
+		Menu trackerData = new Menu("Data");
+		MenuItem trackCurrent = new MenuItem("Track Current");
+		MenuItem trackRecusively = new MenuItem("Track Recursivly");
+		MenuItem cleanCurrent = new MenuItem("Clean Current");
+		MenuItem cleanRecursively = new MenuItem("Clean Recursively");
+		trackCurrent.setOnAction(e -> trackCurrent());
+		trackRecusively.setOnAction(e -> trackRecusivly());
+		cleanCurrent.setOnAction(e -> cleanCurrent());
+		cleanRecursively.setOnAction(e -> cleanRecursively());
+
+		trackerData.setGraphic(new ImageView(ContextMenuLook.trackerDataIcon));
+		trackerData.getItems().addAll(trackCurrent, trackRecusively, cleanCurrent, cleanRecursively);
+
+		// Tracker Player Section
+		Menu trackerPlayer = new Menu("Cortana");
 		MenuItem newTrackerPlayerPlaylist = new MenuItem("Create New Cortana Playlist");
 		MenuItem newTrackerPlayerAny = new MenuItem("Create New Cortana Shortcut");
-		toolsMenu.getItems().addAll(copyBaseNames, pasteBaseNames, undoLastPasteNames, renameAction, newFileAction,
-				newFolderAction, newTrackerPlayerPlaylist, newTrackerPlayerAny);
+		newTrackerPlayerPlaylist.setOnAction(e -> createTrackerPlayerShortcutPlaylist());
+		newTrackerPlayerAny.setOnAction(e -> createTrackerPlayerShortcutAny());
 
-		newTrackerPlayerAny.setOnAction(e -> {
-			/** Working in local Mode */
-			if (!mDirectory.isLocal()) {
-				return;
+		trackerPlayer.setGraphic(new ImageView(ContextMenuLook.cortanaIcon));
+		trackerPlayer.getItems().addAll(newTrackerPlayerPlaylist, newTrackerPlayerAny);
+
+		// Tracker VLC Section
+		Menu trackerVLC = new Menu("VLC");
+		MenuItem bulkRemoveIntro = new MenuItem("Bulk Remove Intro");
+		bulkRemoveIntro.setOnAction(e -> bulkRemoveIntro());
+
+		trackerVLC.setGraphic(new ImageView(ContextMenuLook.vlcIcon));
+		trackerVLC.getItems().add(bulkRemoveIntro);
+
+		// Tracker Note Section
+		Menu trackerNote = new Menu("Note");
+		MenuItem bulkNoteOrdering = new MenuItem("Bulk Note ordering");
+		bulkNoteOrdering.setOnAction(e -> bulkNoteOrdering());
+
+		trackerNote.setGraphic(new ImageView(ContextMenuLook.noteIcon));
+		trackerNote.getItems().add(bulkNoteOrdering);
+
+		tracker.setGraphic(new ImageView(ContextMenuLook.trackerIcon));
+		tracker.getItems().addAll(trackerData, trackerNote, trackerVLC, trackerPlayer);
+
+		// System Context Menu
+		MenuItem systemContextMenu = new MenuItem("More");
+		systemContextMenu.setOnAction(e -> showContextMenuSystem());
+		systemContextMenu.setGraphic(new ImageView(ContextMenuLook.systemIcon));
+
+		ArrayList<MenuItem> allMenu = new ArrayList<>();
+		allMenu.add(openFiles);
+		allMenu.add(copyFiles);
+		allMenu.add(moveFiles);
+		allMenu.add(pasteFiles);
+		allMenu.add(renameSelection);
+		allMenu.add(nameCopier);
+		allMenu.add(newItemCreation);
+		allMenu.add(delete);
+		allMenu.add(tracker);
+		allMenu.add(systemContextMenu);
+		return allMenu;
+	}
+
+	private void copyBaseNames() {
+		ObservableList<TableViewModel> toWorkWith = null;
+		String warningAlert = "";
+		if (table.getSelectionModel().getSelectedItems().size() > 0) {
+			toWorkWith = table.getSelectionModel().getSelectedItems();
+		} else {
+			toWorkWith = sortedData;
+			warningAlert = "- You can also make a selection Source First from the Table!\n";
+		}
+		String myString = "";
+		for (TableViewModel t : toWorkWith) {
+			String item = FilenameUtils.getBaseName(t.getName()) + "\n";
+			myString += item;
+		}
+		Clipboard clipboard = Clipboard.getSystemClipboard();
+		ClipboardContent content = new ClipboardContent();
+		content.putString(myString);
+		clipboard.setContent(content);
+		DialogHelper.showExpandableAlert(AlertType.INFORMATION, "Copy Base Names",
+				"Content Copied Successfully to Clipboard\n-----   " + toWorkWith.size() + " ----- Items Added",
+				"Note:\n" + warningAlert + "- Use it as you like with Paste Names Options!\nContent:", myString);
+	};
+
+	private void pasteBaseNames() {
+		boolean error = false;
+		tryBlock: try {
+			String myString = Clipboard.getSystemClipboard().getString();
+			if (myString == null) {
+				error = true;
+				break tryBlock;
 			}
-			TableViewModel t = table.getSelectionModel().getSelectedItem();
-			if (t == null) {
-				DialogHelper.showAlert(AlertType.INFORMATION, "Cortana Shortcut", "Select an item from Table first",
-						"");
-				return;
+			String[] swapNames = myString.split("\n");
+
+			String fullAlertReport = "";
+			String warningAlert = "";
+			ObservableList<TableViewModel> toWorkWith = null;
+			if (table.getSelectionModel().getSelectedItems().size() > 0) {
+				toWorkWith = table.getSelectionModel().getSelectedItems();
+			} else {
+				toWorkWith = sortedData;
+				warningAlert = "\nYou can also make a selection Target First from the Table!";
 			}
-			String name = TrackerPlayer.getPlaylistName();
-			TrackerPlayer.createNewShortcutPlaylist(name, t.getFilePath().toPath());
-		});
-		newTrackerPlayerPlaylist.setOnAction(e -> {
-			/** Working in local Mode */
-			if (!mDirectory.isLocal()) {
-				return;
-			}
-			List<Path> files = new ArrayList<>();
-			for (TableViewModel t : table.getSelectionModel().getSelectedItems()) {
-				File tFile = t.getFilePath().toFileIfLocal();
-				if (VLC.isVLCMediaExt(tFile.getName()) || tFile.isDirectory()) {
-					files.add(t.getFilePath().toPath());
-				}
-			}
-			if (files.size() == 0) {
-				String allFilesString = "";
-				for (TableViewModel t : DataTable) {
-					File tFile = t.getFilePath().toFileIfLocal();
-					if (VLC.isVLCMediaExt(tFile.getName()) || tFile.isDirectory()) {
-						files.add(t.getFilePath().toPath());
-						allFilesString += t.getName() + "\n";
+			int i = 0;
+			List<String> toRenameWithFinal = new ArrayList<>();
+			for (TableViewModel t : toWorkWith) {
+				if (i < swapNames.length) {
+					String ext = FilenameUtils.getExtension(t.getName());
+					String report = "";
+					if (ext.length() > 0) {
+						ext = "." + ext;
 					}
-				}
-				if (files.size() == 0) {
-					return;
-				} else {
-					DialogHelper.showExpandableAlert(AlertType.INFORMATION, "Create New Cortana Playlist",
-							"All media in current view inserted", "Those are Media files detected:", allFilesString);
-				}
-			}
-			String name = TrackerPlayer.getPlaylistName();
-			if (name != null) {
-				TrackerPlayer.createNewShortcutPlaylist(name, files);
-			}
-		});
-		renameAction.setOnAction(e -> {
-			requestFocus();
-			rename();
-		});
-		newFileAction.setOnAction(e -> {
-			requestFocus();
-			createFile();
-		});
-		newFolderAction.setOnAction(e -> {
-			requestFocus();
-			createDirectory();
-		});
-		undoLastPasteNames.setDisable(true);
+					String finalName = swapNames[i] + ext;
+					// removing invalid special character
+					finalName = finalName.replaceAll("[\\\\/:*?\"<>|\r]", "");
+					toRenameWithFinal.add(finalName);
 
-		copyBaseNames.setOnAction(new EventHandler<ActionEvent>() {
-
-			/**
-			 * Check similar {@link FilterVLCController#getCopyRaw}
-			 */
-			@Override
-			public void handle(ActionEvent arg0) {
-				ObservableList<TableViewModel> toWorkWith = null;
-				String warningAlert = "";
-				if (table.getSelectionModel().getSelectedItems().size() > 0) {
-					toWorkWith = table.getSelectionModel().getSelectedItems();
-				} else {
-					toWorkWith = sortedData;
-					warningAlert = "- You can also make a selection Source First from the Table!\n";
-				}
-				String myString = "";
-				for (TableViewModel t : toWorkWith) {
-					String item = FilenameUtils.getBaseName(t.getName()) + "\n";
-					myString += item;
-				}
-				Clipboard clipboard = Clipboard.getSystemClipboard();
-				ClipboardContent content = new ClipboardContent();
-				content.putString(myString);
-				clipboard.setContent(content);
-				DialogHelper.showExpandableAlert(AlertType.INFORMATION, "Copy Base Names",
-						"Content Copied Successfully to Clipboard\n-----   " + toWorkWith.size() + " ----- Items Added",
-						"Note:\n" + warningAlert + "- Use it as you like with Paste Names Options!\nContent:",
-						myString);
-			}
-		});
-
-		pasteBaseNames.setOnAction(new EventHandler<ActionEvent>() {
-
-			@Override
-			public void handle(ActionEvent arg0) {
-
-				boolean error = false;
-				tryBlock: try {
-					String myString = Clipboard.getSystemClipboard().getString();
-					if (myString == null) {
-						error = true;
-						break tryBlock;
-					}
-					String[] swapNames = myString.split("\n");
-
-					String fullAlertReport = "";
-					String warningAlert = "";
-					ObservableList<TableViewModel> toWorkWith = null;
-					if (table.getSelectionModel().getSelectedItems().size() > 0) {
-						toWorkWith = table.getSelectionModel().getSelectedItems();
-					} else {
-						toWorkWith = sortedData;
-						warningAlert = "\nYou can also make a selection Target First from the Table!";
-					}
-					int i = 0;
-					List<String> toRenameWithFinal = new ArrayList<>();
-					for (TableViewModel t : toWorkWith) {
-						if (i < swapNames.length) {
-							String ext = FilenameUtils.getExtension(t.getName());
-							String report = "";
-							if (ext.length() > 0) {
-								ext = "." + ext;
-							}
-							String finalName = swapNames[i] + ext;
-							// removing invalid special character
-							finalName = finalName.replaceAll("[\\\\/:*?\"<>|\r]", "");
-							toRenameWithFinal.add(finalName);
-
-							report = "*R" + (i + 1) + "- " + t.getName() + " --> " + toRenameWithFinal.get(i) + "\n";
-							fullAlertReport += report;
-							i++;
-						} else {
-							warningAlert += "\nCount of Pasted Names does not match number of selected items!";
-							break;
-						}
-					}
-
-					boolean ans = DialogHelper.showExpandableConfirmationDialog("Paste Base Names",
-							"Preview Change" + "\nPending -----   " + toRenameWithFinal.size()
-									+ " ----- Changes Pair Rename\n",
-							"Each Separated line Name assigned to selection item in table order. \n" + "Note:"
-									+ warningAlert,
-							fullAlertReport);
-					if (ans) {
-						i = 0;
-						String renameError = "";
-						HashMap<PathLayer, PathLayer> currentNewToOldRename = new HashMap<>();
-						for (TableViewModel t : toWorkWith) {
-							if (i < toRenameWithFinal.size()) {
-								try {
-									PathLayer oldFile = t.getFilePath();
-									PathLayer newFile = t.getFilePath().getParentPath()
-											.resolve(toRenameWithFinal.get(i));
-									FileHelper.renameHelper(oldFile, newFile);
-									currentNewToOldRename.put(newFile, oldFile);
-
-								} catch (IOException e) {
-									renameError += t.getFilePath().getName() + " --> " + toRenameWithFinal.get(i)
-											+ "\n";
-									warningAlert += e.getClass() + ": " + e.getMessage() + "\n";
-									e.printStackTrace();
-								}
-								i++;
-							} else {
-								break;
-							}
-						}
-						NewToOldRename.add(currentNewToOldRename);
-						undoLastPasteNames.setDisable(false);
-						if (!renameError.isEmpty()) {
-							DialogHelper.showExpandableAlert(AlertType.ERROR, "Paste Base Names",
-									"Some Content were not renamed Successfully!",
-									"This may be caused by illegal character or redundant names in input clipboard. \n",
-									warningAlert + "\nSource File --> Rename expected:\n" + renameError);
-						}
-
-					}
-				} catch (HeadlessException e) {
-					e.printStackTrace();
-
-				}
-				if (error) {
-					DialogHelper.showTextInputDialog("Paste Raw Data", "Content Parse failed!",
-							"SomeThing went wrong,\nAre you Sure You have the Data,\n Try pasting it here to recheck\nResetting DataTable to initial value",
-							"Raw Data Here");
-				}
-
-			}
-		});
-		undoLastPasteNames.setOnAction(new EventHandler<ActionEvent>() {
-
-			@Override
-			public void handle(ActionEvent event) {
-				String summary = "This action is used when wrongly 'Pasted base names'."
-						+ "\nIn that case a report of redo will be displayed for to be confirmed.";
-				String title = "Redo Last Paste Names";
-				// due to disable status it will never enter this if, but just in case more
-				// check...
-				if (NewToOldRename.size() == 0) {
-					DialogHelper.showAlert(AlertType.INFORMATION, title, "No recent modification applied.", summary);
-					return;
-				}
-				String changeReportFiles = "";
-				String notFoundFiles = "";
-				HashMap<PathLayer, PathLayer> lastNewToOldRename = NewToOldRename.peekLast();
-				PathLayer workingDir = lastNewToOldRename.get(lastNewToOldRename.keySet().toArray()[0]).getParentPath();
-				int i = 0;
-				int found = 0;
-				for (PathLayer newPath : lastNewToOldRename.keySet()) {
-					if (newPath.exists()) {
-						changeReportFiles += "*R" + (i + 1) + "- " + newPath.getName() + " --> "
-								+ lastNewToOldRename.get(newPath).getName() + "\n";
-						found++;
-					} else {
-						notFoundFiles += "*N" + (i + 1) + "- " + newPath.getName() + " !!->"
-								+ lastNewToOldRename.get(newPath).getName() + "\n";
-					}
+					report = "*R" + (i + 1) + "- " + t.getName() + " --> " + toRenameWithFinal.get(i) + "\n";
+					fullAlertReport += report;
 					i++;
+				} else {
+					warningAlert += "\nCount of Pasted Names does not match number of selected items!";
+					break;
 				}
-				if (!notFoundFiles.isEmpty()) {
-					notFoundFiles = "Not Found Files:\n" + notFoundFiles;
-				}
-				boolean ans = DialogHelper.showExpandableConfirmationDialog(title, "Preview Change"
-						+ "\nPending -----   " + found + " ----- Changes Pair Rename"
-						+ (i - found != 0 ? "\nNot Found -----   " + (i - found) + " ----- Files (renamed or moved)\n"
-								: ""),
-						summary, "Working in:  " + workingDir + "\n\nModifications:\n" + changeReportFiles + "\n"
-								+ notFoundFiles);
-				if (ans) {
-					i = 0;
-					String renameError = "";
-					String warningAlert = "";
-					for (PathLayer newPath : lastNewToOldRename.keySet()) {
+			}
+
+			boolean ans = DialogHelper.showExpandableConfirmationDialog("Paste Base Names",
+					"Preview Change" + "\nPending -----   " + toRenameWithFinal.size() + " ----- Changes Pair Rename\n",
+					"Each Separated line Name assigned to selection item in table order. \n" + "Note:" + warningAlert,
+					fullAlertReport);
+			if (ans) {
+				i = 0;
+				String renameError = "";
+				HashMap<PathLayer, PathLayer> currentNewToOldRename = new HashMap<>();
+				List<PathLayer> sources = new ArrayList<>();
+				List<PathLayer> targets = new ArrayList<>();
+				for (TableViewModel t : toWorkWith) {
+					if (i < toRenameWithFinal.size()) {
 						try {
-							if (newPath.exists()) {
-								newPath.move(lastNewToOldRename.get(newPath));
-							}
+							PathLayer oldFile = t.getFilePath();
+							PathLayer newFile = t.getFilePath().getParentPath().resolve(toRenameWithFinal.get(i));
+							FileHelper.renameHelper(oldFile, newFile);
+							sources.add(oldFile);
+							targets.add(newFile);
+							currentNewToOldRename.put(newFile, oldFile);
+
 						} catch (IOException e) {
-							renameError += newPath.getName() + " -->" + lastNewToOldRename.get(newPath).getName()
-									+ "\n";
+							renameError += t.getFilePath().getName() + " --> " + toRenameWithFinal.get(i) + "\n";
 							warningAlert += e.getClass() + ": " + e.getMessage() + "\n";
 							e.printStackTrace();
 						}
 						i++;
+					} else {
+						break;
 					}
-					NewToOldRename.removeLast();
-					if (NewToOldRename.size() == 0) {
-						undoLastPasteNames.setDisable(true);
-					}
-					if (!renameError.isEmpty()) {
-						DialogHelper.showExpandableAlert(AlertType.ERROR, title,
-								"Some Content were not renamed Successfully!",
-								"This may be caused by illegal character names. \n",
-								warningAlert + "\nSource File --> Rename expected:\n" + renameError);
-					}
-
+				}
+				FileTracker.operationUpdateAsList(sources, targets, ActionOperation.RENAME);
+				RenameUtilityController.getAllNewToOldRename().add(currentNewToOldRename);
+				if (!renameError.isEmpty()) {
+					DialogHelper.showExpandableAlert(AlertType.ERROR, "Paste Base Names",
+							"Some Content were not renamed Successfully!",
+							"This may be caused by illegal character or redundant names in input clipboard. \n",
+							warningAlert + "\nSource File --> Rename expected:\n" + renameError);
 				}
 
 			}
-		});
+		} catch (HeadlessException e) {
+			e.printStackTrace();
 
+		}
+		if (error) {
+			DialogHelper.showTextInputDialog("Paste Raw Data", "Content Parse failed!",
+					"SomeThing went wrong,\nAre you Sure You have the Data,\n Try pasting it here to recheck\nResetting DataTable to initial value",
+					"Raw Data Here");
+		}
+	};
+
+	private void createTrackerPlayerShortcutAny() {
+		/** Working in local Mode */
+		if (!mDirectory.isLocal()) {
+			return;
+		}
+		TableViewModel t = table.getSelectionModel().getSelectedItem();
+		if (t == null) {
+			DialogHelper.showAlert(AlertType.INFORMATION, "Cortana Shortcut", "Select an item from Table first", "");
+			return;
+		}
+		String name = TrackerPlayer.getPlaylistName();
+		TrackerPlayer.createNewShortcutPlaylist(name, t.getFilePath().toPath());
+
+	}
+
+	private void createTrackerPlayerShortcutPlaylist() {
+
+		/** Working in local Mode */
+		if (!mDirectory.isLocal()) {
+			return;
+		}
+		List<Path> files = new ArrayList<>();
+		for (TableViewModel t : table.getSelectionModel().getSelectedItems()) {
+			File tFile = t.getFilePath().toFileIfLocal();
+			if (VLC.isVLCMediaExt(tFile.getName()) || tFile.isDirectory()) {
+				files.add(t.getFilePath().toPath());
+			}
+		}
+		if (files.size() == 0) {
+			String allFilesString = "";
+			for (TableViewModel t : DataTable) {
+				File tFile = t.getFilePath().toFileIfLocal();
+				if (VLC.isVLCMediaExt(tFile.getName()) || tFile.isDirectory()) {
+					files.add(t.getFilePath().toPath());
+					allFilesString += t.getName() + "\n";
+				}
+			}
+			if (files.size() == 0) {
+				return;
+			} else {
+				DialogHelper.showExpandableAlert(AlertType.INFORMATION, "Create New Cortana Playlist",
+						"All media in current view inserted", "Those are Media files detected:", allFilesString);
+			}
+		}
+		String name = TrackerPlayer.getPlaylistName();
+		if (name != null) {
+			TrackerPlayer.createNewShortcutPlaylist(name, files);
+		}
+	}
+
+	private void trackCurrent() {
+		try {
+			fileTracker.trackNewFolder(true, true);
+			parentWelcome.refreshAllSplitViewsIfMatch(mDirectory, null);
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+	}
+
+	public void trackRecusivly() {
+		String answer = DialogHelper.showTextInputDialog("Recursive Tracker", "Depth to consider",
+				"Enter depth value to consider begining from '" + mDirectory.getName() + "' view folder"
+						+ "\nThen it will track all sub directory in it"
+						+ "\nInput must be a number format if anything goes wrong '1' is the default value",
+				"2");
+		if (answer == null) {
+			return;
+		}
+		Holder<Integer> depth = new Holder<Integer>(1);
+		try {
+			depth.value = Integer.parseInt(answer);
+		} catch (NumberFormatException e1) {
+			depth.value = 1;
+			// e1.printStackTrace();
+		}
+		PathLayer dir = getmDirectoryPath();
+		ThreadExecutors.recursiveExecutor.execute(() -> {
+			try {
+				RecursiveFileWalker r = new RecursiveFileWalker();
+				// to include depth so subDirectory got involved
+				PathLayerHelper.walkFileTree(dir, depth.value, false, r);
+				r.getDirectories().forEach(p -> {
+					Platform.runLater(() -> Main.ProcessTitle("Tracking " + p.getName()));
+					try {
+						getFileTracker().trackNewOutFolder(p, false, false);
+					} catch (IOException e) {
+						e.printStackTrace();
+					}
+				});
+				Platform.runLater(() -> parentWelcome.refreshAllSplitViews());
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+		});
+	}
+
+	public void cleanCurrent() {
+		if (!getFileTracker().isTracked()) {
+			DialogHelper.showAlert(AlertType.INFORMATION, "Delete Tracker Data", "This is already Untracked folder",
+					"Are you kidding me.");
+			return;
+		}
+		boolean ans = DialogHelper.showConfirmationDialog("Delete Tracker Data",
+				"Are you Sure You want to wipe tracker data?",
+				"Note: this have nothing to do with your files, it just delete .tracker_explorer.txt"
+						+ " >>And so set all item to untracked.\nThis cannot be undone!");
+		if (ans) {
+			try {
+				getFileTracker().deleteTrackerFile();
+				parentWelcome.refreshAllSplitViewsIfMatch(mDirectory, null);
+			} catch (IOException e) {
+				e.printStackTrace();
+				DialogHelper.showException(e);
+			}
+		}
+	}
+
+	public void cleanRecursively() {
+		String labels[] = { "Depth", "User" };
+		String hints[] = { "0", Setting.getActiveUser() };
+		int focusAt = 0;
+		@Nullable
+		HashMap<String, String> answers = DialogHelper.showMultiTextInputDialog("Recursive Cleaner",
+				"Recursive Cleaner",
+				"Enter Depth value to consider begining from this view and\n"
+						+ "Then it will clean all tracker data sub directory in it\n"
+						+ "Input must be a number format if anything goes wrong '0' is the default value"
+						+ "\nNote:input User name Work even if The user wasn't in the users list",
+				labels, hints, focusAt);
+		if (answers == null) {
+			return;
+		}
+		Integer depth;
+		try {
+			depth = Integer.parseInt(answers.get(labels[0]));
+		} catch (NumberFormatException e1) {
+			depth = 0;
+			// e1.printStackTrace();
+		}
+		String user = answers.get(labels[1]);
+		if (user.isEmpty()) {
+			return;
+		}
+
+		PathLayer dir = getmDirectoryPath();
+		final int depths = depth;
+		ThreadExecutors.recursiveExecutor.execute(() -> {
+			try {
+				RecursiveFileWalker r = new RecursiveFileWalker();
+				PathLayerHelper.walkFileTree(dir, depths, true, r);
+				r.getDirectories().forEach(p -> {
+					Platform.runLater(() -> Main.ProcessTitle("Cleaning " + p.getName()));
+					FileTracker.deleteOutFile(p, user);
+				});
+				Platform.runLater(() -> parentWelcome.refreshAllSplitViews());
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+		});
+	}
+
+	private void bulkNoteOrdering() {
+		String labels[] = { "Depth", "Start From" };
+		String hints[] = { "1", "1" };
+		int focusAt = 0;
+		@Nullable
+		HashMap<String, String> answer = DialogHelper.showMultiTextInputDialog("Bulk Note Ordering",
+				"Bulk Note Ordering",
+				"--> Add number ordering for selection in order.\n"
+						+ "--> Affect same order (note) to all sub directory/files in it\n"
+						+ "Input Depth to consider begining from each selection\n"
+						+ "Input must be a number format if anything goes wrong '0' is the default value",
+				labels, hints, focusAt);
+		if (answer == null) {
+			return;
+		}
+		Holder<Integer> depth = new Holder<>(0);
+		Holder<Integer> startFrom = new Holder<Integer>(1);
+		try {
+			depth.value = Integer.parseInt(answer.get(labels[0]));
+			startFrom.value = Integer.parseInt(answer.get(labels[1]));
+		} catch (NumberFormatException e1) {
+			depth.value = 0;
+			startFrom.value = 1;
+		}
+		ThreadExecutors.recursiveExecutor.execute(() -> {
+			try {
+				List<PathLayer> selection = getSelection();
+				int maxOrder = selection.size();
+				int pad = 1;
+				while (maxOrder / 10 != 0) {
+					pad++;
+					maxOrder /= 10;
+				}
+				maxOrder = selection.size();
+				HashMap<PathLayer, String> selectionToNotes = new HashMap<>();
+				Map<String, PathLayer> cachedPathsForKeysInMap = new HashMap<>();
+				int order = startFrom.value;
+				for (PathLayer entry : selection) {
+					String note = String.format("%0" + pad + "d", order++);
+					selectionToNotes.put(entry, note);
+					cachedPathsForKeysInMap.put(entry.getAbsolutePath(), entry);
+				}
+				FileTracker miniFileTracker = new FileTracker(null, null);
+				HashMap<PathLayer, List<PathLayer>> parentToSons = PathLayerHelper.getParentTochildren(selection);
+				// writing at 0 depth
+				for (PathLayer parent : parentToSons.keySet()) {
+					if (miniFileTracker.loadMap(parent, true, cachedPathsForKeysInMap) == null) {
+						if (miniFileTracker.trackNewOutFolder(parent, true, true) == null) {
+							// if failed to load map or create new default one skip
+							continue;
+						}
+					}
+					for (PathLayer target : miniFileTracker.getMapDetails().keySet()) {
+						if (selectionToNotes.containsKey(target)) {
+							miniFileTracker.getMapDetails().get(target).setNoteText(selectionToNotes.get(target));
+						}
+					}
+					miniFileTracker.writeMap();
+				}
+
+				// writing depth from selection
+				RecursiveFileWalker r = new RecursiveFileWalker();
+				for (PathLayer selected : selection) {
+					if (!selected.isDirectory()) {
+						continue;
+					}
+					PathLayerHelper.walkFileTree(selected, depth.value, false, r);
+					r.getDirectories().forEach(dir -> {
+						if (miniFileTracker.loadMap(dir, true, r.getDirectoriesToFiles().get(dir).stream()
+								.collect(Collectors.toMap(p -> p.getAbsolutePath(), p -> p))) == null) {
+							try {
+								if (miniFileTracker.trackNewOutFolder(dir, true, true) == null) {
+									// if failed to load map or create new default one skip
+									return;
+								}
+							} catch (IOException e) {
+								e.printStackTrace();
+							}
+						}
+						for (FileTrackerHolder dataHolder : miniFileTracker.getMapDetails().values()) {
+							dataHolder.setNoteText(selectionToNotes.get(selected));
+						}
+						boolean changeHappen = miniFileTracker.getMapDetails().size() != 0;
+						if (changeHappen) {
+							miniFileTracker.writeMap();
+						}
+					});
+					r.clearAllRecords();
+				}
+				Platform.runLater(() -> parentWelcome.refreshAllSplitViews());
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+		});
+	}
+
+	void bulkRemoveIntro() {
+		if (isOutOfTheBoxHelper()) {
+			DialogHelper.showAlert(AlertType.INFORMATION, "Bulk Intro Remover", "Recursive Mode Restriction",
+					"this feature is unavailable in recursive mode,\r\n"
+							+ "Please turn it off then try again.\nIf you like it to be contact developpers!");
+			return;
+		}
+		String answer = DialogHelper.showTextInputDialog("Bulk Intro Remover", "Time To exclude from start?",
+				"Enter the time to exclude From the begining, "
+						+ "\nthis will apply on all selected Media file in Right View."
+						+ "\nAlso will clear previous configured filters"
+						+ "\nInput must be in duration format: ss or mm:ss or hh:mm:ss (example: 234 or 3:54)",
+				"00     :00     :00");
+		if (answer == null) {
+			return;
+		}
+		Duration ans = FilterVLCController.studyFormat(answer, " Feild", true);
+		if (ans == null || ans.toSeconds() <= 0) {
+			return;
+		}
+
+		if (!getFileTracker().isTracked()) {
+			try {
+				getFileTracker().trackNewFolder(true, true);
+			} catch (IOException e) {
+				e.printStackTrace();
+				DialogHelper.showException(e);
+				return;
+			}
+		}
+
+		List<PathLayer> paths = getSelection();
+		if (paths.size() <= 1) {
+			paths = getShownFilesList();
+		}
+		String start = "" + 0;
+		String end = "" + (int) ans.toSeconds();
+		for (PathLayer path : paths) {
+			if (VLC.isAudioOrVideo(path.getName())) {
+				FileTrackerHolder optionItem = getFileTracker().getMapDetails().get(path);
+				String desc = path.getName() + " [Skipped Intro]";
+				String finalFormat = ">" + start + ">" + end + ">" + desc;
+				optionItem.setMediaCutDataUnPrased(finalFormat);
+			}
+		}
+		getFileTracker().writeMap();
 	}
 
 	public boolean isFocused() {
@@ -2364,19 +2708,21 @@ public class SplitViewController implements Initializable {
 	 */
 	public boolean navigate(PathLayer filePath) {
 		boolean isDirectory = filePath.isDirectory();
-		File selectedFileLocal = filePath.toFileIfLocal();
+
 		// double check in case of fixed shortcut
 		if (!isDirectory && filePath.isLocal() && filePath.getExtensionUPPERCASE().equals("LNK")) {
-			selectedFileLocal = filePath.toFileIfLocal();
+			File selectedFileLocal = filePath.toFileIfLocal();
 			selectedFileLocal = WindowsShortcut.getRealFileIfDirectory(selectedFileLocal);
+			filePath = new FilePathLayer(selectedFileLocal);
 		}
 
-		if (selectedFileLocal != null && selectedFileLocal.isDirectory()) {
-			setmDirectoryThenRefresh(new FilePathLayer(selectedFileLocal));
+		if (isDirectory) {
+			setmDirectoryThenRefresh(filePath);
 		} else {
 			try {
 				int sizeOfFiles = table.getSelectionModel().getSelectedItems().size();
-				if (VLC.isWellSetup() && VLC.isVLCMediaExt(filePath.getName()) && sizeOfFiles != 1) {
+				if (VLC.isWellSetup() && VLC.isVLCMediaExt(filePath.getName())
+						&& (!filePath.isLocal() || sizeOfFiles != 1)) {
 					String files = " --playlist-enqueue";
 					for (TableViewModel t : table.getSelectionModel().getSelectedItems()) {
 						if (VLC.isVLCMediaExt(t.getName())) {
@@ -2393,7 +2739,8 @@ public class SplitViewController implements Initializable {
 					// we always start media because playlist do not start automatically
 				} else {
 					// deal other types of files
-					if (StringHelper.getExtention(filePath.getName()).equals("PDF") && sizeOfFiles > 1) {
+					if (StringHelper.getExtention(filePath.getName()).equals("PDF")
+							&& (!filePath.isLocal() || sizeOfFiles != 1)) {
 						// open bunch of PDF
 						StringHelper.openFiles(table.getSelectionModel().getSelectedItems().stream()
 								.map(p -> ((FilePathLayer) p.getFilePath()).getFile())
@@ -2416,7 +2763,7 @@ public class SplitViewController implements Initializable {
 						// Desktop.getDesktop().open(selectedFile);
 						if (filePath.isLocal()) {
 							// support later getFile of any PathLayer by downloading file
-							StringHelper.openFile(selectedFileLocal);
+							StringHelper.openFile(filePath.toFileIfLocal());
 						} else {
 							Desktop.getDesktop().browse(filePath.toURI());
 						}
@@ -2529,29 +2876,6 @@ public class SplitViewController implements Initializable {
 			}
 		}
 	};
-	// https://howtodoinjava.com/java/multi-threading/java-thread-pool-executor-example/
-
-	private List<TableViewModel> RecursiveHelperGetData() {
-		// DataTable.clear();
-		List<TableViewModel> allRowModel = new ArrayList<>();
-		// sorting to show directory first
-		// this cost useless factor time by ~*1.3
-		// mfileTracker.getMapDetails().keySet().stream().sorted((pst1, pst2) -> {
-		// File f1 = Paths.get(URI.create(pst1)).toFile();
-		// File f2 = Paths.get(URI.create(pst2)).toFile();
-		// // return f1.compareTo(f2);
-		// return new FileComparator().compare(f1, f2);
-		// }).collect(Collectors.toList());
-
-		for (PathLayer pathItem : fileTracker.getMapDetails().keySet()) {
-			// List<String> options = mfileTracker.getMapDetails().get(pathST);
-			if (pathItem != null) {
-				allRowModel.add(new TableViewModel(" ", pathItem.getName(), pathItem));
-			}
-		}
-		// StringHelper.endTimerAndDisplay();
-		return allRowModel;
-	}
 
 	private void RecursiveHelperLoadDataTable(List<TableViewModel> allRowModel) {
 		DataTable.clear();
@@ -2583,7 +2907,7 @@ public class SplitViewController implements Initializable {
 		autoExpand.setDisable(state);
 		favoritesLocations.setDisable(state);
 		rootsMenu.setDisable(state);
-		goDesktopButton.setDisable(state);
+		desktopButton.setDisable(state);
 	}
 
 	private void RecursiveHelperUpdateTitle(String message) {
@@ -2600,8 +2924,8 @@ public class SplitViewController implements Initializable {
 		ContextMenu mn = new ContextMenu();
 		MenuItem mnChild = new MenuItem(message);
 		mn.getItems().add(mnChild);
-		mn.getStyleClass().addAll("lastRowSelected");
-		mnChild.getStyleClass().addAll("lastRowSelected");
+		mn.getStyleClass().addAll("toastMessage");
+		mnChild.getStyleClass().addAll("toastMessage");
 		Node test = table;
 		double xLoc = parentWelcome.getStage().getX() + table.getWidth() * 0.1;
 		double yLoc = parentWelcome.getStage().getY() + table.getHeight() + 70;
@@ -2657,8 +2981,7 @@ public class SplitViewController implements Initializable {
 	public void RevealINExplorer() {
 		if (table.getSelectionModel().getSelectedItem() != null) {
 			// https://stackoverflow.com/questions/7357969/how-to-use-java-code-to-open-windows-file-explorer-and-highlight-the-specified-f
-			StringHelper.RunRuntimeProcess(new String[] { "explorer.exe", "/select,",
-					table.getSelectionModel().getSelectedItem().getFilePath().toString() });
+			SystemExplorer.select(getSelectedItem().getFilePath().toFileIfLocal());
 		} else {
 			explorerButton.fire();
 		}
@@ -2675,22 +2998,149 @@ public class SplitViewController implements Initializable {
 		});
 	}
 
-	private void copy() {
-		if (isLeft) {
-			if (rightViewNeighbor == null) {
-				return;
-			}
-			List<PathLayer> source = getSelection();
-			PathLayer target = rightViewNeighbor.getmDirectoryPath();
-			FileHelper.copy(source, target);
-		} else {
-			if (leftViewNeighbor != null) {
-				return;
-			}
-			List<PathLayer> source = getSelection();
-			PathLayer target = leftViewNeighbor.getmDirectoryPath();
-			FileHelper.copy(source, target);
+	public void move() {
+		Clipboard clipboard = Clipboard.getSystemClipboard();
+		ClipboardContent content = new ClipboardContent();
+		int howManyFiles = putFilesInClipboard(content);
+		content.putString(MOVE_CLIPBOARD_ACTION);
+		try {
+			clipboard.setContent(content);
+			showToastMessage("# " + howManyFiles + " Entries in to clipboard. (Ready to Move)");
+		} catch (Exception e) {
+			showToastMessage("Something went Wrong!! " + e.getMessage());
+			e.printStackTrace();
 		}
+	}
+
+	private void copy() {
+		Clipboard clipboard = Clipboard.getSystemClipboard();
+		ClipboardContent content = new ClipboardContent();
+		int howManyFiles = putFilesInClipboard(content);
+		content.putString(COPY_CLIPBOARD_ACTION);
+		try {
+			clipboard.setContent(content);
+			showToastMessage("# " + howManyFiles + " Entries in to clipboard. (Ready to Copy)");
+		} catch (Exception e) {
+			showToastMessage("Something went Wrong!! " + e.getMessage());
+			e.printStackTrace();
+		}
+	}
+
+	private void open() {
+		TableViewModel t = getSelectedItem();
+		if (t == null) {
+			return;
+		} else {
+			navigate(t.getFilePath());
+		}
+	}
+
+	/**
+	 * Put {@link #getSelection()} in ClipBoard Content given
+	 *
+	 * @param content
+	 * @return number of files being put in ClipBoard
+	 */
+	private int putFilesInClipboard(ClipboardContent content) {
+		List<PathLayer> selection = getSelection();
+		if (mDirectory.isLocal()) {
+			List<File> sources = selection.stream().filter(p -> p.isLocal()).map(p -> p.toFileIfLocal())
+					.collect(Collectors.toList());
+			content.putFiles(sources);
+		} else {
+			content.put(PathLayerHelper.DATA_FORMAT_KEY, selection);
+		}
+		return selection.size();
+	}
+
+	private void paste() {
+		Clipboard clipboard = Clipboard.getSystemClipboard();
+		List<PathLayer> sources = clipboard.getFiles().stream().map(f -> new FilePathLayer(f))
+				.collect(Collectors.toList());
+		if (sources.size() == 0 && clipboard.hasContent(PathLayerHelper.DATA_FORMAT_KEY)) {
+			if (clipboard.getContent(PathLayerHelper.DATA_FORMAT_KEY) instanceof List) {
+				@SuppressWarnings("unchecked")
+				List<PathLayer> sourcesUncasted = (List<PathLayer>) clipboard
+						.getContent(PathLayerHelper.DATA_FORMAT_KEY);
+				sources.addAll(sourcesUncasted);
+			}
+		}
+		if (sources.size() == 0) {
+			showToastMessage("No File Detected In Clipboard");
+			return;
+		}
+		if (clipboard.getString() == null) {
+			askIsCopyOnPaste(sources);
+		} else {
+			switch (clipboard.getString()) {
+			case COPY_CLIPBOARD_ACTION:
+				finilizePasteAction(true, sources);
+				break;
+			case MOVE_CLIPBOARD_ACTION:
+				finilizePasteAction(false, sources);
+				break;
+			default:
+				askIsCopyOnPaste(sources);
+				break;
+			}
+		}
+	}
+
+	private void finilizePasteAction(boolean isCopyAction, List<PathLayer> sources) {
+		if (isCopyAction) {
+			// check if sources are copied in same directory if yes do create copies files
+			boolean isLocalSource = sources.size() > 0 ? sources.get(0).isLocal() : false;
+			if (isLocalSource) {
+				List<File> srcFiles = new ArrayList<>();
+				List<File> targetsFiles = new ArrayList<>();
+				Iterator<PathLayer> iterator = sources.iterator();
+				while (iterator.hasNext()) {
+					File src = iterator.next().toFileIfLocal();
+					if (src.getParent().equals(mDirectory.getAbsolutePath())) {
+						srcFiles.add(src);
+						targetsFiles.add(FileHelper.getCopyFileName(src));
+						iterator.remove();
+					}
+				}
+				FileHelper.copyFiles(srcFiles, targetsFiles);
+			}
+			if (sources.size() != 0) {
+				FileHelper.copy(sources, mDirectory);
+			}
+		} else {
+			FileHelper.move(sources, mDirectory);
+		}
+	}
+
+	private void askIsCopyOnPaste(List<PathLayer> sources) {
+		ContextMenu mn = new ContextMenu();
+		// Description Summary info Section
+		String info = " # " + +sources.size() + " Entries";
+		Menu allFilesInfos = new Menu("Total" + info);
+		allFilesInfos.setGraphic(new ImageView(ContextMenuLook.clipboardIcon));
+		StringBuilder allFilesDesc = new StringBuilder(sources.size() * 10);
+		for (PathLayer pathLayer : sources) {
+			allFilesDesc.append(pathLayer.getName());
+			allFilesDesc.append('\n');
+		}
+		MenuItem summaryInfo = new MenuItem(allFilesDesc.toString());
+		allFilesInfos.getItems().add(summaryInfo);
+		mn.getItems().add(allFilesInfos);
+
+		// Copy Section
+		MenuItem mnChildCopy = new MenuItem("Confirm Copy");
+		mnChildCopy.setOnAction(e -> finilizePasteAction(true, sources));
+		mnChildCopy.setGraphic(new ImageView(ContextMenuLook.copyIcon));
+
+		// Move Section
+		MenuItem mnChildMove = new MenuItem("Confirm Cut/Move");
+		mnChildMove.setOnAction(e -> finilizePasteAction(false, sources));
+		mnChildMove.setGraphic(new ImageView(ContextMenuLook.moveIcon));
+
+		mn.getItems().addAll(mnChildCopy, mnChildMove);
+
+		Point mouse = MouseInfo.getPointerInfo().getLocation();
+		mn.show(parentWelcome.getStage(), mouse.getX(), mouse.getY());
 	}
 
 	public void rename() {
@@ -2711,51 +3161,12 @@ public class SplitViewController implements Initializable {
 		}
 	}
 
-	public void move() {
-		if (isLeft) {
-			if (rightViewNeighbor == null) {
-				return;
-			}
-			List<PathLayer> source = getSelection();
-			PathLayer target = rightViewNeighbor.getmDirectoryPath();
-			FileHelper.move(source, target);
-		} else {
-			if (leftViewNeighbor != null) {
-				return;
-			}
-			List<PathLayer> source = getSelection();
-			PathLayer target = leftViewNeighbor.getmDirectoryPath();
-			FileHelper.move(source, target);
-		}
-	}
-
 	public void createDirectory() {
 		FileHelper.createDirectory(getmDirectoryPath(), newName -> onFinishLoadingScrollToName = newName);
 	}
 
 	public void createFile() {
 		FileHelper.createFile(getmDirectoryPath());
-	}
-
-	public void wipeFileTracker() {
-		if (!getFileTracker().isTracked()) {
-			DialogHelper.showAlert(AlertType.INFORMATION, "Delete Tracker Data", "This is already Untracked folder",
-					"Are you kidding me.");
-			return;
-		}
-		boolean ans = DialogHelper.showConfirmationDialog("Delete Tracker Data",
-				"Are you Sure You want to wipe tracker data?",
-				"Note: this have nothing to do with your files, it just delete .tracker_explorer.txt"
-						+ " >>And so set all item to untracked.\nThis cannot be undone!");
-		if (ans) {
-			try {
-				getFileTracker().deleteTrackerFile();
-				refreshAsPathField();
-			} catch (IOException e) {
-				e.printStackTrace();
-				DialogHelper.showException(e);
-			}
-		}
 	}
 
 	// is this function causing the warning ?
@@ -2809,6 +3220,13 @@ public class SplitViewController implements Initializable {
 	}
 
 	private void showContextMenu() {
+		Point mouse = MouseInfo.getPointerInfo().getLocation();
+		ContextMenu mn = new ContextMenu();
+		mn.getItems().addAll(getContextMenuList());
+		mn.show(parentWelcome.getStage(), mouse.getX(), mouse.getY());
+	}
+
+	private void showContextMenuSystem() {
 		if (!getmDirectoryPath().isLocal()) {
 			return;
 		}
@@ -2848,57 +3266,16 @@ public class SplitViewController implements Initializable {
 		pathField.setText(truePathField);
 	}
 
-	// private ArrayList<TableViewModel> xspfRelatedWithSelection(TableViewModel
-	// clicked) {
-	//
-	// // if XSPF is clicked also auto sync seen its video files if exist
-	//
-	// // to collect all model to sync
-	// ArrayList<TableViewModel> allRelated = new ArrayList<>();
-	//
-	// // to collect all base name of XSPF
-	// Map<String, TableViewModel> mapAllXSPF = new HashMap<String,
-	// TableViewModel>();
-	//
-	// // to include clicked in below for loop
-	// // Table.getSelectionModel().select(DataTable.indexOf(clicked));
-	// ArrayList<TableViewModel> tempOver = new ArrayList<>();
-	// tempOver.addAll(table.getSelectionModel().getSelectedItems());
-	// tempOver.add(clicked);
-	//
-	// for (TableViewModel t : tempOver) {
-	// String ext = StringHelper.getExtention(t.getName());
-	// if (ext.equals("XSPF") && t.getName().length() > 15) {
-	// String basename = t.getName().substring(0, t.getName().length() -
-	// 15).toUpperCase();
-	// mapAllXSPF.put(basename, t);
-	// }
-	// }
-	// for (TableViewModel tSearch : DataTable) {
-	// String tBase = StringHelper.getBaseName(tSearch.getName());
-	// if (mapAllXSPF.containsKey(tBase)) {
-	// fileTracker.setSeen(fileTracker.isSeen(mapAllXSPF.get(tBase)), tSearch);
-	// // first if -> to force toggle if only video is selected and clicked on XSPF
-	// // second if ->to prevent double toggle
-	// if (table.getSelectionModel().getSelectedItems().size() == 1
-	// || !table.getSelectionModel().getSelectedItems().contains(tSearch)) {
-	// allRelated.add(tSearch);
-	// }
-	// }
-	// }
-	// if (allRelated.size() == 0) {
-	// return null;
-	// }
-	// return allRelated;
-	// }
-
 	public void saveStateToSplitState(SplitViewState state) {
 		// Save current state view to state
 		state.setmDirectory(getmDirectoryPath());
+		state.setAutoExpandRight(isAutoExpand());
+
 		state.setSearchKeyword(searchField.getText());
 
 		state.setSelectedIndices(table.getSelectionModel().getSelectedIndices());
 		state.setScrollTo(table.getSelectionModel().getSelectedIndex());
+
 	}
 
 	public void restoreSplitViewState(SplitViewState state) {
@@ -2910,6 +3287,7 @@ public class SplitViewController implements Initializable {
 			// clear false change between tabs
 			RemoveLastFalseQueue();
 		}
+		setAutoExpand(state.isAutoExpandRight());
 		// restore search keyword
 		searchField.setText(state.getSearchKeyword());
 
@@ -2952,8 +3330,11 @@ public class SplitViewController implements Initializable {
 	// system dependent
 	@FXML
 	private void goDesktop(ActionEvent event) {
-		setmDirectoryThenRefresh(
-				new FilePathLayer(new File(System.getProperty("user.home") + File.separator + "Desktop")));
+		String desktopPath = System.getProperty("user.home");
+		if (SystemUtils.IS_OS_WINDOWS) {
+			desktopPath += File.separator + "Desktop";
+		}
+		setmDirectoryThenRefresh(new FilePathLayer(new File(desktopPath)));
 		requestFocus();
 	}
 
@@ -2991,7 +3372,7 @@ public class SplitViewController implements Initializable {
 		autoExpand.setDisable(state);
 		favoritesLocations.setDisable(state);
 		rootsMenu.setDisable(state);
-		goDesktopButton.setDisable(state);
+		desktopButton.setDisable(state);
 	}
 
 	public ToggleButton getAutoExpand() {
@@ -3043,5 +3424,20 @@ public class SplitViewController implements Initializable {
 	 */
 	public boolean isLeft() {
 		return isLeft;
+	}
+
+	/**
+	 * @return the desktopButton
+	 */
+	@Nullable
+	public Button getDesktopButton() {
+		return desktopButton;
+	}
+
+	/**
+	 * @return the leftDominate
+	 */
+	public Button getLeftDominate() {
+		return leftDominate;
 	}
 }

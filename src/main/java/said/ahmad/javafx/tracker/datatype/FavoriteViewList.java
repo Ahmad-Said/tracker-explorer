@@ -5,6 +5,8 @@ import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
 
+import javax.xml.ws.Holder;
+
 import org.jetbrains.annotations.Nullable;
 
 import javafx.collections.FXCollections;
@@ -61,7 +63,7 @@ public class FavoriteViewList implements Iterable<FavoriteView> {
 			if (left == null || right == null) {
 				continue;
 			}
-			map.put(title, new FavoriteView(title, left, right));
+			map.put(title, new FavoriteView(title, new SplitViewState(left), new SplitViewState(right)));
 		}
 	}
 
@@ -83,7 +85,8 @@ public class FavoriteViewList implements Iterable<FavoriteView> {
 	@Nullable
 	public FavoriteView getByFirstLoc(PathLayer firstLoc) {
 		for (FavoriteView favorite : map.values()) {
-			if (favorite.getLocations().size() != 0 && favorite.getLocations().get(0).equals(firstLoc)) {
+			if (favorite.getSplitStates().size() != 0
+					&& favorite.getSplitStates().get(0).getmDirectory().equals(firstLoc)) {
 				return favorite;
 			}
 		}
@@ -121,10 +124,28 @@ public class FavoriteViewList implements Iterable<FavoriteView> {
 		map.clear();
 	}
 
+	/**
+	 * @param otherList
+	 * @see #clearThenAddAll(List)
+	 */
 	public void addAll(List<FavoriteView> otherList) {
 		LinkedHashMap<String, FavoriteView> map = new LinkedHashMap<>();
 		otherList.stream().forEach(f -> map.put(f.getTitle(), f));
 		this.map.putAll(map);
+	}
+
+	/**
+	 * This trigger add as {@link #isReloadingMapOperation()} as true <br>
+	 * --> Clear map --> addAll other list
+	 *
+	 * @param otherList
+	 * @see #isReloadingMapOperation()
+	 */
+	public void clearThenAddAll(List<FavoriteView> otherList) {
+		reloadingMapOperation.value = true;
+		map.clear();
+		addAll(otherList);
+		reloadingMapOperation.value = false;
 	}
 
 	public void addAtEnd(FavoriteView favo) {
@@ -132,17 +153,38 @@ public class FavoriteViewList implements Iterable<FavoriteView> {
 		map.put(favo.getTitle(), favo);
 	}
 
+	private Holder<Boolean> reloadingMapOperation = new Holder<Boolean>(false);
+
+	/**
+	 * This cause a {@link #reloadingMapOperation}
+	 *
+	 * @param favo
+	 */
 	public void addAtFirst(FavoriteView favo) {
+		reloadingMapOperation.value = true;
 		LinkedHashMap<String, FavoriteView> newmap = new LinkedHashMap<>(map);
 		map.clear();
 		map.put(favo.getTitle(), favo);
 		map.putAll(newmap);
+		reloadingMapOperation.value = false;
 	}
 
 	public int size() {
 		return map.size();
 	}
 
+	/**
+	 * Add a listener to this observable map.<br>
+	 * <br>
+	 *
+	 * Some operations done require reloading map (removing and adding all keys map)
+	 * so use {@link #isReloadingMapOperation()} to separate between different
+	 * operations. <br>
+	 * This is done because listener may rely on order of these favorites view.
+	 * Example: recently added records have higher priority over old records
+	 *
+	 * @param listChangeListener the listener for listening to the list changes
+	 */
 	public void addListener(MapChangeListener<? super String, ? super FavoriteView> listChangeListener) {
 		map.addListener(listChangeListener);
 	}
@@ -154,5 +196,13 @@ public class FavoriteViewList implements Iterable<FavoriteView> {
 
 	public boolean contains(FavoriteView favoriteView) {
 		return map.containsKey(favoriteView.getTitle());
+	}
+
+	/**
+	 * @return the reloadingMapOperation
+	 * @see #addListener(MapChangeListener)
+	 */
+	public Holder<Boolean> isReloadingMapOperation() {
+		return reloadingMapOperation;
 	}
 }

@@ -17,8 +17,10 @@ import java.util.List;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.FilenameUtils;
+import org.apache.commons.net.io.Util;
 
 import said.ahmad.javafx.tracker.app.StringHelper;
+import said.ahmad.javafx.tracker.system.file.ftp.FTPPathLayer;
 import said.ahmad.javafx.tracker.system.file.local.FilePathLayer;
 
 /**
@@ -43,12 +45,19 @@ public abstract class PathLayer {
 	}
 
 	private static DateFormat dateFormat = new SimpleDateFormat("dd-MM-yyyy hh:mm:ss");
+	private static long allowedCopySizeInBytes = 10 * 1024 * 1024; // 10 MB by default
 
 	private static HashMap<PathLayer, FilePathLayer> cachedCopies = new HashMap<>();
 	private String absolutePath, name;
 	private ProviderType providerType;
 	private FileType pathType;
-	private long size, lastModified;
+	private long size;
+	/**
+	 * A <code>long</code> value representing the time the file was last modified,
+	 * measured in milliseconds since the epoch (00:00:00 GMT, January 1, 1970), or
+	 * <code>0L</code>
+	 */
+	private long lastModified;
 
 	/*** Creates an empty MyPath. ***/
 	public PathLayer() {
@@ -68,12 +77,12 @@ public abstract class PathLayer {
 	 * @param lastModified
 	 * @param size
 	 */
-	public PathLayer(String absolutePath, String name, ProviderType ProviderType, boolean isDirectory,
-			long lastModified, long size) {
+	public PathLayer(String absolutePath, String name, ProviderType ProviderType, FileType fileType, long lastModified,
+			long size) {
 		this.absolutePath = absolutePath;
 		this.name = name.isEmpty() ? absolutePath : name;
 		providerType = ProviderType;
-		pathType = isDirectory ? FileType.DIRECTORY : FileType.FILE;
+		pathType = fileType;
 		this.lastModified = lastModified;
 		this.size = size; // 0 is valid, so use -1
 	}
@@ -103,6 +112,13 @@ public abstract class PathLayer {
 	 */
 	public String getAbsolutePath() {
 		return absolutePath;
+	}
+
+	/**
+	 * @param absolutePath the absolutePath to set
+	 */
+	public void setAbsolutePath(String absolutePath) {
+		this.absolutePath = absolutePath;
 	}
 
 	/**
@@ -215,6 +231,20 @@ public abstract class PathLayer {
 		return dateFormat.format(new Date(lastModified));
 	}
 
+	/**
+	 * @return the allowedCopySizeInBytes
+	 */
+	public static long getAllowedCopySizeInBytes() {
+		return allowedCopySizeInBytes;
+	}
+
+	/**
+	 * @param allowedCopySizeInBytes the allowedCopySizeInBytes to set
+	 */
+	public static void setAllowedCopySizeInBytes(long allowedCopySizeInBytes) {
+		PathLayer.allowedCopySizeInBytes = allowedCopySizeInBytes;
+	}
+
 	// --------------- Operation implementation -----------------
 	/**
 	 * @return null if this {@code PathLayer} is not associated with {@code Path}
@@ -231,6 +261,7 @@ public abstract class PathLayer {
 	/**
 	 * @return File: Use with caution File only exist if {@code PathLayer} is
 	 *         {@link #isLocal()}, {@code null} otherwise
+	 * @see #toFileIfLocalOrAsCopy(boolean)
 	 */
 	public abstract File toFileIfLocal();
 
@@ -277,11 +308,14 @@ public abstract class PathLayer {
 	/** @return parent as new PathLayer or null if it's a root */
 	public abstract PathLayer getParentPath();
 
-	/** @return parent as String or empty string if it's a root */
+	/** @return parent as absolute path String or empty string if it's a root */
 	public abstract String getParent();
 
-	/** @see File#mkdirs() */
-	public abstract void mkdirs();
+	/**
+	 * @throws IOException
+	 * @see File#mkdirs()
+	 */
+	public abstract void mkdirs() throws IOException;
 
 	/** @return empty list if denoted path wasn't a directory */
 	public abstract List<PathLayer> listPathLayers() throws IOException;
@@ -291,8 +325,10 @@ public abstract class PathLayer {
 
 	public abstract boolean exists();
 
+	/** @return this (same path) */
 	public abstract PathLayer createNewAsFile() throws IOException;
 
+	/** @return this (same path) */
 	public abstract PathLayer createNewAsDirectory() throws IOException;
 
 	public abstract boolean isHidden();
@@ -320,13 +356,43 @@ public abstract class PathLayer {
 	 */
 	public abstract void deleteForcefully() throws IOException;
 
-	public abstract boolean copyTo(PathLayer targetDirectory) throws IOException;
+	public boolean copyTo(PathLayer targetDirectory) throws IOException {
+		PathLayer targetFile = targetDirectory.resolve(getName());
+		return copy(targetFile);
+	}
 
-	public abstract boolean moveTo(PathLayer targetDirectory) throws IOException;
+	public boolean moveTo(PathLayer targetDirectory) throws IOException {
+		boolean didCopy = copyTo(targetDirectory);
+		if (didCopy) {
+			delete();
+		}
+		return didCopy;
+	}
 
-	public abstract boolean move(PathLayer targetPathLayer) throws IOException;
+	public boolean move(PathLayer targetPathLayer) throws IOException {
+		boolean didCopy = copy(targetPathLayer);
+		if (didCopy) {
+			delete();
+		}
+		return didCopy;
+	}
 
-	public abstract boolean copy(PathLayer targetPathLayer) throws IOException;
+	public boolean copy(PathLayer targetPathLayer) throws IOException {
+		InputStream input = getInputFileStream();
+		OutputStream output = targetPathLayer.getOutputFileStream();
+		if (input == null || output == null) {
+			return false;
+		}
+		Util.copyStream(input, output);
+		input.close();
+		output.close(); // Must call
+		FTPPathLayer sourceFTP = null;
+		if (this instanceof FTPPathLayer) {
+			sourceFTP = (FTPPathLayer) this;
+			sourceFTP.completePendingCommand();
+		}
+		return true;
+	}
 
 	public abstract WatchKey register(WatchService watcher, WatchEvent.Kind<?>... events) throws IOException;
 

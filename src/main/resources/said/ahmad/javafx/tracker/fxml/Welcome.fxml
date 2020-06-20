@@ -43,13 +43,13 @@
               <menus>
                 <Menu mnemonicParsing="false" text="File">
                   <items>
-                        <Menu fx:id="newEmbedWindow" mnemonicParsing="false" text="New Embed Window" />
                         <MenuItem fx:id="newWindow" mnemonicParsing="false" text="New Window" />
+                        <Menu fx:id="newEmbedWindow" mnemonicParsing="false" text="New Embed Window" />
+                        <Menu fx:id="openConnectionMenu" mnemonicParsing="false" text="Open Connection" />
                   </items>
                 </Menu>
                 <Menu fx:id="TrackerMenu" mnemonicParsing="false" text="Tracker">
                   <items>
-                    <MenuItem fx:id="trackLeftRecusivlyMenuItem" mnemonicParsing="false" onAction="#leftTrackRecusivly" text="Track left view Recursivly" />
                         <MenuItem mnemonicParsing="false" onAction="#AddToContextMenu" text="Add Tracker To Context Menu" />
                         <MenuItem mnemonicParsing="false" onAction="#RemoveFromContextMenu" text="Remove Tracker From Context Menu" />
                         <MenuItem mnemonicParsing="false" text="---------** Experimental Features **---------" />
@@ -66,7 +66,6 @@
                   <items>
                         <MenuItem mnemonicParsing="false" onAction="#GetVLC" text="Get VLC" />
                         <MenuItem mnemonicParsing="false" onAction="#ConfigureVLCPath" text="Configure VLC Path" />
-                        <MenuItem fx:id="bulkRemoveMenuItem" mnemonicParsing="false" onAction="#rightBulkRemoveIntro" text="Bulk Remove Intro Right View" />
                         <MenuItem mnemonicParsing="false" onAction="#ControlVLC" text="Remote VLC" />
                         <MenuItem mnemonicParsing="false" onAction="#ControlVLCAndroid" text="Android Remote App" />
                         <MenuItem mnemonicParsing="false" onAction="#ControlVLCIOS" text="IOS Remote App" />

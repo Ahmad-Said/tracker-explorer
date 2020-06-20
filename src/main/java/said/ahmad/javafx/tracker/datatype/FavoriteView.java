@@ -3,27 +3,26 @@ package said.ahmad.javafx.tracker.datatype;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-
-import said.ahmad.javafx.tracker.system.file.PathLayer;
+import java.util.stream.Collectors;
 
 public class FavoriteView {
 	private String title;
-	private List<PathLayer> locations;
+	private List<SplitViewState> splitStates;
 
 	/** Empty constructor */
 	public FavoriteView() {
 		title = "";
-		locations = new ArrayList<>();
+		splitStates = new ArrayList<>();
 	}
 
-	public FavoriteView(String title, List<PathLayer> locations) {
+	public FavoriteView(String title, List<SplitViewState> splitStates) {
 		this.title = title;
-		this.locations = locations;
+		this.splitStates = splitStates;
 	}
 
-	public FavoriteView(String title, PathLayer... locations) {
+	public FavoriteView(String title, SplitViewState... splitStates) {
 		this.title = title;
-		this.locations = Arrays.asList(locations);
+		this.splitStates = new ArrayList<SplitViewState>(Arrays.asList(splitStates));
 	}
 
 	/**
@@ -41,22 +40,35 @@ public class FavoriteView {
 	}
 
 	/**
-	 * @return the locations
+	 * Do not use these split states in your view as it has Omitted fields and
+	 * changing its internal fields is restricted
+	 *
+	 * @return the splitStates
+	 * @see SplitViewState#SplitViewState(SplitViewState)
+	 * @see #getSplitStatessInitializedCopy()
 	 */
-	public List<PathLayer> getLocations() {
-		return locations;
+	public List<SplitViewState> getSplitStates() {
+		return splitStates;
 	}
 
 	/**
-	 * @param locations the locations to set
+	 *
+	 * @return A copy of states after initializing omitted fields for each state
 	 */
-	public void setLocations(List<PathLayer> locations) {
-		this.locations = locations;
+	public List<SplitViewState> getSplitStatessInitializedCopy() {
+		return splitStates.stream().map(ss -> new SplitViewState(ss)).collect(Collectors.toList());
+	}
+
+	/**
+	 * @param splitStates the splitStates to set
+	 */
+	public void setSplitStates(List<SplitViewState> splitStates) {
+		this.splitStates = splitStates;
 	}
 
 	@Override
 	public String toString() {
-		return "FavoriteView [title=" + title + ", locations=" + locations + "]";
+		return "FavoriteView [title=" + title + ", splitStates=" + splitStates + "]";
 	}
 
 }

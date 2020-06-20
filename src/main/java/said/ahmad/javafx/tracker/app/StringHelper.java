@@ -30,8 +30,6 @@ import said.ahmad.javafx.tracker.system.file.PathLayer;
 
 public class StringHelper {
 
-	public static PathLayer InitialLeftPath;
-	public static PathLayer InitialRightPath;
 	private static Map<String, String> KeyAsShiftDown = new HashMap<String, String>() {
 		/**
 		 *
@@ -210,7 +208,7 @@ public class StringHelper {
 	private static long cumlativeMemoryInByte = 0;
 	private static long pingCount = 0;
 
-	public static void startTimer() {
+	public static void startTimers() {
 		startMemoryInByte = Runtime.getRuntime().totalMemory();
 		startTime = Instant.now();
 	}

@@ -37,7 +37,7 @@ import javafx.util.Duration;
 import said.ahmad.javafx.tracker.app.DialogHelper;
 import said.ahmad.javafx.tracker.app.Main;
 import said.ahmad.javafx.tracker.app.ResourcesHelper;
-import said.ahmad.javafx.tracker.app.ThemeManager;
+import said.ahmad.javafx.tracker.app.look.ThemeManager;
 import said.ahmad.javafx.tracker.controller.splitview.SplitViewController;
 import said.ahmad.javafx.tracker.datatype.MediaCutData;
 import said.ahmad.javafx.tracker.model.FilterVLCViewModel;

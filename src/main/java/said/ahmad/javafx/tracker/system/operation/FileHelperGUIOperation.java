@@ -35,8 +35,8 @@ import javafx.stage.Stage;
 import said.ahmad.javafx.tracker.app.DialogHelper;
 import said.ahmad.javafx.tracker.app.Main;
 import said.ahmad.javafx.tracker.app.ResourcesHelper;
-import said.ahmad.javafx.tracker.app.ThemeManager;
 import said.ahmad.javafx.tracker.app.ThreadExecutors;
+import said.ahmad.javafx.tracker.app.look.ThemeManager;
 import said.ahmad.javafx.tracker.app.pref.Setting;
 import said.ahmad.javafx.tracker.system.file.PathLayer;
 import said.ahmad.javafx.tracker.system.file.PathLayerHelper;
@@ -244,7 +244,9 @@ public class FileHelperGUIOperation {
 							if (srcPath.isDirectory()) {
 								targetPathResolved.mkdirs();
 							} else {
-								srcPath.move(targetPathResolved);
+								if (srcPath.compareTo(targetPathResolved) != 0) {
+									srcPath.move(targetPathResolved);
+								}
 							}
 						} catch (Exception e) {
 							// https://stackoverflow.com/questions/1149703/how-can-i-convert-a-stack-trace-to-a-string

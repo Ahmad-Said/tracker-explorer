@@ -87,7 +87,11 @@ public class FileHelper {
 				"Do you really want to delete selected files?", filesToDelete);
 
 		if (isConfirmed) {
-			FileTracker.operationUpdate(source, null, ActionOperation.DELETE);
+			try {
+				FileTracker.operationUpdate(source, null, ActionOperation.DELETE);
+			} catch (Exception e) {
+				e.printStackTrace();
+			}
 			new Thread() {
 				@Override
 				public void run() {
@@ -154,9 +158,6 @@ public class FileHelper {
 	}
 
 	public static void createFile(PathLayer parent) {
-		if (!parent.isLocal()) {
-			return;
-		}
 		String title = parent.toString();
 		String hint = "New File.txt";
 		PathLayer temp = parent.resolve(hint);
@@ -173,9 +174,16 @@ public class FileHelper {
 			} catch (FileAlreadyExistsException e) {
 				DialogHelper.showAlert(Alert.AlertType.INFORMATION, title, "File already exists", path.toString());
 			} catch (Exception e) {
-				DialogHelper.showAlert(Alert.AlertType.ERROR, title, "File was not created", path.toString());
+				e.printStackTrace();
+				DialogHelper.showException(e);
 			}
 		}
+	}
+
+	public static ArrayList<String> getBaseNames(List<String> fileNames) {
+		ArrayList<String> baseNames = new ArrayList<>(fileNames.size());
+
+		return baseNames;
 	}
 
 	public static File getCopyFileName(File sourceFile) {

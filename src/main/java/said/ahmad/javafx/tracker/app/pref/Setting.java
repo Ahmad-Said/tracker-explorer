@@ -14,11 +14,14 @@ import java.util.List;
 import java.util.Map;
 import java.util.Scanner;
 
+import org.jetbrains.annotations.Nullable;
+
 import javafx.scene.control.Alert.AlertType;
 import said.ahmad.javafx.tracker.app.DialogHelper;
 import said.ahmad.javafx.tracker.app.StringHelper;
-import said.ahmad.javafx.tracker.app.ThemeManager.THEME;
-import said.ahmad.javafx.tracker.app.ThemeManager.THEME_COLOR;
+import said.ahmad.javafx.tracker.app.look.THEME;
+import said.ahmad.javafx.tracker.app.look.THEME_COLOR;
+import said.ahmad.javafx.tracker.datatype.FavoriteView;
 import said.ahmad.javafx.tracker.datatype.FavoriteViewList;
 import said.ahmad.javafx.tracker.system.call.RunMenu;
 import said.ahmad.javafx.tracker.system.call.TeraCopy;
@@ -35,9 +38,11 @@ public class Setting {
 	public static final File SETTING_DIRECTORY = new File(System.getenv("APPDATA") + "\\Tracker Explorer");
 
 	// ---------------- Setting To be loaded as Part One ----------------
-	private static final String Version = "5.1";
+	private static final String Version = "5.2";
 	/** @since v5.1 */
 	private static long ApplicationTimesLunched = 1;
+	/** @since v5.1 */
+	private static boolean isMaximized = false;
 	private static Boolean BackSync = false;
 	private static Boolean AutoExpand = true;
 	private static Boolean LoadAllIcon = true;
@@ -60,7 +65,8 @@ public class Setting {
 	// ---------------- Setting To be loaded as Part Two ----------------
 	private static boolean restoreLastOpenedFavorite = true;
 	private static ArrayList<String> lastOpenedFavoriteTitle = new ArrayList<>();
-	private static final FavoriteViewList favoritesLocations = new FavoriteViewList();
+	private static final FavoriteViewList favoritesViews = new FavoriteViewList();
+	private static FavoriteView lastOpenedView;
 
 	// ---------------- On finish Loading Functional services ----------------
 	private static ArrayList<CallBackToDo> onFinishLoadingAllPartToDo = new ArrayList<>();
@@ -88,10 +94,10 @@ public class Setting {
 				SETTING_FILE.delete();
 			}
 			p = new PrintStream(SETTING_FILE.toString());
-			Files.setAttribute(SETTING_FILE.toPath(), "dos:hidden", true);
 			p.println("/this is a generated folder by application to Save Setting");
 			p.println("Version=" + Version);
 			p.println("ApplicationTimesLunched=" + ++ApplicationTimesLunched);
+			p.println("isMaximized=" + isMaximized);
 			p.println("VLCHttpPass=" + getVLCHttpPass());
 			// saved as URI
 			p.println("VLCPath=" + VLC.getPath_Setup().toUri().toString());
@@ -187,6 +193,8 @@ public class Setting {
 				try {
 					if (key.equals("ApplicationTimesLunched")) {
 						ApplicationTimesLunched = Long.parseLong(value);
+					} else if (key.equals("isMaximized")) {
+						isMaximized = Boolean.parseBoolean(value);
 					} else if (key.equals("VLCHttpPass")) {
 						setVLCHttpPass(value);
 					} else if (key.equals("VLCPath")) {
@@ -244,7 +252,7 @@ public class Setting {
 		}
 		scan.close();
 		if (favoritesTitles != null) {
-			favoritesLocations.initializeFavoriteViewList(favoritesTitles, favoritesLeftLocs, favoritesRightLocs);
+			favoritesViews.initializeFavoriteViewList(favoritesTitles, favoritesLeftLocs, favoritesRightLocs);
 		}
 	}
 
@@ -439,8 +447,8 @@ public class Setting {
 		return VLC.getPath_Setup();
 	}
 
-	public static FavoriteViewList getFavoritesLocations() {
-		return favoritesLocations;
+	public static FavoriteViewList getFavoritesViews() {
+		return favoritesViews;
 	}
 
 	/**
@@ -567,5 +575,34 @@ public class Setting {
 	 */
 	public static void setLastThemeColor(THEME_COLOR lastThemeColor) {
 		Setting.lastThemeColor = lastThemeColor;
+	}
+
+	/**
+	 * @return the isMaximized
+	 */
+	public static boolean isMaximized() {
+		return isMaximized;
+	}
+
+	/**
+	 * @param isMaximized the isMaximized to set
+	 */
+	public static void setMaximized(boolean isMaximized) {
+		Setting.isMaximized = isMaximized;
+	}
+
+	/**
+	 * @return the lastOpenedView
+	 */
+	@Nullable
+	public static FavoriteView getLastOpenedView() {
+		return lastOpenedView;
+	}
+
+	/**
+	 * @param lastOpenedView the lastOpenedView to set
+	 */
+	public static void setLastOpenedView(FavoriteView lastOpenedView) {
+		Setting.lastOpenedView = lastOpenedView;
 	}
 }

@@ -1,6 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<?import said.ahmad.javafx.tracker.fxGraphics.IntField?>
 <?import javafx.geometry.Insets?>
 <?import javafx.scene.Cursor?>
 <?import javafx.scene.control.Button?>
@@ -19,6 +18,7 @@
 <?import javafx.scene.layout.GridPane?>
 <?import javafx.scene.layout.RowConstraints?>
 <?import javafx.scene.text.Text?>
+<?import said.ahmad.javafx.fxGraphics.IntField?>
 
 <BorderPane prefHeight="490.0" prefWidth="682.0" xmlns="http://javafx.com/javafx/8.0.171" xmlns:fx="http://javafx.com/fxml/1">
    <top>
@@ -289,12 +289,12 @@
             <RowConstraints minHeight="10.0" prefHeight="5.0" vgrow="SOMETIMES" />
          </rowConstraints>
          <children>
-            <Button defaultButton="true" mnemonicParsing="false" onAction="#doRename" style="-fx-font-weight: bold;" text="Confirm Rename" GridPane.rowIndex="2">
+            <Button defaultButton="true" mnemonicParsing="false" onAction="#rename" style="-fx-font-weight: bold;" text="Confirm Rename" GridPane.rowIndex="2">
                <GridPane.margin>
                   <Insets left="350.0" />
                </GridPane.margin>
             </Button>
-            <Button fx:id="undoLastRename" disable="true" mnemonicParsing="false" onAction="#undoRename" text="Undo Last Rename" GridPane.rowIndex="2">
+            <Button fx:id="undoLastRenameButton" disable="true" mnemonicParsing="false" onAction="#undoRename" text="Undo Last Rename" GridPane.rowIndex="2">
                <GridPane.margin>
                   <Insets right="350.0" />
                </GridPane.margin>

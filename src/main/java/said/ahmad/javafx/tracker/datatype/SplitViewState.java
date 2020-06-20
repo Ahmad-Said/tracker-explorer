@@ -3,18 +3,53 @@ package said.ahmad.javafx.tracker.datatype;
 import java.util.LinkedList;
 import java.util.List;
 
+import com.thoughtworks.xstream.annotations.XStreamOmitField;
+
+import said.ahmad.javafx.tracker.app.pref.Setting;
 import said.ahmad.javafx.tracker.system.file.PathLayer;
 
 public class SplitViewState {
 	private PathLayer mDirectory;
-	private LinkedList<PathLayer> BackQueue = new LinkedList<PathLayer>();
-	private LinkedList<PathLayer> NextQueue = new LinkedList<PathLayer>();
-	private int SelectedIndices[] = {};
-	private int ScrollTo = 0;
-	private String searchKeyword = "";
+	private boolean autoExpandRight;
 
+	@XStreamOmitField
+	private LinkedList<PathLayer> backQueue;
+	@XStreamOmitField
+	private LinkedList<PathLayer> nextQueue;
+
+	@XStreamOmitField
+	private int selectedIndices[];
+	@XStreamOmitField
+	private int scrollTo;
+
+	private String searchKeyword;
+
+	/** Empty constructor */
+	public SplitViewState() {
+		initializeOmmittedFields();
+	}
+
+	// initial state conditions
 	public SplitViewState(PathLayer mDirectory) {
 		this.mDirectory = mDirectory;
+		autoExpandRight = Setting.isAutoExpand();
+		searchKeyword = "";
+		initializeOmmittedFields();
+	}
+
+	public SplitViewState(SplitViewState ommittedSplitState) {
+		mDirectory = ommittedSplitState.mDirectory;
+		autoExpandRight = ommittedSplitState.autoExpandRight;
+		searchKeyword = ommittedSplitState.searchKeyword;
+		initializeOmmittedFields();
+	}
+
+	private void initializeOmmittedFields() {
+		backQueue = new LinkedList<PathLayer>();
+		nextQueue = new LinkedList<PathLayer>();
+		int selected[] = {};
+		selectedIndices = selected;
+		scrollTo = 0;
 	}
 
 	public PathLayer getmDirectory() {
@@ -26,35 +61,35 @@ public class SplitViewState {
 	}
 
 	public LinkedList<PathLayer> getBackQueue() {
-		return BackQueue;
+		return backQueue;
 	}
 
 	public void setBackQueue(LinkedList<PathLayer> backQueue) {
-		BackQueue = backQueue;
+		this.backQueue = backQueue;
 	}
 
 	public LinkedList<PathLayer> getNextQueue() {
-		return NextQueue;
+		return nextQueue;
 	}
 
 	public void setNextQueue(LinkedList<PathLayer> nextQueue) {
-		NextQueue = nextQueue;
+		this.nextQueue = nextQueue;
 	}
 
 	/**
 	 * @return the selectedIndices
 	 */
 	public int[] getSelectedIndices() {
-		return SelectedIndices;
+		return selectedIndices;
 	}
 
 	/**
 	 * @param selectedIndices the selectedIndices to set
 	 */
 	public void setSelectedIndices(List<Integer> selections) {
-		SelectedIndices = new int[selections.size()];
+		selectedIndices = new int[selections.size()];
 		for (int i = 0; i < selections.size(); i++) {
-			SelectedIndices[i] = selections.get(i);
+			selectedIndices[i] = selections.get(i);
 		}
 	}
 
@@ -62,14 +97,14 @@ public class SplitViewState {
 	 * @return the scrollTo
 	 */
 	public int getScrollTo() {
-		return ScrollTo;
+		return scrollTo;
 	}
 
 	/**
 	 * @param scrollTo the scrollTo to set
 	 */
 	public void setScrollTo(int scrollTo) {
-		ScrollTo = scrollTo;
+		this.scrollTo = scrollTo;
 	}
 
 	/**
@@ -84,6 +119,26 @@ public class SplitViewState {
 	 */
 	public void setSearchKeyword(String searchKeyword) {
 		this.searchKeyword = searchKeyword;
+	}
+
+	/**
+	 * @return the autoExpandRight
+	 */
+	public boolean isAutoExpandRight() {
+		return autoExpandRight;
+	}
+
+	/**
+	 * @param autoExpandRight the autoExpandRight to set
+	 */
+	public SplitViewState setAutoExpandRight(boolean autoExpandRight) {
+		this.autoExpandRight = autoExpandRight;
+		return this;
+	}
+
+	@Override
+	public String toString() {
+		return "SplitViewState [mDirectory=" + mDirectory + "]";
 	}
 
 }

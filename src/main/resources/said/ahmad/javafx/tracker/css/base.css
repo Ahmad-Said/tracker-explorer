@@ -1,4 +1,13 @@
 /* Custom made */
+.lastRowSelected{
+	-fx-font-weight: 800;
+	-fx-background-color: linear-gradient( from 0.0% 0.0% to 100.0% 100.0%, rgb(102,153,102) 0.0, rgb(179,230,179) 100.0);
+}
+.toastMessage{
+	-fx-font-weight:bold;
+	-fx-font-style: italic ;
+	-fx-background-color: linear-gradient( from 0.0% 0.0% to 100.0% 100.0%, rgb(53,200,244) 0.0, rgb(255,255,255) 100.0);
+}
 .tooltipHover{
 	-fx-background-color: #7F00FF;
 	-fx-text-fill: white;
@@ -10,6 +19,14 @@
 	-fx-text-fill:white;
 	-fx-font-size:13;
 	-fx-font-weight:bold;
+}
+
+.nameLabel{
+	-fx-border-radius:5;
+	-fx-border-width:2;
+	-fx-border-color: #0097A7;
+	-fx-font-weight:bold;
+	-fx-padding: 2px;
 }
 
 /* From bootstrapv3 */
