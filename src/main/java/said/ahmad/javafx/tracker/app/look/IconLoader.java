@@ -5,7 +5,6 @@ import java.util.HashMap;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import said.ahmad.javafx.tracker.app.ResourcesHelper;
-import said.ahmad.javafx.tracker.app.look.IconLoader.ICON_TYPE;
 
 public class IconLoader {
 	/**
@@ -32,7 +31,7 @@ public class IconLoader {
 		CORTANA, VLC,
 
 		// Misc Stuff
-		UP, DOWN, REMOVE, CANCEL,
+		UP, DOWN, REMOVE, CANCEL, INFORMATION
 	}
 
 	private static final HashMap<ICON_TYPE, String> enumToName = new HashMap<IconLoader.ICON_TYPE, String>() {
@@ -65,11 +64,14 @@ public class IconLoader {
 			put(ICON_TYPE.CORTANA, "/img/context_menu/cortana.png");
 			put(ICON_TYPE.VLC, "/img/context_menu/vlc.png");
 
+			// others
+			put(ICON_TYPE.REMOVE, "/img/connection/remove-symbol.png");
+			put(ICON_TYPE.CANCEL, "/img/context_menu/cancel.png");
+
 			// Misc stuff
 			put(ICON_TYPE.UP, "/img/misc/up.png");
 			put(ICON_TYPE.DOWN, "/img/misc/down.png");
-			put(ICON_TYPE.REMOVE, "/img/connection/remove-symbol.png");
-			put(ICON_TYPE.CANCEL, "/img/context_menu/cancel.png");
+			put(ICON_TYPE.INFORMATION, "/img/misc/information.png");
 
 		}
 	};

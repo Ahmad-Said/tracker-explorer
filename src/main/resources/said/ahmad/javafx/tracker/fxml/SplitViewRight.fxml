@@ -30,7 +30,7 @@
          <children>
             <Button fx:id="leftDominate" mnemonicParsing="false" onAction="#dominateLeft" styleClass="last" text="&lt;&lt;Dominate Left" GridPane.halignment="LEFT">
                <GridPane.margin>
-                  <Insets bottom="50.0" />
+                  <Insets bottom="50.0" top="5.0" />
                </GridPane.margin>
             </Button>
             <Button fx:id="swapButton" mnemonicParsing="false" onAction="#swapWithleft" text="Swap">

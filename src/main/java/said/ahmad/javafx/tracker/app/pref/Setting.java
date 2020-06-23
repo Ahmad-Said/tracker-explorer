@@ -62,6 +62,9 @@ public class Setting {
 	private static THEME lastTheme = THEME.BOOTSTRAPV3;
 	private static THEME_COLOR lastThemeColor = THEME_COLOR.NONE;
 
+	private static boolean notifyFilesChanges = true;
+	private static boolean showWindowOnTopWhenNotify = false;
+
 	// ---------------- Setting To be loaded as Part Two ----------------
 	private static boolean restoreLastOpenedFavorite = true;
 	private static ArrayList<String> lastOpenedFavoriteTitle = new ArrayList<>();
@@ -604,5 +607,33 @@ public class Setting {
 	 */
 	public static void setLastOpenedView(FavoriteView lastOpenedView) {
 		Setting.lastOpenedView = lastOpenedView;
+	}
+
+	/**
+	 * @return the notifyFilesChanges
+	 */
+	public static boolean isNotifyFilesChanges() {
+		return notifyFilesChanges;
+	}
+
+	/**
+	 * @param notifyFilesChanges the notifyFilesChanges to set
+	 */
+	public static void setNotifyFilesChanges(boolean notifyFilesChanges) {
+		Setting.notifyFilesChanges = notifyFilesChanges;
+	}
+
+	/**
+	 * @return the showWindowOnTopWhenNotify
+	 */
+	public static boolean isShowWindowOnTopWhenNotify() {
+		return showWindowOnTopWhenNotify;
+	}
+
+	/**
+	 * @param showWindowOnTopWhenNotify the showWindowOnTopWhenNotify to set
+	 */
+	public static void setShowWindowOnTopWhenNotify(boolean showWindowOnTopWhenNotify) {
+		Setting.showWindowOnTopWhenNotify = showWindowOnTopWhenNotify;
 	}
 }

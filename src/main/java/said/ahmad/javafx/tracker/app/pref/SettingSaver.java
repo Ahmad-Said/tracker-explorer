@@ -55,6 +55,9 @@ class SettingSaver {
 	// misc stuff
 	private FavoriteView lastOpenedView;
 
+	private boolean notifyFilesChanges;
+	private boolean showWindowOnTopWhenNotify;
+
 	public static void pushToSetting() {
 		// favorite stuff
 		Setting.setRestoreLastOpenedFavorite(toBeSaved.restoreLastOpenedFavorite);
@@ -76,6 +79,9 @@ class SettingSaver {
 
 		// misc stuff
 		Setting.setLastOpenedView(toBeSaved.lastOpenedView);
+
+		Setting.setNotifyFilesChanges(toBeSaved.notifyFilesChanges);
+		Setting.setShowWindowOnTopWhenNotify(toBeSaved.showWindowOnTopWhenNotify);
 	}
 
 	public static void pullFromSetting() {
@@ -88,6 +94,9 @@ class SettingSaver {
 
 		// misc Stuff
 		toBeSaved.lastOpenedView = Setting.getLastOpenedView();
+
+		toBeSaved.notifyFilesChanges = Setting.isNotifyFilesChanges();
+		toBeSaved.showWindowOnTopWhenNotify = Setting.isShowWindowOnTopWhenNotify();
 	}
 
 	private static XStream getXStream() {

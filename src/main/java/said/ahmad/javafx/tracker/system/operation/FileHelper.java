@@ -157,7 +157,12 @@ public class FileHelper {
 		}
 	}
 
-	public static void createFile(PathLayer parent) {
+	/**
+	 * @param parent
+	 * @param onFinishCreateAction do a call with new name of directory created<br>
+	 *                             can be null
+	 */
+	public static void createFile(PathLayer parent, CallBackVoid<String> onFinishCreateAction) {
 		String title = parent.toString();
 		String hint = "New File.txt";
 		PathLayer temp = parent.resolve(hint);
@@ -171,6 +176,9 @@ public class FileHelper {
 			PathLayer path = parent.resolve(name);
 			try {
 				path.createNewAsFile();
+				if (onFinishCreateAction != null) {
+					onFinishCreateAction.call(path.getName());
+				}
 			} catch (FileAlreadyExistsException e) {
 				DialogHelper.showAlert(Alert.AlertType.INFORMATION, title, "File already exists", path.toString());
 			} catch (Exception e) {

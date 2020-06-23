@@ -24,6 +24,7 @@ import javafx.event.EventHandler;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.fxml.Initializable;
+import javafx.geometry.Insets;
 import javafx.scene.Node;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
@@ -249,8 +250,14 @@ public class WelcomeController implements Initializable {
 		if (allSplitViewController.size() > 1) {
 			// if template was left hide Desktop button and show leftDominate
 			if (isLeftTemplate) {
-				newSplit.getDesktopButton().setVisible(false);
 				newSplit.getLeftDominate().setVisible(true);
+				newSplit.getDesktopButton().setText("Desk");
+				Insets oldDeskInset = GridPane.getMargin(newSplit.getDesktopButton());
+				GridPane.setMargin(newSplit.getDesktopButton(),
+						new Insets(oldDeskInset.getTop(), oldDeskInset.getRight(), oldDeskInset.getBottom(), 70));
+				Insets oldFavInset = GridPane.getMargin(newSplit.getFavoritesLocations());
+				GridPane.setMargin(newSplit.getFavoritesLocations(),
+						new Insets(oldFavInset.getTop(), oldFavInset.getRight(), oldFavInset.getBottom(), 125));
 			}
 			// mean there exist left
 			SplitViewController leftNeighbor = allSplitViewController.get(allSplitViewController.size() - 2);
@@ -718,7 +725,7 @@ public class WelcomeController implements Initializable {
 			AddRemoveUser(user);
 		}
 
-		MenuItem showConflict = new MenuItem("Show Conflict Log");
+		MenuItem showConflict = new MenuItem("Show Changes Log");
 		showConflict.setOnAction(new EventHandler<ActionEvent>() {
 
 			@Override
@@ -850,7 +857,7 @@ public class WelcomeController implements Initializable {
 	// self
 	// it give alot of errors
 	private void checkConflictLog() {
-		boolean ans = DialogHelper.showExpandableConfirmationDialog("Conflict Log", "Conflict Log",
+		boolean ans = DialogHelper.showExpandableConfirmationDialog("Changes Log", "Changes Log",
 				"This Windows show the difference of files between the last saved tracker data and the current directory state.\nAbbreviations:\n - {$userName} <<>> {$directory}\n - Del = Moved or Deleted\n - New = new Added File. \n Press OK to clear log.",
 				FileTracker.getConflictLog());
 		if (ans) {

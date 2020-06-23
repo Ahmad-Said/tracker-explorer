@@ -57,7 +57,7 @@ public class FileTracker {
 
 	private static final String BaseName = ".tracker_explorer";
 	// conflict log will discard creating new File/Folder operations
-	private static String ConflictLog = "";
+	private static StringBuilder ConflictLog = new StringBuilder();
 	// do not conflict UserFileName here is mean't by it's file name
 	// do change later
 	private static String UserFileName = BaseName + ".txt"; // by default
@@ -70,7 +70,7 @@ public class FileTracker {
 	}
 
 	public static String getConflictLog() {
-		return ConflictLog;
+		return ConflictLog.toString();
 	}
 
 	public static String getFileName(String userName) {
@@ -92,7 +92,7 @@ public class FileTracker {
 	}
 
 	public static void setConflictLog(String conflictLog) {
-		ConflictLog = conflictLog;
+		ConflictLog = new StringBuilder(conflictLog);
 	}
 
 	public static void updateUserFileName(String userName) {
@@ -513,7 +513,7 @@ public class FileTracker {
 		content.append(FIRST_LINE_TRACKER);
 		for (PathLayer singleFile : listFiles) {
 			if (!singleFile.getName().equals(UserFileName)) {
-				FileTrackerHolder dataHolder = new FileTrackerHolder(singleFile.getName());
+				FileTrackerHolder dataHolder = new FileTrackerHolder(singleFile.getName()).setSeen(false);
 				mapWritten.put(singleFile, dataHolder);
 				content.append(dataHolder.toString());
 			}
@@ -589,7 +589,8 @@ public class FileTracker {
 
 	/**
 	 * -> Track every untracked Folder with default option <br>
-	 * -> Load tracker data into current map<br>
+	 * -> Load tracker data into current map (all cumulative tracked data no map
+	 * clear is done)<br>
 	 * -> ignore any failed track<br>
 	 * <br>
 	 * More Details about initial data saved at<br>
@@ -683,7 +684,8 @@ public class FileTracker {
 	 * compare data in {@link #mapDetailsRevolved} with given parameter
 	 * listToCompareWith:<br>
 	 * ---> will clear all useless data in map (moved/deleted files) <br>
-	 * ---> add missing files to map. (newly created)<br>
+	 * ---> add missing(= newly created) files to <b>map tracker data with null
+	 * Seen</b><br>
 	 * ---> if any conflict occur will rewrite map details in
 	 * {@link #getWorkingDir()}<br>
 	 * Just a note {@link SplitViewController#refresh(String)} do call this function
@@ -695,16 +697,17 @@ public class FileTracker {
 	 * @see #resolveConflict()
 	 * @throws IOException
 	 */
-	public String resolveConflict(Set<PathLayer> listToCompareWith) {
+	@Nullable
+	public FileTrackerConflictLog resolveConflict(Set<PathLayer> listToCompareWith) {
 		if (!isTracked()) {
 			return null;
 		}
-		String currentConflict = "";
+		FileTrackerConflictLog currentConflict = new FileTrackerConflictLog();
 		ArrayList<PathLayer> toremove = new ArrayList<>();
 		for (PathLayer p : listToCompareWith) {
 			if (!mapDetailsRevolved.containsKey(p)) {
 				// @AddInHere
-				currentConflict = "  - New \t" + p.getName() + "\n" + currentConflict;
+				currentConflict.addedItems.add(p);
 				mapDetailsRevolved.put(p, new FileTrackerHolder(p.getName().toString()));
 			}
 		}
@@ -722,7 +725,7 @@ public class FileTracker {
 				// if time to live reach 0 -> silent remove
 				// log otherwise
 				if (mapDetailsRevolved.get(key).getTimeToLive() != 0) {
-					currentConflict = "  - Del \t" + key.getName() + "\n" + currentConflict;
+					currentConflict.removedItems.add(key);
 				}
 				toremove.add(key);
 			}
@@ -730,11 +733,11 @@ public class FileTracker {
 		for (PathLayer key : toremove) {
 			mapDetailsRevolved.remove(key);
 		}
-		if (!currentConflict.isEmpty()) {
-			ConflictLog = "\n\n* " + Setting.getActiveUser() + " <<>> " + workingDirPath.toString() + "\n"
-					+ currentConflict + ConflictLog;
-		}
-		if (!currentConflict.isEmpty()) {
+		if (currentConflict.didChangeOccurs()) {
+			currentConflict.generateSummary();
+			ConflictLog.insert(0, "\n\n* " + Setting.getActiveUser() + " <<>> " + workingDirPath.toString() + "\n"
+					+ currentConflict.summary);
+
 			writeMapDir(workingDirPath, false);
 			return currentConflict;
 		}

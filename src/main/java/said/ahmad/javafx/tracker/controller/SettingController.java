@@ -59,6 +59,11 @@ public class SettingController {
 	private IntField limitFilesRercursive;
 
 	@FXML
+	private CheckBox notifyFilesChanges;
+	@FXML
+	private CheckBox showWindowOnTopWhenNotify;
+
+	@FXML
 	private Label teraCopyPath;
 	@FXML
 	private CheckBox useTeraCopy;
@@ -253,6 +258,10 @@ public class SettingController {
 		autoBackSyncCheckBox.setSelected(Setting.isBackSync());
 		autoRenameCheckBox.setSelected(Setting.isAutoRenameUTFFile());
 		autoClearOperationFIle.setSelected(Setting.isAutoCloseClearDoneFileOperation());
+
+		showWindowOnTopWhenNotify.setSelected(Setting.isShowWindowOnTopWhenNotify());
+		notifyFilesChanges.setSelected(Setting.isNotifyFilesChanges());
+
 		useTeraCopy.setSelected(Setting.isUseTeraCopyByDefault());
 		limitFilesRercursive.setValue(Setting.getMaxLimitFilesRecursive());
 		openRecentFavorites.setSelected(Setting.isRestoreLastOpenedFavorite());
@@ -583,6 +592,10 @@ public class SettingController {
 	void saveSetting(ActionEvent event) {
 		Setting.setAutoCloseClearDoneFileOperation(autoClearOperationFIle.isSelected());
 		Setting.setAutoRenameUTFFile(autoRenameCheckBox.isSelected());
+
+		Setting.setNotifyFilesChanges(notifyFilesChanges.isSelected());
+		Setting.setShowWindowOnTopWhenNotify(showWindowOnTopWhenNotify.isSelected());
+
 		Setting.setUseTeraCopyByDefault(useTeraCopy.isSelected());
 		Setting.setBackSync(autoBackSyncCheckBox.isSelected());
 		Setting.setMaxLimitFilesRecursive(limitFilesRercursive.getValue());

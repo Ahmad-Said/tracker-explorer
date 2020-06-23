@@ -11,8 +11,19 @@ import said.ahmad.javafx.tracker.system.tracker.FileTracker.CommandOption;
  */
 public class FileTrackerHolder {
 
+	/**
+	 * Empty file tracker with null Seen/empty status Manually set seen if needed
+	 *
+	 * @param name
+	 * @see #setSeen(Boolean)
+	 */
 	public FileTrackerHolder(String name) {
 		this.name = name;
+	}
+
+	public FileTrackerHolder(String name, Boolean isSeen) {
+		this.name = name;
+		this.isSeen = isSeen;
 	}
 
 	/**

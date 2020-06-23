@@ -24,6 +24,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.ResourceBundle;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -130,6 +131,7 @@ import said.ahmad.javafx.tracker.system.operation.FileHelper.ActionOperation;
 import said.ahmad.javafx.tracker.system.services.TrackerPlayer;
 import said.ahmad.javafx.tracker.system.services.VLC;
 import said.ahmad.javafx.tracker.system.tracker.FileTracker;
+import said.ahmad.javafx.tracker.system.tracker.FileTrackerConflictLog;
 import said.ahmad.javafx.tracker.system.tracker.FileTrackerHolder;
 import said.ahmad.javafx.util.ControlListHelper;
 
@@ -1520,24 +1522,27 @@ public class SplitViewController implements Initializable {
 					if (thisCall != displayInThisCall) {
 						return;
 					}
-					// notice loading map then resolving conflicts will cause new elements to appear
-					// as untracked so user may need to refresh view again to operate
-					// with them. but the useful things is they get
-					// white action button so easy recognizable also
 					@Nullable
 					HashMap<PathLayer, FileTrackerHolder> isLoaded = fileTracker.loadMap(getmDirectoryPath(), true,
 							PathLayerHelper.getAbsolutePathToPaths(currentFileList));
 					if (thisCall != displayInThisCall) {
 						return;
 					}
-					if (isLoaded != null) {
-						fileTracker.resolveConflict(new HashSet<>(currentFileList));
-					}
+
+					// note that newly added files to map have null seen status so user got noticed
+					// of the for the first time
+					@Nullable
+					FileTrackerConflictLog conflict = isLoaded == null ? null
+							: fileTracker.resolveConflict(new HashSet<>(currentFileList));
+
 					Platform.runLater(() -> {
 						if (thisCall != displayInThisCall) {
 							return;
 						}
 						showList(currentFileList);
+						if (conflict != null && conflict.didChangeOccurs() && Setting.isNotifyFilesChanges()) {
+							showConflictLogNotification(conflict);
+						}
 					});
 				} catch (IOException e) {
 					e.printStackTrace();
@@ -1550,6 +1555,49 @@ public class SplitViewController implements Initializable {
 			updateFavoriteCheckBox(isOutOfTheBoxHelper);
 		}
 		pathField.setText(truePathField);
+	}
+
+	private void showConflictLogNotification(FileTrackerConflictLog conflict) {
+		String message = "Changes: ";
+		ArrayList<MenuItem> menus = new ArrayList<>();
+		parentWelcome.getStage().show();
+		if (conflict.addedItems.size() != 0) {
+			message += conflict.addedItems.size() + " New Items\n";
+			for (PathLayer p : conflict.addedItems) {
+				MenuItem mn = new MenuItem("- New: " + p.getName());
+				mn.setOnAction(e -> ScrollToName(p.getName()));
+				menus.add(mn);
+			}
+		}
+		if (conflict.removedItems.size() != 0) {
+			message += conflict.removedItems.size() + " Removed Items\n";
+			for (PathLayer p : conflict.addedItems) {
+				MenuItem mn = new MenuItem("- Removed: " + p.getName());
+				mn.setOnAction(e -> ScrollToName(p.getName()));
+				menus.add(mn);
+			}
+		}
+		if (conflict.addedItems.size() > 1) {
+			MenuItem selectAll = new MenuItem("Select All");
+			selectAll.setOnAction(e -> selectAllThatMatchAny(
+					conflict.addedItems.stream().map(p -> p.getName()).collect(Collectors.toSet())));
+			menus.add(selectAll);
+			selectAll.fire();
+		} else if (conflict.addedItems.size() == 1) {
+			table.getSelectionModel().clearSelection();
+			ScrollToName(conflict.addedItems.get(0).getName());
+		}
+		if (!Setting.isShowWindowOnTopWhenNotify()) {
+			MenuItem showMe = new MenuItem("Show me");
+			showMe.setOnAction(e -> {
+				boolean perviousState = parentWelcome.getStage().isAlwaysOnTop();
+				parentWelcome.getStage().setAlwaysOnTop(true);
+				parentWelcome.getStage().setAlwaysOnTop(perviousState);
+				showToastMessage("--->> Here buddy <<---");
+			});
+			menus.add(showMe);
+		}
+		showToastMessage(message, menus);
 	}
 
 	private void updateFavoriteCheckBox(boolean isOutOfTheBoxHelper) {
@@ -2857,6 +2905,11 @@ public class SplitViewController implements Initializable {
 		}
 	}
 
+	/**
+	 * Does not clear previous selection
+	 *
+	 * @param fileName
+	 */
 	public void ScrollToName(String fileName) {
 		TableViewModel found = getViewModelOfName(fileName);
 		if (found == null) {
@@ -2971,9 +3024,23 @@ public class SplitViewController implements Initializable {
 		table.getSelectionModel().select(0);
 	}
 
-	public ContextMenu showToastMessage(String message) {
+	/**
+	 *
+	 * @param message
+	 * @param subMenuDescription can be null
+	 * @return
+	 */
+	public ContextMenu showToastMessage(String message, @Nullable List<MenuItem> subMenuDescription) {
 		ContextMenu mn = new ContextMenu();
-		MenuItem mnChild = new MenuItem(message);
+		MenuItem mnChild;
+		if (subMenuDescription == null) {
+			mnChild = new MenuItem(message);
+		} else {
+			Menu expandableChilde = new Menu(message);
+			mnChild = expandableChilde;
+			expandableChilde.getItems().addAll(subMenuDescription);
+		}
+		mnChild.setGraphic(IconLoader.getIconImageView(ICON_TYPE.INFORMATION));
 		mn.getItems().add(mnChild);
 		mn.getStyleClass().addAll("toastMessage");
 		mnChild.getStyleClass().addAll("toastMessage");
@@ -2985,8 +3052,19 @@ public class SplitViewController implements Initializable {
 			yLoc += test.getLayoutY();
 			test = test.getParent();
 		}
-		mn.show(parentWelcome.getStage(), xLoc, yLoc);
+		if (Setting.isShowWindowOnTopWhenNotify()) {
+			boolean perviousState = parentWelcome.getStage().isAlwaysOnTop();
+			parentWelcome.getStage().setAlwaysOnTop(true);
+			mn.show(parentWelcome.getStage(), xLoc, yLoc);
+			parentWelcome.getStage().setAlwaysOnTop(perviousState);
+		} else {
+			mn.show(parentWelcome.getStage(), xLoc, yLoc);
+		}
 		return mn;
+	}
+
+	public ContextMenu showToastMessage(String message) {
+		return showToastMessage(message, null);
 	}
 
 	public void refreshAsPathField() {
@@ -3003,7 +3081,12 @@ public class SplitViewController implements Initializable {
 	 * The use of this function is that sometimes after changing
 	 * {@link TableViewModel#setNoteText(String)} the value isn't updated in the
 	 * view unless something refresh the table so here will do it automatically all
-	 * way reserving the old selection also
+	 * way reserving the old selection also <br>
+	 * Also it will trigger add listener on dataTable, then a row factory if
+	 * scrolled to corresponding item
+	 *
+	 * @see #initializeDataTableListenerTracker()
+	 * @see #initializeTableRowFactory()
 	 */
 	protected void refreshTableWithSameData() {
 		List<TableViewModel> Copy = new ArrayList<>(DataTable);
@@ -3217,14 +3300,8 @@ public class SplitViewController implements Initializable {
 	}
 
 	public void createFile() {
-		FileHelper.createFile(getmDirectoryPath());
+		FileHelper.createFile(getmDirectoryPath(), newName -> onFinishLoadingScrollToName = newName);
 	}
-
-	// is this function causing the warning ?
-	// May 03, 2019 8:02:57 PM com.sun.javafx.scene.control.skin.VirtualFlow
-	// addTrailingCells
-	// INFO: index exceeds maxCellCount. Check size calculations for class
-	// application.SplitViewController$1
 
 	public void select(String regex) {
 		if (regex.startsWith("*")) {
@@ -3236,6 +3313,16 @@ public class SplitViewController implements Initializable {
 			String item = model.getName();
 			if (item.matches(regex) || StringHelper.containsWord(item, regex)) {
 				table.getSelectionModel().select(model);
+			}
+		}
+	}
+
+	public void selectAllThatMatchAny(Set<String> names) {
+		table.getSelectionModel().clearSelection();
+		for (TableViewModel t : sortedData) {
+			if (names.contains(t.getName())) {
+				// select will done scroll automatically
+				table.getSelectionModel().select(t);
 			}
 		}
 	}
@@ -3490,5 +3577,12 @@ public class SplitViewController implements Initializable {
 	 */
 	public Button getLeftDominate() {
 		return leftDominate;
+	}
+
+	/**
+	 * @return the favoritesLocations
+	 */
+	public MenuButton getFavoritesLocations() {
+		return favoritesLocations;
 	}
 }

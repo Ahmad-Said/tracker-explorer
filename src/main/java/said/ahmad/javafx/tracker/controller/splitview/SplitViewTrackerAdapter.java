@@ -38,7 +38,9 @@ class SplitViewTrackerAdapter {
 		Set<PathLayer> parentPaths = selectedItems.stream().map(selection -> selection.getFilePath().getParentPath())
 				.collect(Collectors.toSet());
 		parentPaths.add(clicked.getFilePath().getParentPath());
+		// track untracked folder and load them into map
 		FileTrackerMultipleReturn fileMultipleReturn = fileTracker.trackNewMultipleAndAsk(parentPaths, true);
+
 		if (fileMultipleReturn.didTrackNewFolder) {
 			splitView.refreshTableWithSameData();
 		}
@@ -57,7 +59,21 @@ class SplitViewTrackerAdapter {
 			clicked.getMarkSeen().setSelected(false);
 			return;
 		}
-		toChange.getValue().forEach(t -> t.setSeen(!fileTracker.isSeen(t.getFilePath())));
+		for (TableViewModel t : toChange.getValue()) {
+			if (fileTracker.isSeen(t.getFilePath()) != null) {
+				// normal behavior toggle seen status
+				t.setSeen(!fileTracker.isSeen(t.getFilePath()));
+			} else {
+				// sometime when newly files are detected while resolving conflict
+				// items get added but with null seen status to notice that these items are new
+				// by making (Seen button is white). @See FileTracker#resolveConflict
+
+				// initial setting to get toggled down
+				fileTracker.setSeen(t.getFilePath(), false);
+				// visual update
+				t.setSeen(true);
+			}
+		}
 		fileTracker.toggleSeen(toChange.getKey());
 		fileTracker.commitTrackerDataChange(toChange.getKey());
 		splitView.reloadSearchField();
