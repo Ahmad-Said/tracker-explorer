@@ -6,6 +6,9 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
+import javax.xml.ws.Holder;
+
+import javafx.application.Platform;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.event.ActionEvent;
@@ -37,6 +40,7 @@ import javafx.util.Duration;
 import said.ahmad.javafx.tracker.app.DialogHelper;
 import said.ahmad.javafx.tracker.app.Main;
 import said.ahmad.javafx.tracker.app.ResourcesHelper;
+import said.ahmad.javafx.tracker.app.ThreadExecutors;
 import said.ahmad.javafx.tracker.app.look.ThemeManager;
 import said.ahmad.javafx.tracker.controller.splitview.SplitViewController;
 import said.ahmad.javafx.tracker.datatype.MediaCutData;
@@ -45,6 +49,7 @@ import said.ahmad.javafx.tracker.system.file.PathLayer;
 import said.ahmad.javafx.tracker.system.services.VLC;
 import said.ahmad.javafx.tracker.system.tracker.FileTracker;
 import said.ahmad.javafx.tracker.system.tracker.FileTrackerHolder;
+import said.ahmad.javafx.util.CallBackVoid;
 
 public class FilterVLCController {
 
@@ -474,19 +479,30 @@ public class FilterVLCController {
 
 	@FXML
 	public void PickStart() {
-		int sec = pickHelper("Start");
-		inputStart.setText(FilterVLCViewModel.getDurationFormat(Duration.millis(sec)));
+		pickHelper("Start", pickedSecond -> {
+			Platform.runLater(
+					() -> inputStart.setText(FilterVLCViewModel.getDurationFormat(Duration.millis(pickedSecond))));
+		});
+
 	}
 
 	@FXML
 	public void PickEnd() {
-		int sec = pickHelper("End");
-		inputEnd.setText(FilterVLCViewModel.getDurationFormat(Duration.millis(sec)));
+		pickHelper("End", pickedSecond -> {
+			Platform.runLater(
+					() -> inputEnd.setText(FilterVLCViewModel.getDurationFormat(Duration.millis(pickedSecond))));
+		});
 	}
 
 	private boolean doshowAgain = true;
 
-	private int pickHelper(String where) {
+	/**
+	 * Start a process in another thread waiting to read it from VLC
+	 *
+	 * @param where
+	 * @param callBackPickedSecond have a parameter the picked second
+	 */
+	private void pickHelper(String where, CallBackVoid<Integer> callBackPickedSecond) {
 		if (doshowAgain) {
 			doshowAgain = !DialogHelper.showConfirmationDialog("Pick " + where,
 					"Go to position using VLC then close it!\nwe will do the rest.",
@@ -494,23 +510,25 @@ public class FilterVLCController {
 							+ "\n- The program in suspend waiting vlc do not close it"
 							+ "\n- Press OK to not Show Again");
 		}
-		Duration resume = null;
+		Holder<Duration> resume = new Holder<>(null);
 		if (where.equals("Start")) {
 			String sStart = inputStart.getText();
-			resume = studyFormat(sStart, "Start", false);
+			resume.value = studyFormat(sStart, "Start", false);
 		} else {
 			String sEnd = inputEnd.getText();
-			resume = studyFormat(sEnd, "End", false);
+			resume.value = studyFormat(sEnd, "End", false);
 		}
-		if (resume.toSeconds() == 0) {
-			resume = null;
+		if (resume.value.toSeconds() == 0) {
+			resume.value = null;
 		}
-		int sec = VLC.pickTime(mPath.toURI(), resume);
+
+		ThreadExecutors.recursiveExecutor.execute(() -> {
+			int millisSec = VLC.pickTime(mPath.toURI(), resume.value);
+			callBackPickedSecond.call(millisSec);
+		});
 		// this transition can be used to get focus but annoying
 		// filterStage.hide();
 		// filterStage.show();
-
-		return sec;
 	}
 
 	@FXML

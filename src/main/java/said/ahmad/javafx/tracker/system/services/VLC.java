@@ -125,6 +125,15 @@ public class VLC {
 		return isAudio(name) || isVideo(name) || isPlaylist(name);
 	}
 
+	/**
+	 * This does start a process and block until a value is returned<br>
+	 * So be aware to call it in another thread other than Platform thread
+	 *
+	 * @param pathURI
+	 * @param resumeTime can be null
+	 * @return <b>millisSecond</b> time picked after closing vlc at specific moment
+	 *         in millisSecond beginning from start of video
+	 */
 	public static int pickTime(URI pathURI, Duration resumeTime) {
 		try {
 			ReloadRecentMRL();
