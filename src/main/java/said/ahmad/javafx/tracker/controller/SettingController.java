@@ -46,6 +46,7 @@ import said.ahmad.javafx.tracker.system.call.TeraCopy;
 import said.ahmad.javafx.tracker.system.operation.FileHelper;
 import said.ahmad.javafx.tracker.system.services.TrackerPlayer;
 import said.ahmad.javafx.tracker.system.tracker.FileTracker;
+import said.ahmad.javafx.util.ControlListHelper;
 
 public class SettingController {
 
@@ -361,51 +362,14 @@ public class SettingController {
 
 	@FXML
 	public void upSelectedFavorites() {
-		int selectSize = favoritesListView.getSelectionModel().getSelectedIndices().size();
-		int whichOne = 0;
-		int[] toSelect = new int[selectSize];
-		int[] selected = favoritesListView.getSelectionModel().getSelectedIndices().stream().mapToInt(m -> m).toArray();
-		for (Integer i : selected) {
-			int j = i - 1;
-			String title = favoritesData.get(i);
-			if (j >= whichOne) {
-				favoritesData.remove(title);
-				favoritesData.add(j, title);
-				toSelect[whichOne] = j;
-			} else {
-				toSelect[whichOne] = i;
-			}
-			whichOne++;
-		}
-		favoritesListView.getSelectionModel().clearSelection();
-		favoritesListView.getSelectionModel().selectIndices(-1, toSelect);
-		favoritesListView.scrollTo(toSelect.length != 0 ? toSelect[0] : 0);
+		int scrollTo = ControlListHelper.moveUpSelection(favoritesListView.getSelectionModel(), favoritesData);
+		favoritesListView.scrollTo(scrollTo);
 	}
 
 	@FXML
 	public void downSelectedFavorites() {
-		int size = favoritesData.size();
-		int selectSize = favoritesListView.getSelectionModel().getSelectedIndices().size();
-		int whichOne = 0;
-		int[] toSelect = new int[selectSize];
-		int[] selected = favoritesListView.getSelectionModel().getSelectedIndices().stream().mapToInt(m -> m).toArray();
-		for (Integer index = selectSize - 1; index >= 0; index--) {
-			int i = selected[index];
-			int j = i + 1;
-			String title = favoritesData.get(i);
-			if (j <= size - 1 - whichOne) {
-				favoritesData.remove(title);
-				favoritesData.add(j, title);
-				toSelect[whichOne] = j;
-			} else {
-				toSelect[whichOne] = i;
-			}
-			whichOne++;
-		}
-		favoritesListView.getSelectionModel().clearSelection();
-		favoritesListView.getSelectionModel().selectIndices(-1, toSelect);
-		favoritesListView.scrollTo(toSelect.length != 0 ? toSelect[0] : 0);
-
+		int scrollTo = ControlListHelper.moveDownSelection(favoritesListView.getSelectionModel(), favoritesData);
+		favoritesListView.scrollTo(scrollTo);
 	}
 
 	@FXML

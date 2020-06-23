@@ -101,6 +101,8 @@ import said.ahmad.javafx.tracker.app.StringHelper;
 import said.ahmad.javafx.tracker.app.ThreadExecutors;
 import said.ahmad.javafx.tracker.app.WindowsExplorerComparator;
 import said.ahmad.javafx.tracker.app.look.ContextMenuLook;
+import said.ahmad.javafx.tracker.app.look.IconLoader;
+import said.ahmad.javafx.tracker.app.look.IconLoader.ICON_TYPE;
 import said.ahmad.javafx.tracker.app.pref.Setting;
 import said.ahmad.javafx.tracker.controller.FilterVLCController;
 import said.ahmad.javafx.tracker.controller.PhotoViewerController;
@@ -129,6 +131,7 @@ import said.ahmad.javafx.tracker.system.services.TrackerPlayer;
 import said.ahmad.javafx.tracker.system.services.VLC;
 import said.ahmad.javafx.tracker.system.tracker.FileTracker;
 import said.ahmad.javafx.tracker.system.tracker.FileTrackerHolder;
+import said.ahmad.javafx.util.ControlListHelper;
 
 /**
  * For a structure view read
@@ -225,6 +228,8 @@ public class SplitViewController implements Initializable {
 	@FXML
 	private Button exitSplitButton;
 
+	@FXML
+	private VBox topTableVbox;
 	@FXML
 	private Button backButton;
 	@FXML
@@ -1031,7 +1036,7 @@ public class SplitViewController implements Initializable {
 				predictNavigation.setText("");
 				break;
 			case CONTEXT_MENU:
-				showContextMenuSystem();
+				showContextMenu();
 				break;
 			// TODO check declaration there is a lot of key to define
 			default:
@@ -2151,7 +2156,7 @@ public class SplitViewController implements Initializable {
 		pasteBaseNames.setGraphic(new ImageView(ContextMenuLook.pasteBaseNameIcon));
 
 		renameUtility.setOnAction(e -> new RenameUtilityController(getSelection()));
-		renameUtility.setGraphic(new ImageView(ContextMenuLook.bulkRenameIcon));
+		renameUtility.setGraphic(new ImageView(ContextMenuLook.bulkRenameUtilityIcon));
 
 		undoLastPasteNames.setOnAction(e -> RenameUtilityController.undoLastRename(null, null));
 		undoLastPasteNames.setGraphic(new ImageView(ContextMenuLook.undoIcon));
@@ -2222,6 +2227,15 @@ public class SplitViewController implements Initializable {
 		tracker.setGraphic(new ImageView(ContextMenuLook.trackerIcon));
 		tracker.getItems().addAll(trackerData, trackerNote, trackerVLC, trackerPlayer);
 
+		// Hidden View Section
+		Menu hiddenView = new Menu("View");
+		MenuItem showCustomSort = new MenuItem("Custom Sort Control");
+		showCustomSort.setOnAction(e -> showToggleCustomSortControl());
+		showCustomSort.setGraphic(new ImageView(ContextMenuLook.sortIcon));
+
+		hiddenView.setGraphic(new ImageView(ContextMenuLook.hiddenIcon));
+		hiddenView.getItems().add(showCustomSort);
+
 		// System Context Menu
 		MenuItem systemContextMenu = new MenuItem("More");
 		systemContextMenu.setOnAction(e -> showContextMenuSystem());
@@ -2237,8 +2251,45 @@ public class SplitViewController implements Initializable {
 		allMenu.add(newItemCreation);
 		allMenu.add(delete);
 		allMenu.add(tracker);
+		allMenu.add(hiddenView);
 		allMenu.add(systemContextMenu);
 		return allMenu;
+	}
+
+	private HBox sortControlVbox;
+
+	private void showToggleCustomSortControl() {
+		if (sortControlVbox == null) {
+			sortControlVbox = new HBox();
+			sortControlVbox.setAlignment(Pos.CENTER);
+
+			Button up = new Button("Up");
+
+			up.setOnAction(e -> ControlListHelper.moveUpSelection(table.getSelectionModel(), DataTable));
+			up.setGraphic(IconLoader.getIconImageView(ICON_TYPE.UP, true));
+
+			Button down = new Button("Down");
+			down.setOnAction(e -> ControlListHelper.moveDownSelection(table.getSelectionModel(), DataTable));
+			down.setGraphic(IconLoader.getIconImageView(ICON_TYPE.DOWN, true));
+
+			Button remove = new Button("Hide Items");
+			remove.setOnAction(e -> ControlListHelper.removeSelection(table.getSelectionModel(), DataTable));
+			remove.setGraphic(new ImageView(ContextMenuLook.hiddenIcon));
+
+			Button hide = new Button("Close");
+			hide.setOnAction(e -> showToggleCustomSortControl());
+			hide.setGraphic(IconLoader.getIconImageView(ICON_TYPE.REMOVE, true));
+
+			sortControlVbox.getChildren().addAll(up, down, remove, hide);
+			topTableVbox.getChildren().add(sortControlVbox);
+		} else {
+			sortControlVbox.setVisible(!sortControlVbox.isVisible());
+			if (!sortControlVbox.isVisible()) {
+				topTableVbox.getChildren().remove(sortControlVbox);
+			} else if (!topTableVbox.getChildren().contains(sortControlVbox)) {
+				topTableVbox.getChildren().add(sortControlVbox);
+			}
+		}
 	}
 
 	private void copyBaseNames() {
