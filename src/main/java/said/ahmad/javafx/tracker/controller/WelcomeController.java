@@ -552,22 +552,8 @@ public class WelcomeController implements Initializable {
 		newEmbedWindow.getItems().addAll(newSplitLeftTemplate, newSplitRightTemplate);
 		// New Window menu
 		newWindow.setOnAction(e -> {
-			FXMLLoader loader = new FXMLLoader();
-			WelcomeController anotherWelcome = new WelcomeController();
-			loader.setController(anotherWelcome);
-			loader.setLocation(ResourcesHelper.getResourceAsURL("/fxml/Welcome.fxml"));
 			try {
-				Stage anotherStage = new Stage();
-				loader.load();
-				Parent root = loader.getRoot();
-				Scene scene = new Scene(root);
-				ThemeManager.applyTheme(scene);
-				anotherStage.setScene(scene);
-				ThemeManager.applyTheme(scene);
-				anotherStage.getIcons().add(ThemeManager.DEFAULT_ICON_IMAGE);
-				anotherStage.show();
-				anotherWelcome.initializePart2AddSplitView(anotherStage, true);
-				anotherWelcome.initializePart3AddTabs(anotherStage, false);
+				WelcomeController anotherWelcome = newWelcomeControllerStage(new Stage());
 				for (int i = 0; i < allSplitViewController.size(); i++) {
 					if (anotherWelcome.allSplitViewController.size() < i + 1) {
 						anotherWelcome.addSplitView();
@@ -784,7 +770,7 @@ public class WelcomeController implements Initializable {
 			int end = Math.min(allSplitViewController.size(), start + splitStates.size());
 			int j = 0;
 			for (int i = start; i < end; i++) {
-				allSplitViewController.get(i).restoreSplitViewState(splitStates.get(j++));
+				allSplitViewController.get(i).restoreSplitViewStateWithoutQueue(splitStates.get(j++));
 			}
 		}
 	}
@@ -1206,5 +1192,23 @@ public class WelcomeController implements Initializable {
 	 */
 	public Stage getStage() {
 		return stage;
+	}
+
+	public static WelcomeController newWelcomeControllerStage(Stage stage) throws IOException {
+		FXMLLoader loader = new FXMLLoader();
+		WelcomeController anotherWelcome = new WelcomeController();
+		loader.setController(anotherWelcome);
+		loader.setLocation(ResourcesHelper.getResourceAsURL("/fxml/Welcome.fxml"));
+		loader.load();
+		Parent root = loader.getRoot();
+		Scene scene = new Scene(root);
+		ThemeManager.applyTheme(scene);
+		stage.setScene(scene);
+		ThemeManager.applyTheme(scene);
+		stage.getIcons().add(ThemeManager.DEFAULT_ICON_IMAGE);
+		stage.show();
+		anotherWelcome.initializePart2AddSplitView(stage, true);
+		anotherWelcome.initializePart3AddTabs(stage, false);
+		return anotherWelcome;
 	}
 }

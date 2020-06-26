@@ -462,8 +462,10 @@ public class FileTracker {
 			StringBuilder content = new StringBuilder(getAverageCountContentCharacters(mapDetailsRevolved.size()));
 			content.append(FIRST_LINE_TRACKER);
 
-			for (PathLayer path : mapDetailsRevolved.keySet()) {
-				content.append(mapDetailsRevolved.get(path).toString());
+			for (FileTrackerHolder data : mapDetailsRevolved.values()) {
+				if (data.getTimeToLive() != 0) {
+					content.append(data.toString());
+				}
 			}
 			writer.write(content.toString());
 			writer.close();

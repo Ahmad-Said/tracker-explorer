@@ -182,7 +182,12 @@ public class FilePathLayer extends PathLayer {
 
 	@Override
 	public boolean move(PathLayer targetPathLayer) throws IOException {
-		if (compareTo(targetPathLayer) != 0 && targetPathLayer.isLocal()) {
+		if (compareTo(targetPathLayer) == 0) {
+			// same file require nothing
+			return true;
+		}
+		// target is another file
+		if (targetPathLayer.isLocal()) {
 			Files.move(toPath(), targetPathLayer.toPath());
 			return true;
 		} else {

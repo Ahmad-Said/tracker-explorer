@@ -29,6 +29,20 @@
 	-fx-padding: 2px;
 }
 
+.onFocusBorder{
+	
+}
+.onFocusBorder:focused{
+	-fx-border-radius:10;
+	-fx-border-width:5;
+	-fx-border-color:silver;
+}
+.onFocusBorderForced{
+	-fx-border-radius:10;
+	-fx-border-width:5;
+	-fx-border-color:silver;
+}
+
 /* From bootstrapv3 */
 /*success*/
 

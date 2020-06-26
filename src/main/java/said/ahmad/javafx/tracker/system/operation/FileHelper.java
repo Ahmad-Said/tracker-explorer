@@ -6,14 +6,13 @@ import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.FilenameUtils;
 
 import javafx.application.Platform;
-import javafx.event.Event;
-import javafx.event.EventHandler;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Alert.AlertType;
 import said.ahmad.javafx.tracker.app.DialogHelper;
@@ -73,9 +72,25 @@ public class FileHelper {
 		FileHelperGUIOperation.doThreadOperationsAllList();
 	}
 
-	public static boolean delete(List<PathLayer> source, EventHandler<Event> onFinishTask) {
+	/**
+	 * --> Ask to confirm deletion<br>
+	 * --> Resolve FileTracker Data by using
+	 * {@link FileTracker#operationUpdate(List, PathLayer, ActionOperation)}
+	 * {@value ActionOperation#DELETE}<br>
+	 * --> Delete files <br>
+	 * --> call on onFinishTask only if the deletedPaths list is not empty (delete
+	 * occurs)
+	 *
+	 * @param source
+	 * @param onFinishTask call with list of deleted paths (same as returned list)
+	 *                     only if the list is not empty
+	 * @return successfully deleted paths list,<br>
+	 *         Empty list if was not confirmed
+	 */
+	public static HashSet<PathLayer> delete(List<PathLayer> source, CallBackVoid<HashSet<PathLayer>> onFinishTask) {
+		HashSet<PathLayer> deletedPaths = new HashSet<>();
 		if (source.size() == 0) {
-			return false;
+			return deletedPaths;
 		}
 		String sourceDirectory = source.get(0).getParentPath().toString();
 
@@ -100,6 +115,7 @@ public class FileHelper {
 						Platform.runLater(() -> Main.ProcessTitle("Please Wait..Deleting " + path.getName()));
 						try {
 							path.deleteForcefully();
+							deletedPaths.add(path);
 						} catch (Exception e) {
 							e.printStackTrace();
 							undeleted.add(path);
@@ -117,13 +133,14 @@ public class FileHelper {
 					}
 					Platform.runLater(() -> {
 						Main.ResetTitle();
-						onFinishTask.handle(null);
+						if (!deletedPaths.isEmpty()) {
+							onFinishTask.call(deletedPaths);
+						}
 					});
 				}
 			}.start();
 		}
-		return isConfirmed;
-
+		return deletedPaths;
 	}
 
 	/**

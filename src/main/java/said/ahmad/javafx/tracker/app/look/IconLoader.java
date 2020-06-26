@@ -30,8 +30,15 @@ public class IconLoader {
 
 		CORTANA, VLC,
 
+		// Image operation
+		CROP, ROTATE_RIGHT, CENTRALIZE, FIT,
+
 		// Misc Stuff
-		UP, DOWN, REMOVE, CANCEL, INFORMATION
+		UP, DOWN, REMOVE, CANCEL, SELECT_ALL,
+
+		SETIING, TOOL_BOX, INFORMATION, SAVE,
+
+		DRAG, ZOOM, GRID
 	}
 
 	private static final HashMap<ICON_TYPE, String> enumToName = new HashMap<IconLoader.ICON_TYPE, String>() {
@@ -64,14 +71,29 @@ public class IconLoader {
 			put(ICON_TYPE.CORTANA, "/img/context_menu/cortana.png");
 			put(ICON_TYPE.VLC, "/img/context_menu/vlc.png");
 
+			// Image Stuff
+			put(ICON_TYPE.CROP, "/img/img_operation/crop.png");
+			put(ICON_TYPE.ROTATE_RIGHT, "/img/img_operation/rotate_right.png");
+			put(ICON_TYPE.CENTRALIZE, "/img/img_operation/centralize.png");
+			put(ICON_TYPE.FIT, "/img/img_operation/fit.png");
+
 			// others
-			put(ICON_TYPE.REMOVE, "/img/connection/remove-symbol.png");
+			put(ICON_TYPE.REMOVE, "/img/connection/remove_symbol.png");
 			put(ICON_TYPE.CANCEL, "/img/context_menu/cancel.png");
+			put(ICON_TYPE.SELECT_ALL, "/img/misc/select_all.png");
 
 			// Misc stuff
 			put(ICON_TYPE.UP, "/img/misc/up.png");
 			put(ICON_TYPE.DOWN, "/img/misc/down.png");
+
+			put(ICON_TYPE.SETIING, "/img/setting-512.png");
+			put(ICON_TYPE.TOOL_BOX, "/img/setting-512.png");
 			put(ICON_TYPE.INFORMATION, "/img/misc/information.png");
+			put(ICON_TYPE.SAVE, "/img/misc/save.png");
+
+			put(ICON_TYPE.DRAG, "/img/misc/drag.png");
+			put(ICON_TYPE.ZOOM, "/img/zoom_icon.png");
+			put(ICON_TYPE.GRID, "/img/grid_button.png");
 
 		}
 	};

@@ -13,12 +13,10 @@ import javafx.geometry.Insets;
 import javafx.scene.Scene;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Alert.AlertType;
-import javafx.scene.control.Button;
 import javafx.scene.control.ButtonBar.ButtonData;
 import javafx.scene.control.ButtonType;
 import javafx.scene.control.Dialog;
 import javafx.scene.control.Label;
-import javafx.scene.control.ProgressIndicator;
 import javafx.scene.control.ScrollPane;
 import javafx.scene.control.TextArea;
 import javafx.scene.control.TextField;
@@ -37,6 +35,7 @@ import javafx.stage.Stage;
 import javafx.util.Pair;
 import said.ahmad.javafx.fxGraphics.IntField;
 import said.ahmad.javafx.tracker.app.look.ThemeManager;
+import said.ahmad.javafx.tracker.fxGraphics.DialogBlock;
 
 public class DialogHelper {
 
@@ -344,41 +343,20 @@ public class DialogHelper {
 
 	}
 
-	static private Dialog<String> blockDialog;
+	static private DialogBlock blockDialog;
 
 	public static void showWaitingScreen(String title, String WaitingText) {
 
 		// https://stackoverflow.com/questions/31556373/javafx-dialog-with-2-input-fields
 		// Create the custom dialog.
-		blockDialog = new Dialog<String>();
-		blockDialog.setTitle(title);
-
-		Stage stage = (Stage) blockDialog.getDialogPane().getScene().getWindow();
-		stage.getIcons().add(ThemeManager.DEFAULT_ICON_IMAGE);
-		ThemeManager.applyTheme(stage.getScene());
-
-		blockDialog.getDialogPane().getButtonTypes().addAll(ButtonType.OK);
-		final Button btOk = (Button) blockDialog.getDialogPane().lookupButton(ButtonType.OK);
-		btOk.setDisable(true);
-		blockDialog.setOnCloseRequest(e -> showWaitingScreen(title, WaitingText));
-//		dialog.getDialogPane().getButtonTypes().addAll(submitButtonOk, ButtonType.CANCEL);
-		// Set the button types.
-		GridPane gridPane = new GridPane();
-		gridPane.setHgap(10);
-		gridPane.setVgap(10);
-		gridPane.setPadding(new Insets(20, 150, 10, 10));
-		Label showLabel = new Label(WaitingText);
-		gridPane.add(showLabel, 1, 0);
-		gridPane.add(new ProgressIndicator(), 0, 0);
-		blockDialog.getDialogPane().setContent(gridPane);
-		blockDialog.show();
-//		dialog.close();
+		if (blockDialog == null) {
+			blockDialog = new DialogBlock(title, WaitingText);
+		}
+		blockDialog.showWaitingScreenBlock(title, WaitingText);
 	}
 
 	public static void closeWaitingScreen() {
-		blockDialog.setOnCloseRequest(e -> {
-		});
-		blockDialog.close();
+		blockDialog.closeWaitingScreen();
 	}
 
 }

@@ -1,6 +1,8 @@
 package said.ahmad.javafx.tracker.fxGraphics;
 
 import java.awt.Graphics2D;
+import java.awt.MouseInfo;
+import java.awt.Point;
 import java.awt.geom.AffineTransform;
 import java.awt.image.AffineTransformOp;
 import java.awt.image.BufferedImage;
@@ -20,10 +22,14 @@ import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
+import java.util.stream.Collectors;
 
 import javax.imageio.ImageIO;
 import javax.imageio.ImageReader;
 import javax.imageio.stream.ImageInputStream;
+import javax.xml.ws.Holder;
+
+import org.jetbrains.annotations.Nullable;
 
 import javafx.application.Platform;
 import javafx.beans.property.ObjectProperty;
@@ -44,7 +50,9 @@ import javafx.scene.Group;
 import javafx.scene.SnapshotParameters;
 import javafx.scene.control.Alert.AlertType;
 import javafx.scene.control.Button;
+import javafx.scene.control.ContextMenu;
 import javafx.scene.control.Label;
+import javafx.scene.control.Menu;
 import javafx.scene.control.MenuItem;
 import javafx.scene.control.ProgressBar;
 import javafx.scene.control.ProgressIndicator;
@@ -57,7 +65,7 @@ import javafx.scene.input.Clipboard;
 import javafx.scene.input.ClipboardContent;
 import javafx.scene.input.Dragboard;
 import javafx.scene.input.KeyCode;
-import javafx.scene.input.MouseButton;
+import javafx.scene.input.MouseEvent;
 import javafx.scene.input.TransferMode;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Pane;
@@ -71,13 +79,20 @@ import javafx.stage.FileChooser.ExtensionFilter;
 import javafx.stage.Stage;
 import javafx.util.Pair;
 import said.ahmad.javafx.tracker.app.DialogHelper;
+import said.ahmad.javafx.tracker.app.Main;
 import said.ahmad.javafx.tracker.app.ResourcesHelper;
 import said.ahmad.javafx.tracker.app.StringHelper;
+import said.ahmad.javafx.tracker.app.look.ContextMenuLook;
+import said.ahmad.javafx.tracker.app.look.IconLoader;
+import said.ahmad.javafx.tracker.app.look.IconLoader.ICON_TYPE;
 import said.ahmad.javafx.tracker.datatype.ImagePosition;
 import said.ahmad.javafx.tracker.system.call.RunMenu;
 import said.ahmad.javafx.tracker.system.file.PathLayer;
 import said.ahmad.javafx.tracker.system.file.PathLayerHelper;
 import said.ahmad.javafx.tracker.system.file.local.FilePathLayer;
+import said.ahmad.javafx.tracker.system.operation.FileHelper;
+import said.ahmad.javafx.util.CallBackToDo;
+import said.ahmad.javafx.util.CallBackVoid;
 
 /**
  * To Add this imageView to a parent node use {@link #getImageAllPane()}
@@ -92,6 +107,7 @@ public class ImageGridItem extends ImageView {
 	private static boolean MantaingPos = true;
 	private static boolean AutoFitWidth = false;
 	private static boolean DoubleClickBehavior = true;
+
 	private boolean stretchImage = false;
 
 	private static final Image ERROR_IMAGE = new Image(ResourcesHelper.getResourceAsStream("/img/image_not_Found.png"));
@@ -106,7 +122,14 @@ public class ImageGridItem extends ImageView {
 
 	private ImageGridItem alreadyShownGridImage;
 	private EventHandler<Event> onFinishLoading = null;
-	private EventHandler<Event> onSetUpImage = null;
+	private CallBackToDo onSetUpImage = null;
+	private CallBackVoid<PathLayer> onDeleteAction = null;
+	/**
+	 * @see #setPartnerActionGridItems(List)
+	 * @see #getAffectedImageGridItem()
+	 */
+	@Nullable
+	private List<ImageGridItem> partnerActionGridItems;
 
 	/**
 	 * Tool box stuff
@@ -168,6 +191,7 @@ public class ImageGridItem extends ImageView {
 	private double height;
 	private double deltaW;
 	private double deltaH;
+	@Nullable
 	private PathLayer imageFile;
 
 	// zoom idea source : https://gist.github.com/james-d/ce5ec1fd44ce6c64e81a
@@ -213,8 +237,8 @@ public class ImageGridItem extends ImageView {
 		initalizeVisualNames();
 
 		// The gap at top of Pane is because xSlider is hidden
-		allPanesVBox.getChildren().addAll(toolBoxHBox, xSlider, nameHBox, ySliderContainer, noteHBox,
-				zoomSliderContainer);
+		allPanesVBox.getChildren().addAll(xSlider, nameHBox, ySliderContainer, noteHBox, zoomSliderContainer,
+				toolBoxHBox);
 
 		if (parentStage == null) {
 			parentStage = tempStage;
@@ -289,6 +313,7 @@ public class ImageGridItem extends ImageView {
 		toolBoxHBox = new HBox();
 		// Crop stuff
 		cropMenuButton = new SplitMenuButton();
+		cropMenuButton.setGraphic(IconLoader.getIconImageView(ICON_TYPE.CROP, true, 25, 25));
 		cropMenuButton.setText("Crop");
 		cropMenuButton.setOnAction(e -> cropPhotoMode());
 		cropMenuButton.setStyle("-fx-font-weight:bold");
@@ -315,39 +340,164 @@ public class ImageGridItem extends ImageView {
 		restoreCropped.setDisable(true);
 
 		// other stuff
-		rotateRightIMG = new Button("Rotate ⟳");
+		rotateRightIMG = new Button("Rotate");
+		rotateRightIMG.setGraphic(IconLoader.getIconImageView(ICON_TYPE.ROTATE_RIGHT));
 		rotateRightIMG.setOnAction(e -> rotateRightIMG());
 		rotateRightIMG.setStyle("-fx-font-weight:bold");
-		rotateRightIMG.getStyleClass().addAll("info", "middle");
+		rotateRightIMG.getStyleClass().addAll("middle");
 
 		deleteIMG = new Button("Delete - D");
+		deleteIMG.setGraphic(IconLoader.getIconImageView(ICON_TYPE.DELETE, true, 25, 25));
 		deleteIMG.setOnAction(e -> deleteIMG());
 		deleteIMG.setStyle("-fx-font-weight:bold");
-		deleteIMG.getStyleClass().addAll("danger", "middle");
+		deleteIMG.getStyleClass().addAll("middle");
 
-		dragThisPhoto = new Button("Drag -/");
-		dragThisPhoto.setOnDragDetected(e -> {
-			Dragboard db = dragThisPhoto.startDragAndDrop(TransferMode.ANY);
-			ClipboardContent cb = new ClipboardContent();
-			List<File> selectedFiles = new ArrayList<>();
-			if (imageFile.isLocal()) {
-				selectedFiles.add(imageFile.toFileIfLocal());
-				cb.putFiles(selectedFiles);
-			} else {
-				cb.putString(PathLayerHelper.ON_DROP_URI_OPERATION_KEY + "\n" + imageFile.toURI());
-			}
-			db.setContent(cb);
-		});
+		dragThisPhoto = new Button("Drag");
+		dragThisPhoto.setGraphic(IconLoader.getIconImageView(ICON_TYPE.DRAG, true, 25, 25));
+		dragThisPhoto.setOnDragDetected(e -> onDragDetected(e));
 		dragThisPhoto.setStyle("-fx-font-weight:bold");
-		dragThisPhoto.getStyleClass().addAll("success", "middle");
+		dragThisPhoto.getStyleClass().addAll("middle");
 
 		revealLocation = new Button("Explorer - E");
+		revealLocation.setGraphic(IconLoader.getIconImageView(ICON_TYPE.TRACKER, true, 25, 25));
 		revealLocation.setOnAction(e -> revealInExplorer());
 		revealLocation.setStyle("-fx-font-weight:bold");
-		revealLocation.getStyleClass().addAll("warning", "last");
+		revealLocation.getStyleClass().addAll("last");
 
 		toolBoxHBox.getChildren().addAll(cropMenuButton, rotateRightIMG, deleteIMG, dragThisPhoto, revealLocation);
 		toolBoxHBox.setAlignment(Pos.CENTER);
+	}
+
+	private void onDragDetected(MouseEvent e) {
+		Dragboard db = dragThisPhoto.startDragAndDrop(TransferMode.ANY);
+		ClipboardContent cb = new ClipboardContent();
+		List<File> selectedFiles = new ArrayList<>();
+		if (imageFile.isLocal()) {
+			selectedFiles.add(imageFile.toFileIfLocal());
+			cb.putFiles(selectedFiles);
+		} else {
+			cb.putString(PathLayerHelper.ON_DROP_URI_OPERATION_KEY + "\n" + imageFile.toURI());
+		}
+		db.setContent(cb);
+	}
+
+	public void showContextMenu() {
+		if (!isInCropMode) {
+			showContextMenuCustom(getContextMenuList());
+		} else {
+			showContextMenuCustom(getContextMenuListCropMode());
+		}
+	}
+
+	public void showContextMenuCustom(List<MenuItem> menuItems) {
+		Point mouse = MouseInfo.getPointerInfo().getLocation();
+		ContextMenu mn = new ContextMenu();
+		mn.getItems().addAll(menuItems);
+		mn.show(parentStage, mouse.getX(), mouse.getY());
+	}
+
+	private ArrayList<MenuItem> getContextMenuList() {
+		ArrayList<MenuItem> allMenu = new ArrayList<>();
+
+		MenuItem fitWidth = new MenuItem("Zoom To Fit");
+		fitWidth.setGraphic(IconLoader.getIconImageView(ICON_TYPE.FIT));
+		fitWidth.setOnAction(e -> fitWidth());
+		MenuItem resetCenter = new MenuItem("Reset Center");
+		resetCenter.setGraphic(IconLoader.getIconImageView(ICON_TYPE.CENTRALIZE));
+		resetCenter.setOnAction(e -> resetCenter());
+
+		MenuItem copyImage = new MenuItem("Copy as Image");
+		copyImage.setGraphic(IconLoader.getIconImageView(ICON_TYPE.COPY));
+		copyImage.setOnAction(e -> copyImageToClipBoard());
+
+		MenuItem crop = new MenuItem("Crop");
+		crop.setGraphic(IconLoader.getIconImageView(ICON_TYPE.CROP));
+		crop.setOnAction(e -> cropPhotoMode());
+
+		@Nullable
+		MenuItem restoreCrop = null;
+		if (!restoreCropped.isDisable()) {
+			restoreCrop = new MenuItem("Undo Last Crop");
+			restoreCrop.setGraphic(IconLoader.getIconImageView(ICON_TYPE.UNDO));
+			restoreCrop.setOnAction(e -> restoreCropped.fire());
+		}
+
+		MenuItem rotate = new MenuItem("Rotate");
+		rotate.setGraphic(IconLoader.getIconImageView(ICON_TYPE.ROTATE_RIGHT));
+		rotate.setOnAction(e -> rotateRightIMG());
+
+		MenuItem delete = new MenuItem("Delete");
+		delete.setGraphic(IconLoader.getIconImageView(ICON_TYPE.DELETE));
+		delete.setOnAction(e -> deleteIMG());
+
+		MenuItem reveal = new MenuItem("Reveal In Explorer");
+		reveal.setGraphic(IconLoader.getIconImageView(ICON_TYPE.TRACKER));
+		reveal.setOnAction(e -> revealInExplorer());
+
+		Menu view = new Menu("View");
+		view.setGraphic(IconLoader.getIconImageView(ICON_TYPE.HIDDEN));
+
+		MenuItem toolBox = new MenuItem("Tool Box");
+		toolBox.setGraphic(IconLoader.getIconImageView(ICON_TYPE.TOOL_BOX));
+		toolBox.setOnAction(e -> toggleShowToolBox());
+
+		MenuItem name = new MenuItem("Name");
+		name.setGraphic(IconLoader.getIconImageView(ICON_TYPE.FILE));
+		name.setOnAction(e -> toggleShowNameLabel());
+
+		MenuItem note = new MenuItem("Note");
+		note.setGraphic(IconLoader.getIconImageView(ICON_TYPE.NOTE));
+		note.setOnAction(e -> toggleShowNoteLabel());
+
+		MenuItem zoomSlider = new MenuItem("Zoom Slider");
+		zoomSlider.setGraphic(IconLoader.getIconImageView(ICON_TYPE.ZOOM));
+		zoomSlider.setOnAction(e -> toggleShowZoomSlider());
+
+		view.getItems().addAll(toolBox, name, note, zoomSlider);
+
+		allMenu.add(resetCenter);
+		allMenu.add(fitWidth);
+		allMenu.add(copyImage);
+		allMenu.add(crop);
+		if (restoreCrop != null) {
+			allMenu.add(restoreCrop);
+		}
+		allMenu.add(rotate);
+		allMenu.add(delete);
+		allMenu.add(view);
+		allMenu.add(reveal);
+
+		if (imageFile.isLocal()) {
+			// System Context Menu
+			MenuItem systemContextMenu = new MenuItem("More");
+			systemContextMenu.setOnAction(e -> RunMenu.showMenu(Arrays.asList(imageFile.toFileIfLocal())));
+			systemContextMenu.setGraphic(new ImageView(ContextMenuLook.systemIcon));
+			allMenu.add(systemContextMenu);
+		}
+		return allMenu;
+	}
+
+	private List<MenuItem> getContextMenuListCropMode() {
+		MenuItem performCrop = new MenuItem("Crop Selection");
+		performCrop.setGraphic(IconLoader.getIconImageView(ICON_TYPE.CROP));
+		performCrop.setOnAction(e -> cropMenuButton.fire());
+
+		MenuItem selectAllImage = new MenuItem("Select All");
+		selectAllImage.setGraphic(IconLoader.getIconImageView(ICON_TYPE.SELECT_ALL));
+		selectAllImage.setOnAction(e -> this.selectAllImage.fire());
+
+		MenuItem saveAsCrop = new MenuItem("Save As");
+		saveAsCrop.setGraphic(IconLoader.getIconImageView(ICON_TYPE.SAVE));
+		saveAsCrop.setOnAction(e -> this.saveAsCrop.fire());
+
+		MenuItem saveToClipBoard = new MenuItem("Copy To ClipBoard");
+		saveToClipBoard.setGraphic(IconLoader.getIconImageView(ICON_TYPE.CLIPBOARD));
+		saveToClipBoard.setOnAction(e -> this.saveToClipBoard.fire());
+
+		MenuItem cancelCrop = new MenuItem("Exit Crop Mode");
+		cancelCrop.setGraphic(IconLoader.getIconImageView(ICON_TYPE.CANCEL));
+		cancelCrop.setOnAction(e -> this.cancelCrop.fire());
+		return Arrays.asList(performCrop, selectAllImage, saveAsCrop, saveToClipBoard, cancelCrop);
 	}
 
 	/**
@@ -601,14 +751,14 @@ public class ImageGridItem extends ImageView {
 		if (rubberBandSelection != null) {
 			rubberBandSelection.limitRectToImageView();
 		}
-		resetCenter();
+		resetCenterThisOnly();
 		if (MantaingPos && positionImg != null) {
 			setPosition(positionImg);
 		} else if (AutoFitWidth) {
-			fitWidth();
+			fitWidthThisOnly();
 		}
 		if (onSetUpImage != null) {
-			onSetUpImage.handle(null);
+			onSetUpImage.call();
 		}
 	}
 
@@ -641,6 +791,9 @@ public class ImageGridItem extends ImageView {
 			case Q:
 				fitWidth();
 				break;
+			case CONTEXT_MENU:
+				showContextMenu();
+				break;
 			case E:
 			case R:
 				StringHelper.RunRuntimeProcess(new String[] { "explorer.exe", "/select,", imageFile.toString() });
@@ -652,14 +805,14 @@ public class ImageGridItem extends ImageView {
 				break;
 			}
 		});
-		setOnMousePressed(e -> {
+		imagePane.setOnMousePressed(e -> {
 			requestFocus();
 			Point2D mousePress = imageViewToImage(new Point2D(e.getX(), e.getY()));
 			mouseDown.set(mousePress);
 			setCursor(Cursor.CLOSED_HAND);
 		});
 
-		setOnMouseDragged(e -> {
+		imagePane.setOnMouseDragged(e -> {
 			if (isInCropMode) {
 				return;
 			}
@@ -668,11 +821,11 @@ public class ImageGridItem extends ImageView {
 			mouseDown.set(imageViewToImage(new Point2D(e.getX(), e.getY())));
 		});
 		setCursor(Cursor.OPEN_HAND);
-		setOnMouseReleased(e -> {
+		imagePane.setOnMouseReleased(e -> {
 			setCursor(Cursor.OPEN_HAND);
 		});
 
-		setOnScroll(e -> {
+		imagePane.setOnScroll(e -> {
 			if (!hasValidImageFile()) {
 				return;
 			}
@@ -719,55 +872,50 @@ public class ImageGridItem extends ImageView {
 			calculateAndCenter();
 			updateWHSlider();
 		});
-
-		setOnMouseClicked(e -> {
-			if (e.getButton().equals(MouseButton.SECONDARY)) {
-				if (imageFile.isLocal()) {
-					RunMenu.showMenu(Arrays.asList(imageFile.toFileIfLocal()));
-				}
-			} else {
-				if (e.getClickCount() % 2 == 0 && isDoubleClickBehavior()) {
-					Rectangle2D viewPort = getViewport();
-					double maxX = width + deltaW - viewPort.getWidth();
-					double maxY = height + deltaH - viewPort.getHeight();
-					if ((int) maxX != 0 || (int) maxY != 0) {
-						// there is a scale factor => reset view
-						resetCenter();
-						return;
-					}
-					double perfectRatio = alreadyShownGridImage.imagePane.getWidth()
-							/ alreadyShownGridImage.imagePane.getHeight();
-					if (viewPort.getWidth() > width) {
-						// perfect fit width zoom
-						double maxHeight = width / perfectRatio;
-						double newMinY = e.getY() / alreadyShownGridImage.imagePane.getHeight() * height
-								- maxHeight / 2;
-						if (newMinY < 0) {
-							newMinY = 0;
-						}
-						cumulativeZoom = (width + deltaW) / width;
-						setViewport(new Rectangle2D(0, newMinY, width, maxHeight));
-						updateWHSlider();
-						zoomSlider_setValue(cumulativeZoom);
-						return;
-					}
-					if (viewPort.getHeight() > height) {
-						// perfect fit height zoom
-						double maxWidth = height * perfectRatio;
-						double newMinX = e.getX() / alreadyShownGridImage.imagePane.getWidth() * width - maxWidth / 2;
-						if (newMinX < 0) {
-							newMinX = 0;
-						}
-						cumulativeZoom = (height + deltaH) / height;
-						setViewport(new Rectangle2D(newMinX, 0, maxWidth, height));
-						updateWHSlider();
-						zoomSlider_setValue(cumulativeZoom);
-						return;
-					}
-				}
-			}
-		});
+		imagePane.setOnContextMenuRequested(e1 -> showContextMenu());
+		setOnMouseClicked(doubleClickBehavior);
 	}
+
+	private EventHandler<MouseEvent> doubleClickBehavior = e -> {
+		if (e.getClickCount() % 2 == 0 && isDoubleClickBehavior()) {
+			Rectangle2D viewPort = getViewport();
+			double maxX = width + deltaW - viewPort.getWidth();
+			double maxY = height + deltaH - viewPort.getHeight();
+			if ((int) maxX != 0 || (int) maxY != 0) {
+				// there is a scale factor => reset view
+				resetCenterThisOnly();
+				return;
+			}
+			double perfectRatio = alreadyShownGridImage.imagePane.getWidth()
+					/ alreadyShownGridImage.imagePane.getHeight();
+			if (viewPort.getWidth() > width) {
+				// perfect fit width zoom
+				double maxHeight = width / perfectRatio;
+				double newMinY = e.getY() / alreadyShownGridImage.imagePane.getHeight() * height - maxHeight / 2;
+				if (newMinY < 0) {
+					newMinY = 0;
+				}
+				cumulativeZoom = (width + deltaW) / width;
+				setViewport(new Rectangle2D(0, newMinY, width, maxHeight));
+				updateWHSlider();
+				zoomSlider_setValue(cumulativeZoom);
+				return;
+			}
+			if (viewPort.getHeight() > height) {
+				// perfect fit height zoom
+				double maxWidth = height * perfectRatio;
+				double newMinX = e.getX() / alreadyShownGridImage.imagePane.getWidth() * width - maxWidth / 2;
+				if (newMinX < 0) {
+					newMinX = 0;
+				}
+				cumulativeZoom = (height + deltaH) / height;
+				setViewport(new Rectangle2D(newMinX, 0, maxWidth, height));
+				updateWHSlider();
+				zoomSlider_setValue(cumulativeZoom);
+				return;
+			}
+		}
+	};
 
 	// convert mouse coordinates in the imageView to coordinates in the actual
 	// image:
@@ -780,7 +928,17 @@ public class ImageGridItem extends ImageView {
 				viewport.getMinY() + yProportion * viewport.getHeight());
 	}
 
+	/** Fit width for all {@link #getAffectedImageWithPartner()} */
 	public void fitWidth() {
+		boolean oldAutoFitWidth = isAutoFitWidth();
+		setAutoFitWidth(true);
+		for (ImageGridItem item : getAffectedImageWithPartner()) {
+			item.fitWidthThisOnly();
+		}
+		setAutoFitWidth(oldAutoFitWidth);
+	}
+
+	public void fitWidthThisOnly() {
 		if (!hasValidImageFile()) {
 			return;
 		}
@@ -983,10 +1141,18 @@ public class ImageGridItem extends ImageView {
 		return allPanesVBox;
 	}
 
+	public Pane getImagePaneOnly() {
+		return imagePane;
+	}
+
 	/**
 	 * reset to center position using full image width and height
 	 */
 	public void resetCenter() {
+		getAffectedImageWithPartner().forEach(gid -> gid.resetCenterThisOnly());
+	}
+
+	public void resetCenterThisOnly() {
 		if (!hasValidImageFile()) {
 			return;
 		}
@@ -1104,25 +1270,25 @@ public class ImageGridItem extends ImageView {
 		MantaingPos = isMantaingPos;
 	}
 
+	/**
+	 * rotate image and it's partners in background thread blocking any user
+	 * controls of javaFx via {@link DialogHelper#showWaitingScreen(String, String)}
+	 */
 	// @FXML
 	private void rotateRightIMG() {
 		// imageView.setRotate(imageView.getRotate() + 90);
-
 		Runnable runnable = () -> {
 			try {
-				Platform.runLater(() -> DialogHelper.showWaitingScreen("Please Wait.. Processing", "Rotating Image.."));
-				BufferedImage buffImg = null;
-				FilePathLayer newImageFile = imageFile.toFileIfLocalOrAsCopy(true);
-				buffImg = ImageIO.read(newImageFile.getFile());
-				buffImg = getRotatedImage(buffImg, 90); // or other angle if needed be
-				imageFile.delete();
-				ImageIO.write(buffImg, imageFile.getExtensionUPPERCASE(), newImageFile.getFile());
-				newImageFile.move(imageFile);
-				Platform.runLater(() -> {
-					// imageView.setRotate(imageView.getRotate() - 90);
-					setImageAndSetup(imageFile, null);
-					didImageChanged = true;
-				});
+				HashSet<ImageGridItem> affected = getAffectedImageWithPartner();
+				Holder<Integer> i = new Holder<>(1);
+				for (ImageGridItem gridItem : affected) {
+					String whichOne = i.value++ + " / " + affected.size();
+					if (gridItem.getImageFile() != null) {
+						Platform.runLater(() -> DialogHelper.showWaitingScreen("Please Wait.. Processing " + whichOne,
+								"Rotating Image.." + whichOne + "\n" + gridItem.getImageFile().getName()));
+						gridItem.rotateRightThisImageOnly();
+					}
+				}
 			} catch (IOException e) {
 				e.printStackTrace();
 			}
@@ -1132,26 +1298,55 @@ public class ImageGridItem extends ImageView {
 		th.start();
 	}
 
+	/**
+	 * Rotate this image only, run in current thread
+	 *
+	 * @throws IOException
+	 */
+	public void rotateRightThisImageOnly() throws IOException {
+		BufferedImage buffImg = null;
+		FilePathLayer newImageFile = imageFile.toFileIfLocalOrAsCopy(true);
+		buffImg = ImageIO.read(newImageFile.getFile());
+		buffImg = getRotatedImage(buffImg, 90); // or other angle if needed be
+		imageFile.delete();
+		ImageIO.write(buffImg, imageFile.getExtensionUPPERCASE(), newImageFile.getFile());
+		newImageFile.move(imageFile);
+		Platform.runLater(() -> {
+			// imageView.setRotate(imageView.getRotate() - 90);
+			setImageAndSetup(imageFile, null);
+			didImageChanged = true;
+		});
+	}
+
 	// @FXML
+	/**
+	 * FileTracker is already resolved in this function
+	 */
 	private void deleteIMG() {
-		boolean ans = DialogHelper.showConfirmationDialog("Delete " + imageFile.getName(),
-				"Are you Sure you want to delete " + imageFile.getName() + " ?",
-				"Name:\n\t" + imageFile.getName() + "\nLocated in:\n\t" + imageFile.getParentPath().toString());
-		if (ans) {
-			try {
-				imageFile.delete();
-				setImage(null);
-				imageFile = null;
-			} catch (IOException e) {
-				e.printStackTrace();
-				DialogHelper.showException(e);
-			}
-		}
+		HashSet<ImageGridItem> affectedGrids = getAffectedImageWithPartner();
+
+		FileHelper.delete(
+				affectedGrids.stream().filter(p -> p != null).map(p -> p.getImageFile()).collect(Collectors.toList()),
+				deletedPaths -> {
+					for (ImageGridItem gridItem : affectedGrids) {
+						if (deletedPaths.contains(gridItem.imageFile)) {
+							setImage(null);
+							if (onDeleteAction != null) {
+								onDeleteAction.call(imageFile);
+							}
+						}
+					}
+				});
 	}
 
 	// @FXML
 	private void revealInExplorer() {
-		StringHelper.RunRuntimeProcess(new String[] { "explorer.exe", "/select,", imageFile.toString() });
+		try {
+			Main.revealInExplorer(imageFile);
+		} catch (IOException e) {
+			e.printStackTrace();
+			DialogHelper.showException(e);
+		}
 	}
 
 	// @FXML
@@ -1170,7 +1365,6 @@ public class ImageGridItem extends ImageView {
 			}
 			// image layer: a group of images
 			Group imageLayer = new Group();
-
 			setOnKeyReleased(e -> {
 				if (e.getCode().equals(KeyCode.ENTER)) {
 					Boolean ans = DialogHelper.showAlert(AlertType.CONFIRMATION, "Crop Image",
@@ -1232,15 +1426,32 @@ public class ImageGridItem extends ImageView {
 		outCropMode();
 	}
 
+	private void copyImageToClipBoard() {
+		putClipBoardImage(getImage());
+	}
+
 	private void saveToClipBoard() {
 		outCropMode();
 		WritableImage croppedImage = cropImage(rubberBandSelection.getBounds(), null);
+		putClipBoardImage(croppedImage);
+	}
+
+	private void putClipBoardImage(Image croppedImage) {
 		Clipboard clipboard = Clipboard.getSystemClipboard();
 		ClipboardContent content = new ClipboardContent();
 		content.putImage(croppedImage);
-		clipboard.setContent(content);
-		DialogHelper.showAlert(AlertType.INFORMATION, "Copy To ClipBoard", "Image Succefully Copeid",
-				"Use Ctrl+V To pase it anywhere", parentStage);
+		boolean didCopy = false;
+		try {
+			clipboard.setContent(content);
+			didCopy = true;
+		} catch (Exception e) {
+			e.printStackTrace();
+			DialogHelper.showException(e);
+		}
+		if (didCopy) {
+			DialogHelper.showAlert(AlertType.INFORMATION, "Copy To ClipBoard", "Image Succefully Copeid",
+					"Use Ctrl+V To pase it anywhere", parentStage);
+		}
 	}
 
 	// @FXML
@@ -1276,9 +1487,9 @@ public class ImageGridItem extends ImageView {
 		if (outFile == null) {
 			FileChooser fileChooser = new FileChooser();
 			PathLayer originalFile = imageFile;
-			File initialDir = imageFile.toFileIfLocal();
-			if (initialDir != null) {
-				fileChooser.setInitialDirectory(initialDir);
+			File curFile = imageFile.toFileIfLocal();
+			if (curFile != null) {
+				fileChooser.setInitialDirectory(curFile.getParentFile());
 			}
 			String ext = StringHelper.getExtention(originalFile.getName());
 			if (ext.equals("GIF")) {
@@ -1514,7 +1725,7 @@ public class ImageGridItem extends ImageView {
 	/**
 	 * @return the onSetUpImage
 	 */
-	public EventHandler<Event> getOnSetUpImage() {
+	public CallBackToDo getOnSetUpImage() {
 		return onSetUpImage;
 	}
 
@@ -1524,7 +1735,7 @@ public class ImageGridItem extends ImageView {
 	 *
 	 * @param onSetUpImage the onSetUpImage to set
 	 */
-	public void setOnSetUpImage(EventHandler<Event> onSetUpImage) {
+	public void setOnSetUpImage(CallBackToDo onSetUpImage) {
 		this.onSetUpImage = onSetUpImage;
 	}
 
@@ -1564,18 +1775,34 @@ public class ImageGridItem extends ImageView {
 		allPanesVBox.getChildren().remove(zoomSliderContainer);
 	}
 
+	public void toggleShowZoomSlider() {
+		if (isZoomSliderShown()) {
+			hideZoomSlider();
+		} else {
+			showZoomSlider();
+		}
+	}
+
 	public boolean isZoomSliderShown() {
 		return allPanesVBox.getChildren().contains(zoomSliderContainer);
 	}
 
 	public void showToolBox() {
 		if (!isToolBoxShown()) {
-			allPanesVBox.getChildren().add(0, toolBoxHBox);
+			allPanesVBox.getChildren().add(toolBoxHBox);
 		}
 	}
 
 	public void hideToolBox() {
 		allPanesVBox.getChildren().remove(toolBoxHBox);
+	}
+
+	public void toggleShowToolBox() {
+		if (isToolBoxShown()) {
+			hideToolBox();
+		} else {
+			showToolBox();
+		}
 	}
 
 	public boolean isToolBoxShown() {
@@ -1594,6 +1821,14 @@ public class ImageGridItem extends ImageView {
 		allPanesVBox.getChildren().remove(nameHBox);
 	}
 
+	public void toggleShowNameLabel() {
+		if (isNameLabelShown()) {
+			hideNameLabel();
+		} else {
+			showNameLabel();
+		}
+	}
+
 	public boolean isNameLabelShown() {
 		return allPanesVBox.getChildren().contains(nameHBox);
 	}
@@ -1609,6 +1844,14 @@ public class ImageGridItem extends ImageView {
 
 	public void hideNoteLabel() {
 		allPanesVBox.getChildren().remove(noteHBox);
+	}
+
+	public void toggleShowNoteLabel() {
+		if (isNoteLabelShown()) {
+			hideNoteLabel();
+		} else {
+			showNoteLabel();
+		}
 	}
 
 	public boolean isNoteLabelShown() {
@@ -1651,7 +1894,11 @@ public class ImageGridItem extends ImageView {
 	}
 
 	/**
+	 * Double click behavior is that on double click image will fit width,<br>
+	 * and again on double click it will reset center.
+	 *
 	 * @param doubleClickBehavior the doubleClickBehavior to set
+	 * @see #reEnableDoubleClickBehavior()
 	 */
 	public static void setDoubleClickBehavior(boolean doubleClickBehavior) {
 		DoubleClickBehavior = doubleClickBehavior;
@@ -1677,6 +1924,69 @@ public class ImageGridItem extends ImageView {
 	 */
 	public void setStretchImage(boolean stretchImage) {
 		this.stretchImage = stretchImage;
+	}
+
+	/**
+	 * @return the onDeleteAction
+	 */
+	public CallBackVoid<PathLayer> getOnDeleteAction() {
+		return onDeleteAction;
+	}
+
+	/**
+	 * @param onDeleteAction the onDeleteAction to set
+	 */
+	public void setOnDeleteAction(CallBackVoid<PathLayer> onDeleteAction) {
+		this.onDeleteAction = onDeleteAction;
+	}
+
+	/**
+	 * @return the partnerActionGridItems
+	 * @see #getAffectedImageWithPartner()
+	 */
+	@Nullable
+	public List<ImageGridItem> getPartnerActionGridItems() {
+		return partnerActionGridItems;
+	}
+
+	/**
+	 * The map contain at least 'this'.
+	 *
+	 * @return the map of grid item that action should trigger on with partner and
+	 *         'this' each mapping to {@link #getImageFile()}
+	 * @see #setPartnerActionGridItems(List)
+	 */
+	public HashSet<ImageGridItem> getAffectedImageWithPartner() {
+		HashSet<ImageGridItem> affectedGrids = new HashSet<>();
+		affectedGrids.add(this);
+		if (partnerActionGridItems != null) {
+			for (ImageGridItem gridItem : partnerActionGridItems) {
+				if (!affectedGrids.contains(gridItem)) {
+					affectedGrids.add(gridItem);
+				}
+			}
+		}
+		return affectedGrids;
+	}
+
+	/**
+	 * Affect partners also when calling any of these functions:<br>
+	 * <ul>
+	 * <li>{@link #rotateRightIMG()}</li>
+	 * <li>{@link #deleteIMG()}</li>
+	 * <li>{@link #fitWidth()}</li>
+	 * <li>{@link #resetCenter()}</li>
+	 * </ul>
+	 *
+	 * Will ensure that if other gridItem that have same list of partner that the
+	 * action will trigger once on each of them and not recursively
+	 *
+	 * @param partnerActionGridItems the partnerActionGridItems to set<br>
+	 *                               Set to <code>null</code> to clear partners
+	 * @see #getAffectedImageWithPartner()
+	 */
+	public void setPartnerActionGridItems(@Nullable List<ImageGridItem> partnerActionGridItems) {
+		this.partnerActionGridItems = partnerActionGridItems;
 	}
 
 }

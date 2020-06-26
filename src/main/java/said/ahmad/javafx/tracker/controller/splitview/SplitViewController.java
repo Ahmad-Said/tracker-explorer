@@ -973,6 +973,8 @@ public class SplitViewController implements Initializable {
 		noteCol.setComparator(WindowsExplorerComparator.getComparator());
 		nameCol.setComparator(WindowsExplorerComparator.getComparator());
 
+		table.setOnContextMenuRequested(e -> showContextMenu());
+
 		table.setOnKeyPressed(key -> {
 			String test = predictNavigation.getText().trim();
 			TableViewModel lastSelectedTemp = table.getSelectionModel().getSelectedItem();
@@ -1036,9 +1038,6 @@ public class SplitViewController implements Initializable {
 				break;
 			case ESCAPE:
 				predictNavigation.setText("");
-				break;
-			case CONTEXT_MENU:
-				showContextMenu();
 				break;
 			// TODO check declaration there is a lot of key to define
 			default:
@@ -1305,15 +1304,8 @@ public class SplitViewController implements Initializable {
 				toggleFavorite();
 			}
 		});
-		table.setOnTouchStationary(e -> {
-			showContextMenu();
-		});
 		table.setOnMouseClicked(m -> {
 			TableViewModel t = table.getSelectionModel().getSelectedItem();
-			if (m.getButton().equals(MouseButton.SECONDARY)) {
-				showContextMenu();
-				m.consume();
-			}
 			if (t == null) {
 				return;
 			}
@@ -1593,7 +1585,7 @@ public class SplitViewController implements Initializable {
 				boolean perviousState = parentWelcome.getStage().isAlwaysOnTop();
 				parentWelcome.getStage().setAlwaysOnTop(true);
 				parentWelcome.getStage().setAlwaysOnTop(perviousState);
-				showToastMessage("--->> Here buddy <<---");
+				showToastNotifyExistance();
 			});
 			menus.add(showMe);
 		}
@@ -1634,6 +1626,15 @@ public class SplitViewController implements Initializable {
 	/** Higher priority than on {@link #onRefreshAsPathFieldAutoScrollToName} */
 	private String onFinishLoadingScrollToName = null;
 	private String onRefreshAsPathFieldAutoScrollToName = null;
+
+	/**
+	 * Scroll to this name only till next refresh is done
+	 *
+	 * @param onFinishLoadingScrollToName the onFinishLoadingScrollToName to set
+	 */
+	public void setOnFinishLoadingScrollToName(String onFinishLoadingScrollToName) {
+		this.onFinishLoadingScrollToName = onFinishLoadingScrollToName;
+	}
 
 	/**
 	 * Show list of path layer in table with default tracker data.<br>
@@ -2281,8 +2282,12 @@ public class SplitViewController implements Initializable {
 		showCustomSort.setOnAction(e -> showToggleCustomSortControl());
 		showCustomSort.setGraphic(new ImageView(ContextMenuLook.sortIcon));
 
+		MenuItem selectAll = new MenuItem("Select All");
+		selectAll.setOnAction(e -> table.getSelectionModel().selectAll());
+		selectAll.setGraphic(IconLoader.getIconImageView(ICON_TYPE.SELECT_ALL));
+
 		hiddenView.setGraphic(new ImageView(ContextMenuLook.hiddenIcon));
-		hiddenView.getItems().add(showCustomSort);
+		hiddenView.getItems().addAll(showCustomSort, selectAll);
 
 		// System Context Menu
 		MenuItem systemContextMenu = new MenuItem("More");
@@ -3063,6 +3068,10 @@ public class SplitViewController implements Initializable {
 		return mn;
 	}
 
+	public void showToastNotifyExistance() {
+		showToastMessage("--->> Here buddy <<---");
+	}
+
 	public ContextMenu showToastMessage(String message) {
 		return showToastMessage(message, null);
 	}
@@ -3127,7 +3136,7 @@ public class SplitViewController implements Initializable {
 		int validIndex = sortedData.size() == 1 ? 0 : lastKnownIndex > 0 ? lastKnownIndex - 1 : lastKnownIndex + 1;
 		String toSelectOnFinish = sortedData.get(validIndex).getName();
 		onFinishLoadingScrollToName = toSelectOnFinish;
-		FileHelper.delete(source, e -> {
+		FileHelper.delete(source, deletedPaths -> {
 			parentWelcome.refreshUnExistingViewsDir();
 		});
 	}
@@ -3420,10 +3429,16 @@ public class SplitViewController implements Initializable {
 		// Restore state view to current view
 		setBackQueue(state.getBackQueue());
 		setNextQueue(state.getNextQueue());
+		restoreSplitViewStateWithoutQueue(state);
+	}
+
+	public void restoreSplitViewStateWithoutQueue(SplitViewState state) {
 		if (mDirectory.compareTo(state.getmDirectory()) != 0) {
 			setmDirectoryThenRefresh(state.getmDirectory());
 			// clear false change between tabs
-			RemoveLastFalseQueue();
+			if (BackQueue == state.getBackQueue()) {
+				RemoveLastFalseQueue();
+			}
 		}
 		setAutoExpand(state.isAutoExpandRight());
 		// restore search keyword

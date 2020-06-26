@@ -8,14 +8,17 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Stack;
 import java.util.stream.Collectors;
 
+import org.jetbrains.annotations.Nullable;
+
 import javafx.application.Platform;
-import javafx.event.Event;
 import javafx.event.EventHandler;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.geometry.Dimension2D;
+import javafx.scene.Node;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.scene.control.Alert.AlertType;
@@ -33,6 +36,7 @@ import javafx.scene.input.DataFormat;
 import javafx.scene.input.DragEvent;
 import javafx.scene.input.Dragboard;
 import javafx.scene.input.KeyEvent;
+import javafx.scene.input.MouseButton;
 import javafx.scene.input.TransferMode;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.ColumnConstraints;
@@ -46,6 +50,8 @@ import javafx.util.Pair;
 import said.ahmad.javafx.tracker.app.DialogHelper;
 import said.ahmad.javafx.tracker.app.ResourcesHelper;
 import said.ahmad.javafx.tracker.app.StringHelper;
+import said.ahmad.javafx.tracker.app.look.IconLoader;
+import said.ahmad.javafx.tracker.app.look.IconLoader.ICON_TYPE;
 import said.ahmad.javafx.tracker.app.look.ThemeManager;
 import said.ahmad.javafx.tracker.datatype.ImagePosition;
 import said.ahmad.javafx.tracker.fxGraphics.ImageGridItem;
@@ -55,6 +61,8 @@ import said.ahmad.javafx.tracker.system.file.local.FilePathLayer;
 import said.ahmad.javafx.tracker.system.operation.FileHelper;
 import said.ahmad.javafx.tracker.system.operation.FileHelper.ActionOperation;
 import said.ahmad.javafx.tracker.system.tracker.FileTracker;
+import said.ahmad.javafx.util.CallBackToDo;
+import said.ahmad.javafx.util.PickNode;
 
 public class PhotoViewerController {
 	@FXML
@@ -138,6 +146,9 @@ public class PhotoViewerController {
 
 	@FXML
 	private ToggleButton showToolBoxToggle;
+	// Used to separate state between grid and single
+	private boolean showToolBoxesGrid;
+	private boolean showToolBoxSingle;
 
 	@FXML
 	private CheckBox stretchCheckBox;
@@ -170,6 +181,7 @@ public class PhotoViewerController {
 	private Stage photoStage;
 
 	private List<PathLayer> ImgResources;
+	private int startingIndexOfShownImage = 0;
 	private Integer rollerPhoto = 0;
 
 	/**
@@ -223,6 +235,7 @@ public class PhotoViewerController {
 		});
 
 		initialGridItem = new ImageGridItem(photoStage, null);
+		initializeImageGrid(initialGridItem);
 		initialGridItem.hideToolBox();
 		allGridItems.add(initialGridItem);
 		gridImagesPane.add(initialGridItem.getImageAllPane(), 0, 0);
@@ -252,6 +265,25 @@ public class PhotoViewerController {
 		});
 	}
 
+	//
+	private void initializeImageGrid(ImageGridItem gridItem) {
+		gridItem.setOnDeleteAction(p -> {
+			ImgResources.remove(p);
+			changeImage(rollerPhoto);
+		});
+		gridItem.getImageAllPane().setOnMouseClicked(e -> {
+			boolean doSwitch = e.getClickCount() % 2 == 0;
+			boolean isSecondary = e.getButton() == MouseButton.SECONDARY;
+			// e.isSecondaryButtonDown() // is not working well
+			fireOnClickEvent(gridItem, doSwitch, e.isControlDown(), e.isShiftDown(), isSecondary);
+		});
+		// TODO test
+//		gridItem.getImageAllPane().setOnTouchPressed(e -> {
+//			boolean doSwitch = e.getTouchCount() % 2 == 0;
+//			fireOnClickEvent(gridItem, doSwitch, e.isControlDown(), e.isShiftDown(), false);
+//		});
+	}
+
 	private void initializeFileTracker(WelcomeController welcomeCon) {
 		fileTracker = new FileTracker(null,
 				welcomeCon == null ? null : writtenPath -> welcomeCon.refreshAllSplitViewsIfMatch(writtenPath, null));
@@ -260,8 +292,100 @@ public class PhotoViewerController {
 		});
 	}
 
-	public void fireOnClickEvent(boolean doSwitchGridZoom, ImageGridItem gridItem) {
-		selectImageGrid(gridItem);
+	private Stack<ImageGridItem> stickySelectedGridItems = new Stack<>();
+
+	private void addToStickySelection(@Nullable ImageGridItem gridItem) {
+		if (gridItem == null) {
+			return;
+		}
+		if (!isStickySelected(gridItem)) {
+			gridItem.getImageAllPane().getStyleClass().add("onFocusBorderForced");
+			gridItem.setPartnerActionGridItems(stickySelectedGridItems);
+			stickySelectedGridItems.add(gridItem);
+		}
+	}
+
+	private void removeFromStrickySelection(@Nullable ImageGridItem gridItem) {
+		if (gridItem == null) {
+			return;
+		}
+		gridItem.getImageAllPane().getStyleClass().remove("onFocusBorderForced");
+		gridItem.setPartnerActionGridItems(null);
+	}
+
+	/**
+	 *
+	 * @param gridItem
+	 * @return <code>true</code> if gridItem got sticked selected<br>
+	 *         <code>false</code> otherwise
+	 */
+	private boolean toggleStickySelection(@Nullable ImageGridItem gridItem) {
+		if (gridItem == null) {
+			return false;
+		}
+		if (!gridItem.getImageAllPane().getStyleClass().contains("onFocusBorderForced")) {
+			addToStickySelection(gridItem);
+			return true;
+		} else {
+			lastDeSelectedGridItem = gridItem;
+			removeFromStrickySelection(gridItem);
+			return false;
+		}
+	}
+
+	private boolean isStickySelected(@Nullable ImageGridItem gridItem) {
+		return gridItem.getImageAllPane().getStyleClass().contains("onFocusBorderForced");
+	}
+
+	private void clearStickySelection() {
+		while (stickySelectedGridItems.size() > 0) {
+			removeFromStrickySelection(stickySelectedGridItems.pop());
+		}
+	}
+
+	/**
+	 *
+	 * @param gridItem
+	 * @param doSwitchGridZoom     switch to grid zoom if zoomOnClick is toggled
+	 * @param isControlDown        will select older selection plus this image and
+	 *                             stick border
+	 * @param isShiftDown          will select region between this image and last
+	 *                             selected image
+	 * @param isContextMenuRequest does not clear selection if click was intended to
+	 *                             request a context menu like Secondary Mouse
+	 *                             Button<br>
+	 *                             Note that showing context menu is handled by
+	 *                             {@link ImageGridItem#showContextMenu()}
+	 */
+	public void fireOnClickEvent(ImageGridItem gridItem, boolean doSwitchGridZoom, boolean isControlDown,
+			boolean isShiftDown, boolean isContextMenuRequest) {
+		if (lastSelectedGridItem != null) {
+			if (isControlDown) {
+				if (lastDeSelectedGridItem == null || lastDeSelectedGridItem != lastSelectedGridItem) {
+					addToStickySelection(lastSelectedGridItem);
+				}
+				if (toggleStickySelection(gridItem)) {
+					selectImageGrid(gridItem);
+				}
+			} else if (isShiftDown) {
+				// grid between to sticky selection
+				int first = allGridItems.indexOf(lastSelectedGridItem);
+				int second = allGridItems.indexOf(gridItem);
+				int start = Math.min(first, second);
+				int end = Math.max(first, second);
+				// we can clear previous selection to behavior like windows explorer on shift
+				// but now if behave like excel on Control/shift
+				// clearStickySelection();
+				for (int i = start; i <= end; i++) {
+					addToStickySelection(allGridItems.get(i));
+				}
+			} else if (!isContextMenuRequest) {
+				clearStickySelection();
+			}
+		}
+		if (!isControlDown && !isShiftDown) {
+			selectImageGrid(gridItem);
+		}
 		if (!gridItem.isDisabled()) {
 			if (zoomOnClick.isSelected() && doSwitchGridZoom) {
 				gridSwitchButton.fire();
@@ -271,6 +395,7 @@ public class PhotoViewerController {
 
 	public void selectImageGrid(ImageGridItem gridItem) {
 		if (!gridItem.isDisabled()) {
+			lastSelectedGridItem = gridItem;
 			rollerPhoto = ImgResources.indexOf(gridItem.getImageFile());
 			indexOfImage.setText(rollerPhoto + 1 + " / " + ImgResources.size());
 			photoStage.setTitle("Photo Viewer " + gridItem.getImageFile().getName());
@@ -293,10 +418,6 @@ public class PhotoViewerController {
 	}
 
 	private void initializeGridImagesPane() {
-		initialGridItem.getImageAllPane()
-				.setOnMouseClicked(e -> fireOnClickEvent(e.isStillSincePress(), initialGridItem));
-		initialGridItem.getImageAllPane().setOnTouchPressed(e -> fireOnClickEvent(true, initialGridItem));
-
 		borderPane.setOnDragOver(new EventHandler<DragEvent>() {
 
 			@Override
@@ -317,18 +438,41 @@ public class PhotoViewerController {
 					PathLayerHelper.getParentsFiles(db.getFiles()).forEach(parent -> {
 						fileTracker.loadResolvedMapOrEmpty(parent);
 					});
-					if (db.getFiles().size() == 1 && ImgResources.contains(new FilePathLayer(db.getFiles().get(0)))) {
-						changeImage(new FilePathLayer(db.getFiles().get(0)));
-					} else {
-						db.getFiles().forEach(file3 -> {
-							FilePathLayer filePath = new FilePathLayer(file3);
-							if (ArrayIMGExt.contains(filePath.getExtensionUPPERCASE())
-									&& !ImgResources.contains(filePath)) {
-								ImgResources.add(rollerPhoto, filePath);
+					Node nodeUnderMouse = PickNode.pick(gridImagesPane, event.getSceneX(), event.getSceneY());
+					ImageGridItem targetGrid = null;
+					int targetInsert = rollerPhoto;
+					int start = rollerPhoto - rollerPhoto % gridSize;
+					int offset = 0;
+					tryTarget: {
+						for (ImageGridItem gridItem : allGridItems) {
+							Node parent = nodeUnderMouse;
+							while (parent != null) {
+								if (parent.equals(gridItem.getImageAllPane())) {
+									targetInsert = start + offset;
+									targetGrid = gridItem;
+									break tryTarget;
+								}
+								parent = parent.getParent();
 							}
-						});
+							offset++;
+						}
 					}
-					changeImage(ImgResources.get(rollerPhoto));
+					HashSet<PathLayer> setRes = new HashSet<PathLayer>(ImgResources);
+					for (File file : db.getFiles()) {
+						FilePathLayer filePath = new FilePathLayer(file);
+						if (setRes.contains(filePath)) {
+							ImgResources.remove(filePath);
+						}
+						if (ArrayIMGExt.contains(filePath.getExtensionUPPERCASE())) {
+							ImgResources.add(targetInsert, filePath);
+						}
+					}
+					changeImage(rollerPhoto);
+					if (targetGrid != null) {
+						selectImageGrid(targetGrid);
+					} else {
+						selectImageGrid(initialGridItem);
+					}
 				}
 			}
 		});
@@ -336,28 +480,52 @@ public class PhotoViewerController {
 		scrollPane.setOnKeyPressed(onKeyPressedEvent);
 	}
 
+	/**
+	 * Some time keyPressedEvent don't get detected by {@link #borderPane} or
+	 * {@link #scrollPane} lookup a little bit <br>
+	 * So use {@link KeyEvent#consume()} for each code to just trigger code once
+	 */
 	private EventHandler<KeyEvent> onKeyPressedEvent = new EventHandler<KeyEvent>() {
 		@Override
 		public void handle(KeyEvent key) {
+			// do deal with pad using boolean because common implementation is below
+			boolean didUPPad = false;
+			boolean didDownPad = false;
+			boolean didLeftPad = false;
+			boolean didRightPad = false;
 			switch (key.getCode()) {
-			case RIGHT:
-			case F:
-			case D:
-				nextImage();
+			case UP:
 				key.consume();
+				didUPPad = true;
+				break;
+			case DOWN:
+				key.consume();
+				didDownPad = true;
 				break;
 			case LEFT:
-			case A:
-				previousImage();
 				key.consume();
+				didLeftPad = true;
+				break;
+			case RIGHT:
+				key.consume();
+				didRightPad = true;
+				break;
+			case F:
+			case D:
+				key.consume();
+				nextImage();
+				break;
+			case A:
+				key.consume();
+				previousImage();
 				break;
 			case SPACE:
-				toggleSeen();
 				key.consume();
+				toggleSeen();
 				break;
 			case N:
-				Platform.runLater(() -> noteInput.requestFocus());
 				key.consume();
+				Platform.runLater(() -> noteInput.requestFocus());
 				break;
 			case F2:
 			case M:
@@ -367,8 +535,109 @@ public class PhotoViewerController {
 					nameImage.selectRange(0, nameImage.getText().lastIndexOf('.'));
 				});
 				break;
+			case ENTER:
+				key.consume();
+				gridSwitchButton.fire();
+				break;
+			case PLUS:
+			case ADD:
+				key.consume();
+				if (!increaseGridSize.isDisabled()) {
+					increaseGridSize.fire();
+				}
+				break;
+			case H:
+				key.consume();
+				showPhotosOnly();
+				break;
+			case SUBTRACT:
+			case MINUS:
+				key.consume();
+				if (!decreaseGridSize.isDisabled()) {
+					decreaseGridSize.fire();
+				}
+				break;
 			default:
 				break;
+			}
+			boolean didAny = didLeftPad || didRightPad || didUPPad || didDownPad;
+			if (!didAny) {
+				return;
+			}
+			if (gridSize == 1) {
+				// don't do anything for UP/Down and leave them for image height control when
+				// Grid Size is 1
+				if (didLeftPad) {
+					previousImage();
+				} else if (didRightPad) {
+					nextImage();
+				}
+			} else {
+				int startingRoller = getStartingIndexOfShownImages();
+				int oldFocusedIndexGridItem = rollerPhoto - startingRoller;
+				// from 1 to gridRowSize
+				int oldFocusedRow = oldFocusedIndexGridItem / gridColumnSize + 1;
+				// there are column size item in each row
+				if (didUPPad || didLeftPad) {
+					if (didUPPad) {
+						// change image to show one up row
+						// and load a new one if reach limit
+						if (oldFocusedRow == 1) {
+							int newBegin = startingRoller - gridColumnSize;
+							if (newBegin >= 0) {
+								changeImage(newBegin, false);
+							}
+						} else {
+							oldFocusedIndexGridItem -= gridColumnSize;
+						}
+						if (oldFocusedIndexGridItem >= 0) {
+							selectImageGrid(allGridItems.get(oldFocusedIndexGridItem));
+						}
+					} else if (didLeftPad) {
+						oldFocusedIndexGridItem--;
+						if (oldFocusedIndexGridItem >= 0) {
+							selectImageGrid(allGridItems.get(oldFocusedIndexGridItem));
+						} else {
+							if (previousImage()) {
+								selectImageGrid(allGridItems.get(gridSize - 1));
+							}
+						}
+					}
+
+				} else if (didDownPad || didRightPad) {
+					if (didDownPad) {
+						// Change image to show one down row
+						// and load a new one if reach limit
+						// from 1 to gridRowSize
+						int lastRowAtLastPage = (ImgResources.size() - 1) % gridSize / gridColumnSize + 1;
+						boolean didReachEndLimit = getEndingIndexOfShownImages() == ImgResources.size() - 1
+								&& lastRowAtLastPage == oldFocusedRow;
+						if (didReachEndLimit) {
+							return;
+						}
+
+						if (oldFocusedRow == gridRowSize) {
+							int newBegin = startingRoller + gridColumnSize;
+							if (newBegin < ImgResources.size()) {
+								changeImage(newBegin, false);
+							}
+						} else {
+							oldFocusedIndexGridItem += gridColumnSize;
+						}
+						if (oldFocusedIndexGridItem < gridSize) {
+							selectImageGrid(allGridItems.get(oldFocusedIndexGridItem));
+						}
+					} else if (didRightPad) {
+						oldFocusedIndexGridItem++;
+						if (oldFocusedIndexGridItem < allGridItems.size()) {
+							selectImageGrid(allGridItems.get(oldFocusedIndexGridItem));
+						} else {
+							if (nextImage()) {
+								selectImageGrid(allGridItems.get(0));
+							}
+						}
+					}
+				}
 			}
 		}
 	};
@@ -399,10 +668,8 @@ public class PhotoViewerController {
 					gridItem = allGridItems.get(allGridIndex++);
 				} else {
 					gridItem = new ImageGridItem(photoStage, initialGridItem);
+					initializeImageGrid(gridItem);
 					gridItem.getImageAllPane().getStyleClass().add("onFocusBorder");
-					gridItem.getImageAllPane()
-							.setOnMouseClicked(e -> fireOnClickEvent(e.isStillSincePress(), gridItem));
-					gridItem.getImageAllPane().setOnTouchPressed(e -> fireOnClickEvent(true, gridItem));
 					allGridItems.add(gridItem);
 				}
 				GridPane.clearConstraints(gridItem.getImageAllPane());
@@ -410,7 +677,15 @@ public class PhotoViewerController {
 				allImagePanes.add(gridItem.getImageAllPane());
 			}
 		}
-		showToolBox(showToolBoxToggle.isSelected());
+		boolean isShowingToolBox;
+		if (gridSize > 1) {
+			isShowingToolBox = showToolBoxesGrid;
+		} else {
+			isShowingToolBox = showToolBoxSingle;
+		}
+		// sync ShowToggleButton
+		showToolBoxToggle.setSelected(isShowingToolBox);
+		showToolBox(isShowingToolBox);
 		showNameLabel(showNameCheckBox.isSelected());
 		showNoteLabel(showNoteCheckBox.isSelected());
 		showZoomSlider(showZoomCheckBox.isSelected());
@@ -437,7 +712,7 @@ public class PhotoViewerController {
 			}
 		}
 		gridImagesPane.getChildren().addAll(allImagePanes);
-		Platform.runLater(() -> changeImage(ImgResources.get(rollerPhoto)));
+		Platform.runLater(() -> changeImage(rollerPhoto));
 	}
 
 	private void limitGridSize() {
@@ -460,38 +735,39 @@ public class PhotoViewerController {
 	private void initializeButtons() {
 		indexOfImage.setOnMouseClicked(e -> goToPhoto());
 
-		ImageView zoomIcon = new ImageView(new Image(ResourcesHelper.getResourceAsStream("/img/zoom_icon.png")));
-		zoomIcon.setFitWidth(20);
-		zoomIcon.setFitHeight(20);
-		zoomOnClick.setGraphic(zoomIcon);
+		zoomOnClick.setGraphic(IconLoader.getIconImageView(ICON_TYPE.ZOOM, true, 20, 20));
 		zoomOnClick.setOnAction(e -> ImageGridItem.setDoubleClickBehavior(!zoomOnClick.isSelected()));
 
 		fitWidthCheckBox.setOnAction(p -> {
 			if (fitWidthCheckBox.isSelected()) {
 				ImageGridItem.setAutoFitWidth(true);
 				for (ImageGridItem item : allGridItems) {
-					item.fitWidth();
+					item.fitWidthThisOnly();
 				}
 			} else {
 				ImageGridItem.setAutoFitWidth(false);
 				for (ImageGridItem item : allGridItems) {
-					item.resetCenter();
+					item.resetCenterThisOnly();
 				}
 			}
 		});
-		showToolBoxToggle.setOnAction(e -> showToolBox(showToolBoxToggle.isSelected()));
+		showToolBoxToggle.setOnAction(e -> {
+			showToolBox(showToolBoxToggle.isSelected());
+			if (gridSize > 1) {
+				showToolBoxesGrid = showToolBoxToggle.isSelected();
+			} else {
+				showToolBoxSingle = showToolBoxToggle.isSelected();
+			}
+		});
 
-		ImageView toolBoxIcon = new ImageView(new Image(ResourcesHelper.getResourceAsStream("/img/setting-512.png")));
-		toolBoxIcon.setFitWidth(20);
-		toolBoxIcon.setFitHeight(20);
-		showToolBoxToggle.setGraphic(toolBoxIcon);
+		showToolBoxToggle.setGraphic(IconLoader.getIconImageView(ICON_TYPE.TOOL_BOX, true, 20, 20));
 
 		showNameCheckBox.setOnAction(e -> showNameLabel(showNameCheckBox.isSelected()));
 		showNoteCheckBox.setOnAction(e -> showNoteLabel(showNoteCheckBox.isSelected()));
 		showZoomCheckBox.setOnAction(e -> showZoomSlider(showZoomCheckBox.isSelected()));
 		stretchCheckBox.setOnAction(e -> {
 			stretchGridImages(stretchCheckBox.isSelected());
-			changeImage(ImgResources.get(rollerPhoto));
+			changeImage(rollerPhoto);
 		});
 
 		maintainPosCheckBox.setOnAction(e -> ImageGridItem.setMantaingPos(maintainPosCheckBox.isSelected()));
@@ -619,20 +895,54 @@ public class PhotoViewerController {
 				.sorted(StringHelper.NaturalFileComparator).collect(Collectors.toList());
 	}
 
+	private int getStartingIndexOfShownImages() {
+		return startingIndexOfShownImage;
+	}
+
+	private int getEndingIndexOfShownImages() {
+		return Math.min(ImgResources.size() - 1, getStartingIndexOfShownImages() + gridSize - 1);
+	}
+
 	// whenever images are fully loaded or not
 	private HashMap<PathLayer, Pair<Image, Boolean>> cachedImage = new HashMap<>();
 	private HashMap<PathLayer, ImagePosition> cachedImagePositon = new HashMap<>();
 	private HashMap<PathLayer, Dimension2D> cachedImageDimension = new HashMap<>();
-	private ImageGridItem lastSelectedGridItem = null;
-	private EventHandler<Event> onSetUpImage = e -> selectImageGrid(lastSelectedGridItem);
 
-	private void changeImage(PathLayer selectedImg) {
-		// When finish setup image do focus on target image
-		if (lastSelectedGridItem != null) {
-			lastSelectedGridItem.setOnSetUpImage(null);
+	private @Nullable ImageGridItem lastSelectedGridItem;
+	/**
+	 * Used to false selected last selected after deSelecting it with control
+	 *
+	 * @see #toggleStickySelection(ImageGridItem)
+	 */
+	private @Nullable ImageGridItem lastDeSelectedGridItem;
+
+	private @Nullable ImageGridItem recentSetUppedImageGridItem = null;
+
+	private CallBackToDo onSetUpImage = () -> selectImageGrid(recentSetUppedImageGridItem);
+
+	private void changeImage(PathLayer selectedImgRes) {
+		changeImage(ImgResources.indexOf(selectedImgRes));
+	}
+
+	private void changeImage(int imgResIndex) {
+		changeImage(imgResIndex, true);
+	}
+
+	private void changeImage(int imgResIndex, boolean conserveGridPostion) {
+		if (imgResIndex < 0 || imgResIndex > ImgResources.size()) {
+			try {
+				throw new IndexOutOfBoundsException();
+			} catch (Exception e) {
+				e.printStackTrace();
+			}
+			return;
 		}
-		lastSelectedGridItem = allGridItems.get(rollerPhoto % gridSize);
-		lastSelectedGridItem.setOnSetUpImage(onSetUpImage);
+		// When finish setup image do focus on target image
+		if (recentSetUppedImageGridItem != null) {
+			recentSetUppedImageGridItem.setOnSetUpImage(null);
+		}
+		recentSetUppedImageGridItem = allGridItems.get(rollerPhoto % gridSize);
+		recentSetUppedImageGridItem.setOnSetUpImage(onSetUpImage);
 
 		// before changing to a new picture cache the current image position
 		// and if it full load
@@ -647,13 +957,21 @@ public class PhotoViewerController {
 		}
 
 		// load selected image and all next image till grid items are filled
-		rollerPhoto = ImgResources.indexOf(selectedImg);
+		rollerPhoto = imgResIndex;
 		checkDisableIndexBoundNextPrevious();
 		indexOfImage.setText(rollerPhoto + 1 + " / " + ImgResources.size());
-		int start = rollerPhoto - rollerPhoto % gridSize;
+
+		int start;
+		if (conserveGridPostion) {
+			start = rollerPhoto - rollerPhoto % gridSize;
+		} else {
+			start = rollerPhoto;
+		}
+		start = Math.max(start, 0);
+		startingIndexOfShownImage = start;
 		int end = Math.min(ImgResources.size(), start + gridSize);
 		int gridIndex = 0;
-		for (int i = start; i < end && i < ImgResources.size(); i++) {
+		for (int i = start; i < end; i++) {
 			PathLayer toLoadImageFile = ImgResources.get(i);
 			// check existence
 			if (!toLoadImageFile.exists()) {
@@ -700,18 +1018,6 @@ public class PhotoViewerController {
 		}
 	}
 
-	@FXML
-	private void nextImage() {
-		if (rollerPhoto < ImgResources.size() - 1) {
-			rollerPhoto = Math.min(ImgResources.size() - 1, rollerPhoto / gridSize * gridSize + gridSize);
-		} else {
-			return;
-		}
-		changeImage(ImgResources.get(rollerPhoto));
-		selectImageGrid(initialGridItem);
-		gridImagesPane.requestFocus();
-	}
-
 	/**
 	 * Triggered in call {@link #changeImage(File)}
 	 */
@@ -729,15 +1035,38 @@ public class PhotoViewerController {
 
 	}
 
+	/**
+	 *
+	 * @return <code>true</code> if a refresh to next images was occurred<br>
+	 *         <code>false</code> otherwise
+	 */
 	@FXML
-	private void previousImage() {
+	private boolean nextImage() {
+		if (rollerPhoto < ImgResources.size() - 1) {
+			rollerPhoto = Math.min(ImgResources.size() - 1, rollerPhoto / gridSize * gridSize + gridSize);
+		} else {
+			return false;
+		}
+		changeImage(rollerPhoto);
+		selectImageGrid(initialGridItem);
+		return true;
+	}
+
+	/**
+	 *
+	 * @return <code>true</code> if a refresh to previous images was occurred<br>
+	 *         <code>false</code> otherwise
+	 */
+	@FXML
+	private boolean previousImage() {
 		if (rollerPhoto > 0) {
 			rollerPhoto = Math.max(0, rollerPhoto / gridSize * gridSize - gridSize);
 		} else {
-			return;
+			return false;
 		}
-		changeImage(ImgResources.get(rollerPhoto));
+		changeImage(rollerPhoto);
 		selectImageGrid(initialGridItem);
+		return true;
 	}
 
 	@FXML
@@ -896,11 +1225,16 @@ public class PhotoViewerController {
 
 	@FXML
 	private void goToPhoto() {
-		Integer indexMinus = DialogHelper.showIntegerInputDialog("Go To Photo", "Enter Photo Index", "Index", 1,
+		Integer indexToBeMinus = DialogHelper.showIntegerInputDialog("Go To Photo", "Enter Photo Index", "Index", 1,
 				ImgResources.size(), rollerPhoto + 1);
-		if (indexMinus == null) {
+		if (indexToBeMinus == null) {
 			return;
 		}
-		changeImage(ImgResources.get(indexMinus - 1));
+		int index = indexToBeMinus - 1;
+		if (index < 0 || index >= ImgResources.size()) {
+			DialogHelper.showAlert(AlertType.ERROR, "Change Image", "Image Index Of bounds!", "Cannot load image");
+		} else {
+			changeImage(index);
+		}
 	}
 }

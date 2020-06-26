@@ -167,7 +167,7 @@
                         <Insets left="10.0" right="10.0" />
                      </HBox.margin></TextField>
                   <ToggleButton fx:id="showToolBoxToggle" layoutX="566.0" layoutY="10.0" mnemonicParsing="false" text="Show Tool Box" />
-                  <ToggleButton fx:id="zoomOnClick" mnemonicParsing="false" text="Zoom In/Out Click">
+                  <ToggleButton fx:id="zoomOnClick" mnemonicParsing="false" text="Zoom In/Out Clicks">
                      <tooltip>
                         <Tooltip text="Switch Between 1*1 and grid on Click" />
                      </tooltip>

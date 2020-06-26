@@ -93,6 +93,11 @@ public class FileTrackerHolder {
 		return noteText;
 	}
 
+	/**
+	 * <code>-1</code> is the default time to live
+	 * 
+	 * @return
+	 */
 	public int getTimeToLive() {
 		return timeToLive;
 	}

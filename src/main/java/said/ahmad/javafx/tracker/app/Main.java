@@ -24,6 +24,7 @@ import said.ahmad.javafx.tracker.app.look.ThemeManager;
 import said.ahmad.javafx.tracker.app.pref.Setting;
 import said.ahmad.javafx.tracker.controller.PhotoViewerController;
 import said.ahmad.javafx.tracker.controller.WelcomeController;
+import said.ahmad.javafx.tracker.controller.splitview.SplitViewController;
 import said.ahmad.javafx.tracker.system.SystemIconsHelper;
 import said.ahmad.javafx.tracker.system.file.PathLayer;
 import said.ahmad.javafx.tracker.system.file.local.FilePathLayer;
@@ -184,6 +185,17 @@ public class Main extends Application {
 			Setting.setLeftLastKnowLocation(new FilePathLayer(roots[0]));
 			Setting.setRightLastKnowLocation(new FilePathLayer(roots[0]));
 		}
+	}
+
+	public static void revealInExplorer(PathLayer path) throws IOException {
+		if (mWelcomeController == null) {
+			mWelcomeController = WelcomeController.newWelcomeControllerStage(primaryStage);
+		}
+		SplitViewController test = mWelcomeController.getMostRightView();
+		test.navigate(path.getParentPath());
+		test.setOnFinishLoadingScrollToName(path.getName());
+		primaryStage.show();
+		test.showToastNotifyExistance();
 	}
 
 	public static void showStage() {

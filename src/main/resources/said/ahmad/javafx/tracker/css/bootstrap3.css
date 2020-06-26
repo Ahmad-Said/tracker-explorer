@@ -31,14 +31,6 @@
     /* Root variables */
     accent_color: #0078d7;
 }
-.onFocusBorder{
-	
-}
-.onFocusBorder:focused{
-	-fx-border-radius:10;
-	-fx-border-width:5;
-	-fx-border-color:silver;
-}
 
 .text-input{
     -fx-background-radius: 0, 0;
