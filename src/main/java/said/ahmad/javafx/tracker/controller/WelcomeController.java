@@ -62,6 +62,7 @@ import said.ahmad.javafx.tracker.app.look.ThemeManager;
 import said.ahmad.javafx.tracker.app.pref.Setting;
 import said.ahmad.javafx.tracker.controller.connection.ConnectionController;
 import said.ahmad.javafx.tracker.controller.connection.ConnectionController.ConnectionType;
+import said.ahmad.javafx.tracker.controller.setting.base.SettingController;
 import said.ahmad.javafx.tracker.controller.splitview.SplitViewController;
 import said.ahmad.javafx.tracker.datatype.FavoriteView;
 import said.ahmad.javafx.tracker.datatype.SplitViewState;
@@ -528,10 +529,17 @@ public class WelcomeController implements Initializable {
 		refreshAllSplitViews();
 	}
 
+	/**
+	 * note that clear is done for every menu so calling this function again would
+	 * initialize it as new with no duplicate MenuItem
+	 * 
+	 * @see #changeInSetting()
+	 */
 	private void initializeMenuBar() {
 		/**
 		 * Set up file menu
 		 */
+		newEmbedWindow.getItems().clear();
 		// New Embed Window menu
 		MenuItem newSplitLeftTemplate = new MenuItem("Left Template");
 		newSplitLeftTemplate.setOnAction(e -> {
@@ -569,6 +577,7 @@ public class WelcomeController implements Initializable {
 		/**
 		 * Set up connection menu
 		 */
+		openConnectionMenu.getItems().clear();
 		for (ConnectionType connectionType : ConnectionType.values()) {
 			MenuItem mn = new MenuItem(connectionType.toString());
 			mn.setOnAction(e -> new ConnectionController(connectionType,
@@ -579,6 +588,7 @@ public class WelcomeController implements Initializable {
 		/**
 		 * set up Operation Stage
 		 */
+		themeSelection.getItems().clear();
 		MenuItem oldFashionedNoThemStyle = new MenuItem("old fashioned");
 		MenuItem bootStrapThem = new MenuItem("Bootstrap V3");
 		MenuItem micosoftWindowsLight = new MenuItem("Windows 10 Theme light");

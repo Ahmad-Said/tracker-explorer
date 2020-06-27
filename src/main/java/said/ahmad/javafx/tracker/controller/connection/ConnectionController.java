@@ -123,7 +123,9 @@ public class ConnectionController {
 		default:
 			break;
 		}
-		if (currentConnection != null) {
+		if (currentConnection != null)
+
+		{
 			// load corresponding connection and put it's pane in map
 			try {
 				currentConnection.loadFXML();

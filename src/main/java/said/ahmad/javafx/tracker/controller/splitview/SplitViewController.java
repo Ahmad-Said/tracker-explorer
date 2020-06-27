@@ -247,7 +247,7 @@ public class SplitViewController implements Initializable {
 	private TableView<TableViewModel> table;
 	private ProgressIndicator loadingTablePlaceHolder;
 	private Label noContentTablePlaceHolder;
-	private static Image fileNotFoundImage = new Image(ResourcesHelper.getResourceAsStream("/img/file_not_found.png"));
+	private static Image fileNotFoundImage = IconLoader.getIconImage(ICON_TYPE.RESOURCE_NOT_FOUND, true, 250, 200);
 	private ImageView fileNotFoundImageView = new ImageView(fileNotFoundImage);
 	private Text fileNotFoundErrorText = new Text();
 	private TextFlow fileNotFoundErrorTextFlow = new TextFlow(fileNotFoundErrorText);

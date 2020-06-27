@@ -17,7 +17,7 @@ import org.jetbrains.annotations.Nullable;
 import javafx.embed.swing.SwingFXUtils;
 import javafx.scene.image.Image;
 import javafx.stage.FileChooser;
-import javafx.stage.Stage;
+import javafx.stage.Window;
 import javafx.util.Pair;
 import mslinks.ShellLink;
 import mslinks.ShellLinkException;
@@ -25,7 +25,8 @@ import net.sf.image4j.codec.ico.ICOEncoder;
 import said.ahmad.javafx.tracker.app.DialogHelper;
 import said.ahmad.javafx.tracker.app.Main;
 import said.ahmad.javafx.tracker.app.StringHelper;
-import said.ahmad.javafx.tracker.controller.SettingController;
+import said.ahmad.javafx.tracker.controller.setting.base.SettingController;
+import said.ahmad.javafx.tracker.controller.setting.base.SettingController.Setting_TYPE;
 import said.ahmad.javafx.tracker.system.SystemIconsHelper;
 import said.ahmad.javafx.tracker.system.WindowsShortcut;
 import said.ahmad.javafx.tracker.system.file.PathLayer;
@@ -127,7 +128,7 @@ public class TrackerPlayer {
 
 	public static void openTrackerSettingGUI() {
 		SettingController miniSetting = new SettingController(null);
-		miniSetting.switchToTrackerPlayerTab();
+		miniSetting.showSettingView(Setting_TYPE.TRACKER_PLAYER);
 	}
 
 	public static String getPlaylistName() {
@@ -147,7 +148,7 @@ public class TrackerPlayer {
 	 * @return
 	 */
 	@Nullable
-	public static File getPlaylistLocation(File initialDirectory, Stage requestingStage) {
+	public static File getPlaylistLocation(File initialDirectory, Window requestingStage) {
 		FileChooser fileChooser = new FileChooser();
 		fileChooser.setTitle("Navigate to where Your Playlist is located");
 		if (initialDirectory != null && initialDirectory.exists()) {
@@ -159,6 +160,7 @@ public class TrackerPlayer {
 		fileChooser.getExtensionFilters().addAll(StringHelper.getExtensionFilter("Simple Audio", VLC.ArrayAudioExt));
 		fileChooser.getExtensionFilters().addAll(StringHelper.getExtensionFilter("Simple Video", VLC.ArrayVideoExt));
 		fileChooser.getExtensionFilters().addAll(new FileChooser.ExtensionFilter("Anything else", "*"));
+
 		File playlistFile = fileChooser.showOpenDialog(requestingStage);
 		return playlistFile;
 	}

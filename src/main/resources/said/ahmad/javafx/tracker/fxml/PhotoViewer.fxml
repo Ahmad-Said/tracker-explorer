@@ -86,14 +86,14 @@
                         <String fx:value="first" />
                      </styleClass>
                   </Label>
-                  <TextField fx:id="nameImage" minWidth="-Infinity" prefWidth="100.0" styleClass="last" HBox.hgrow="ALWAYS">
+                  <TextField fx:id="nameImage" minWidth="-Infinity" styleClass="last" HBox.hgrow="ALWAYS">
                      <HBox.margin>
                         <Insets left="40.0" right="20.0" />
                      </HBox.margin>
                   </TextField>
-                  <Button fx:id="applyName" alignment="CENTER" minWidth="-Infinity" mnemonicParsing="false" onAction="#renameImage" prefWidth="105.0" style="-fx-font-weight: bold;" styleClass="primary" text="Apply Name">
+                  <Button fx:id="applyName" alignment="CENTER" minWidth="-Infinity" mnemonicParsing="false" onAction="#renameImage" prefHeight="31.0" prefWidth="141.0" style="-fx-font-weight: bold;" text="Apply Name">
                      <HBox.margin>
-                        <Insets left="10.0" right="20.0" />
+                        <Insets right="20.0" />
                      </HBox.margin>
                   </Button>
                </children>
@@ -126,7 +126,7 @@
                         <Insets left="10.0" right="20.0" />
                      </HBox.margin>
                   </TextField>
-                  <Button fx:id="applyNote" alignment="CENTER" mnemonicParsing="false" onAction="#addNoteImage" style="-fx-background-color: #7F00FF; -fx-text-fill: white; -fx-font-weight: bold;" text="Apply Note">
+                  <Button fx:id="applyNote" alignment="CENTER" mnemonicParsing="false" onAction="#addNoteImage" style="-fx-font-weight: bold;" text="Apply Note">
                      <HBox.margin>
                         <Insets left="10.0" right="20.0" />
                      </HBox.margin>
@@ -177,8 +177,8 @@
                         <Insets />
                      </HBox.margin>
                   </SplitMenuButton>
-                  <Button fx:id="increaseGridSize" mnemonicParsing="false" text="+" />
-                  <Button fx:id="decreaseGridSize" layoutX="734.0" layoutY="10.0" mnemonicParsing="false" text="-" />
+                  <Button fx:id="increaseGridSize" mnemonicParsing="false" />
+                  <Button fx:id="decreaseGridSize" layoutX="734.0" layoutY="10.0" mnemonicParsing="false" />
                </children>
                <VBox.margin>
                   <Insets />

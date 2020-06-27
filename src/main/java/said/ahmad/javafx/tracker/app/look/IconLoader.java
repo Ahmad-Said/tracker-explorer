@@ -20,7 +20,7 @@ public class IconLoader {
 
 		COPY_BASE_NAME, PASTE_BASE_NAME, UNDO,
 
-		NEW, FILE, FOLDER, DELETE,
+		NEW, FILE, FOLDER, DELETE, RESOURCE_NOT_FOUND,
 
 		HIDDEN, SORT,
 
@@ -34,11 +34,15 @@ public class IconLoader {
 		CROP, ROTATE_RIGHT, CENTRALIZE, FIT,
 
 		// Misc Stuff
-		UP, DOWN, REMOVE, CANCEL, SELECT_ALL,
+		UP, DOWN, PLUS, ADD, MINUS, APPLY,
+
+		REMOVE, CANCEL, SELECT_ALL,
 
 		SETIING, TOOL_BOX, INFORMATION, SAVE,
 
-		DRAG, ZOOM, GRID
+		DRAG, ZOOM, GRID,
+
+		STAR, USER,
 	}
 
 	private static final HashMap<ICON_TYPE, String> enumToName = new HashMap<IconLoader.ICON_TYPE, String>() {
@@ -57,11 +61,12 @@ public class IconLoader {
 			put(ICON_TYPE.BULK_RENAME_UTILITY, "/img/context_menu/bulk_rename_utility.png");
 			put(ICON_TYPE.COPY_BASE_NAME, "/img/context_menu/copy_base_name.png");
 			put(ICON_TYPE.PASTE_BASE_NAME, "/img/context_menu/paste_base_name.png");
-			put(ICON_TYPE.UNDO, "/img/context_menu/undo.png");
+
 			put(ICON_TYPE.NEW, "/img/context_menu/new.png");
 			put(ICON_TYPE.FILE, "/img/context_menu/file.png");
 			put(ICON_TYPE.FOLDER, "/img/context_menu/folder.png");
 			put(ICON_TYPE.DELETE, "/img/context_menu/delete.png");
+			put(ICON_TYPE.RESOURCE_NOT_FOUND, "/img/file_not_found.png");
 			put(ICON_TYPE.HIDDEN, "/img/context_menu/hidden.png");
 			put(ICON_TYPE.SORT, "/img/context_menu/sort.png");
 			put(ICON_TYPE.SYSTEM, "/img/context_menu/system.png");
@@ -86,6 +91,13 @@ public class IconLoader {
 			put(ICON_TYPE.UP, "/img/misc/up.png");
 			put(ICON_TYPE.DOWN, "/img/misc/down.png");
 
+			put(ICON_TYPE.PLUS, "/img/misc/add.png");
+			put(ICON_TYPE.ADD, "/img/misc/add.png");
+			put(ICON_TYPE.MINUS, "/img/misc/minus.png");
+
+			put(ICON_TYPE.UNDO, "/img/misc/undo.png");
+			put(ICON_TYPE.APPLY, "/img/misc/apply.png");
+
 			put(ICON_TYPE.SETIING, "/img/setting-512.png");
 			put(ICON_TYPE.TOOL_BOX, "/img/setting-512.png");
 			put(ICON_TYPE.INFORMATION, "/img/misc/information.png");
@@ -94,6 +106,9 @@ public class IconLoader {
 			put(ICON_TYPE.DRAG, "/img/misc/drag.png");
 			put(ICON_TYPE.ZOOM, "/img/zoom_icon.png");
 			put(ICON_TYPE.GRID, "/img/grid_button.png");
+
+			put(ICON_TYPE.STAR, "/img/misc/star.png");
+			put(ICON_TYPE.USER, "/img/misc/user.png");
 
 		}
 	};

@@ -788,7 +788,9 @@ public class PhotoViewerController {
 				resizeGridImagesPane(rowSize.getKey(), rowSize.getValue());
 			}
 		});
+		increaseGridSize.setGraphic(IconLoader.getIconImageView(ICON_TYPE.ADD, true, 20, 20));
 		increaseGridSize.setOnAction(e -> resizeGridImagesPane(gridRowSize + 1, gridColumnSize + 1));
+		decreaseGridSize.setGraphic(IconLoader.getIconImageView(ICON_TYPE.MINUS, true, 20, 20));
 		decreaseGridSize.setDisable(true);
 		decreaseGridSize.setOnAction(e -> resizeGridImagesPane(gridRowSize - 1, gridColumnSize - 1));
 		MenuItem initial = new MenuItem("1 X 1");
@@ -804,7 +806,9 @@ public class PhotoViewerController {
 		}
 
 		nameImage.setOnAction(e -> renameImage());
+		applyName.setGraphic(IconLoader.getIconImageView(ICON_TYPE.APPLY, true, 20, 20));
 		noteInput.setOnAction(e -> addNoteImage());
+		applyNote.setGraphic(IconLoader.getIconImageView(ICON_TYPE.NOTE, true, 20, 20));
 		if (rollerPhoto == ImgResources.size() - 1) {
 			nextButton.setDisable(true);
 		} else if (rollerPhoto == 0) {
