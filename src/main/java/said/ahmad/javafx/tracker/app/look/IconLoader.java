@@ -18,7 +18,7 @@ public class IconLoader {
 
 		RENAME, BULK_RENAME, BULK_RENAME_UTILITY,
 
-		COPY_BASE_NAME, PASTE_BASE_NAME, UNDO,
+		COPY_BASE_NAME, PASTE_BASE_NAME,
 
 		NEW, FILE, FOLDER, DELETE, RESOURCE_NOT_FOUND,
 
@@ -30,11 +30,16 @@ public class IconLoader {
 
 		CORTANA, VLC,
 
+		// Connection icons
+		LINK_SYMBOL,
+
 		// Image operation
 		CROP, ROTATE_RIGHT, CENTRALIZE, FIT,
 
 		// Misc Stuff
-		UP, DOWN, PLUS, ADD, MINUS, APPLY,
+		UP, DOWN, PLUS, ADD, MINUS,
+
+		APPLY, UNDO, REFRESH,
 
 		REMOVE, CANCEL, SELECT_ALL,
 
@@ -76,6 +81,9 @@ public class IconLoader {
 			put(ICON_TYPE.CORTANA, "/img/context_menu/cortana.png");
 			put(ICON_TYPE.VLC, "/img/context_menu/vlc.png");
 
+			// Connections icons
+			put(ICON_TYPE.LINK_SYMBOL, "/img/connection/link_symbol.png");
+
 			// Image Stuff
 			put(ICON_TYPE.CROP, "/img/img_operation/crop.png");
 			put(ICON_TYPE.ROTATE_RIGHT, "/img/img_operation/rotate_right.png");
@@ -95,8 +103,9 @@ public class IconLoader {
 			put(ICON_TYPE.ADD, "/img/misc/add.png");
 			put(ICON_TYPE.MINUS, "/img/misc/minus.png");
 
-			put(ICON_TYPE.UNDO, "/img/misc/undo.png");
 			put(ICON_TYPE.APPLY, "/img/misc/apply.png");
+			put(ICON_TYPE.UNDO, "/img/misc/undo.png");
+			put(ICON_TYPE.REFRESH, "/img/misc/refresh.png");
 
 			put(ICON_TYPE.SETIING, "/img/setting-512.png");
 			put(ICON_TYPE.TOOL_BOX, "/img/setting-512.png");

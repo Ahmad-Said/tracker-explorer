@@ -30,6 +30,7 @@ import javafx.scene.control.ScrollPane;
 import javafx.scene.control.SplitMenuButton;
 import javafx.scene.control.TextField;
 import javafx.scene.control.ToggleButton;
+import javafx.scene.control.Tooltip;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.input.DataFormat;
@@ -53,7 +54,7 @@ import said.ahmad.javafx.tracker.app.StringHelper;
 import said.ahmad.javafx.tracker.app.look.IconLoader;
 import said.ahmad.javafx.tracker.app.look.IconLoader.ICON_TYPE;
 import said.ahmad.javafx.tracker.app.look.ThemeManager;
-import said.ahmad.javafx.tracker.datatype.ImagePosition;
+import said.ahmad.javafx.tracker.datatype.ImageInfoHolder;
 import said.ahmad.javafx.tracker.fxGraphics.ImageGridItem;
 import said.ahmad.javafx.tracker.system.file.PathLayer;
 import said.ahmad.javafx.tracker.system.file.PathLayerHelper;
@@ -91,6 +92,9 @@ public class PhotoViewerController {
 
 	@FXML
 	private Label indexOfImage;
+
+	@FXML
+	private Button refreshFolder;
 
 	@FXML
 	private Label sizeMb;
@@ -735,6 +739,10 @@ public class PhotoViewerController {
 	private void initializeButtons() {
 		indexOfImage.setOnMouseClicked(e -> goToPhoto());
 
+		refreshFolder.setGraphic(IconLoader.getIconImageView(ICON_TYPE.REFRESH, true, 20, 20));
+		refreshFolder.setTooltip(new Tooltip("Refresh current parent folder if there are image file changes"));
+		refreshFolder.setOnAction(e -> refreshFolderCurrentRoller());
+
 		zoomOnClick.setGraphic(IconLoader.getIconImageView(ICON_TYPE.ZOOM, true, 20, 20));
 		zoomOnClick.setOnAction(e -> ImageGridItem.setDoubleClickBehavior(!zoomOnClick.isSelected()));
 
@@ -825,6 +833,25 @@ public class PhotoViewerController {
 		});
 	}
 
+	private void refreshFolderCurrentRoller() {
+		List<PathLayer> list;
+		try {
+			PathLayer currentPath = ImgResources.get(rollerPhoto);
+			list = getImgFilesInDir(currentPath.getParentPath());
+			// only clear current path cache
+			// because image is eating so much memory cannot handle refresh of all image
+			cachedImage.remove(currentPath);
+			ImgResources.removeAll(list);
+			ImgResources.addAll(list);
+
+			int lastKnownImageIndex = ImgResources.indexOf(currentPath);
+			lastKnownImageIndex = Math.max(0, lastKnownImageIndex);
+			changeImage(rollerPhoto);
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+	}
+
 	private void showToolBox(boolean doShow) {
 		for (ImageGridItem gridItem : allGridItems) {
 			if (doShow) {
@@ -908,9 +935,7 @@ public class PhotoViewerController {
 	}
 
 	// whenever images are fully loaded or not
-	private HashMap<PathLayer, Pair<Image, Boolean>> cachedImage = new HashMap<>();
-	private HashMap<PathLayer, ImagePosition> cachedImagePositon = new HashMap<>();
-	private HashMap<PathLayer, Dimension2D> cachedImageDimension = new HashMap<>();
+	private HashMap<PathLayer, ImageInfoHolder> cachedImage = new HashMap<>();
 
 	private @Nullable ImageGridItem lastSelectedGridItem;
 	/**
@@ -941,6 +966,10 @@ public class PhotoViewerController {
 			}
 			return;
 		}
+		if (ImgResources.size() == 0) {
+			allGridItems.forEach(e -> e.setDisable(true, false));
+			return;
+		}
 		// When finish setup image do focus on target image
 		if (recentSetUppedImageGridItem != null) {
 			recentSetUppedImageGridItem.setOnSetUpImage(null);
@@ -951,11 +980,12 @@ public class PhotoViewerController {
 		// before changing to a new picture cache the current image position
 		// and if it full load
 		for (ImageGridItem gridItem : allGridItems) {
-			if (gridItem.hasValidImageFile()) {
-				cachedImagePositon.put(gridItem.getImageFile(), gridItem.getCurImgPosition().clone());
+			if (gridItem.hasValidImageFile() && cachedImage.containsKey(gridItem.getImageFile())) {
+				ImageInfoHolder oldInfoToChange = cachedImage.get(gridItem.getImageFile());
+				oldInfoToChange.position = gridItem.getCurImgPosition();
 				if (gridItem.isDidImageChanged()) {
-					cachedImage.put(gridItem.getImageFile(),
-							new Pair<Image, Boolean>(gridItem.getImage(), gridItem.isFullyLoaded()));
+					oldInfoToChange.image = gridItem.getImage();
+					oldInfoToChange.isFullyLoaded = gridItem.isFullyLoaded();
 				}
 			}
 		}
@@ -980,7 +1010,6 @@ public class PhotoViewerController {
 			// check existence
 			if (!toLoadImageFile.exists()) {
 				cachedImage.remove(toLoadImageFile);
-				cachedImagePositon.remove(toLoadImageFile);
 				ImgResources.remove(i);
 				i--;
 				if (ImgResources.size() == 0) {
@@ -991,20 +1020,20 @@ public class PhotoViewerController {
 			}
 
 			ImageGridItem gridItem = allGridItems.get(gridIndex++);
-			Image image = null;
-			Pair<Image, Boolean> imagePair;
-			ImagePosition lastestPos = cachedImagePositon.get(toLoadImageFile);
 			if (cachedImage.containsKey(toLoadImageFile)) {
-				imagePair = cachedImage.get(toLoadImageFile);
-				image = imagePair.getKey();
-				gridItem.setOriginalImageDim(cachedImageDimension.get(toLoadImageFile));
-				gridItem.setImageAndSetup(image, toLoadImageFile, imagePair.getValue(), lastestPos);
+				ImageInfoHolder imageInfo = cachedImage.get(toLoadImageFile);
+				gridItem.setOriginalImageDim(imageInfo.originalImageDimension);
+				gridItem.setImageAndSetup(imageInfo.image, toLoadImageFile, imageInfo.isFullyLoaded,
+						imageInfo.position);
 			} else {
-				imagePair = gridItem.setImageAndSetup(toLoadImageFile, lastestPos);
-				image = imagePair.getKey();
-				cachedImage.put(toLoadImageFile, imagePair);
-				cachedImageDimension.put(toLoadImageFile, new Dimension2D(gridItem.getOriginalImageDim().getWidth(),
-						gridItem.getOriginalImageDim().getHeight()));
+				ImageInfoHolder info = new ImageInfoHolder();
+				Pair<Image, Boolean> imagePair = gridItem.setImageAndSetup(toLoadImageFile, null);
+				info.position = gridItem.getCurImgPosition();
+				info.image = imagePair.getKey();
+				info.isFullyLoaded = imagePair.getValue();
+				info.originalImageDimension = new Dimension2D(gridItem.getOriginalImageDim().getWidth(),
+						gridItem.getOriginalImageDim().getHeight());
+				cachedImage.put(toLoadImageFile, info);
 			}
 			PathLayer key = toLoadImageFile;
 			Boolean isSeen = fileTracker.isSeen(key);

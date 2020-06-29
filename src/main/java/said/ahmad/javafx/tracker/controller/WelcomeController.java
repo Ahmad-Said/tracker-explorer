@@ -217,18 +217,25 @@ public class WelcomeController implements Initializable {
 		SplitViewController newSplitView = null;
 		try {
 			newSplitView = addSplitView(allSplitViewController.peek().getmDirectoryPath(), doAddLeft);
-			newSplitView.refresh(null);
 		} catch (IOException e1) {
 			e1.printStackTrace();
 		}
 		return newSplitView;
 	}
 
+	/**
+	 *
+	 * @param initialePath   only used if new split view is created, otherwise reuse
+	 *                       last removed/cached one
+	 * @param isLeftTemplate
+	 * @return
+	 * @throws IOException
+	 */
 	private SplitViewController addSplitView(PathLayer initialePath, boolean isLeftTemplate) throws IOException {
 		SplitViewController newSplit = null;
 		if (allSplitViewControllerRemoved.size() != 0) {
 			newSplit = allSplitViewControllerRemoved.pop();
-			newSplit.setmDirectoryThenRefresh(initialePath);
+//			newSplit.setmDirectoryThenRefresh(initialePath);
 		} else {
 			newSplit = new SplitViewController(initialePath, isLeftTemplate, this);
 			if (isLeftTemplate) {
@@ -236,6 +243,7 @@ public class WelcomeController implements Initializable {
 			} else {
 				SplitViewController.loadFXMLViewAsRight(newSplit);
 			}
+			newSplit.refresh(null);
 		}
 		newSplit.getAutoExpand().setText("+");
 		MenuItem mn = new MenuItem("Close This View");
@@ -532,7 +540,7 @@ public class WelcomeController implements Initializable {
 	/**
 	 * note that clear is done for every menu so calling this function again would
 	 * initialize it as new with no duplicate MenuItem
-	 * 
+	 *
 	 * @see #changeInSetting()
 	 */
 	private void initializeMenuBar() {
@@ -544,7 +552,7 @@ public class WelcomeController implements Initializable {
 		MenuItem newSplitLeftTemplate = new MenuItem("Left Template");
 		newSplitLeftTemplate.setOnAction(e -> {
 			try {
-				addSplitView(allSplitViewController.peek().getmDirectoryPath(), true).refresh(null);
+				addSplitView(allSplitViewController.peek().getmDirectoryPath(), true);
 			} catch (IOException e3) {
 				e3.printStackTrace();
 			}
@@ -552,7 +560,7 @@ public class WelcomeController implements Initializable {
 		MenuItem newSplitRightTemplate = new MenuItem("Right Template");
 		newSplitRightTemplate.setOnAction(e -> {
 			try {
-				addSplitView(allSplitViewController.peek().getmDirectoryPath(), false).refresh(null);
+				addSplitView(allSplitViewController.peek().getmDirectoryPath(), false);
 			} catch (IOException e3) {
 				e3.printStackTrace();
 			}

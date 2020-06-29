@@ -162,6 +162,7 @@
                         <Insets left="5.0" right="10.0" top="5.0" />
                      </HBox.margin>
                   </Label>
+                  <Button fx:id="refreshFolder" mnemonicParsing="false" />
                   <TextField fx:id="locationField" focusTraversable="false" minWidth="-Infinity" prefWidth="100.0" styleClass="last" HBox.hgrow="ALWAYS">
                      <HBox.margin>
                         <Insets left="10.0" right="10.0" />

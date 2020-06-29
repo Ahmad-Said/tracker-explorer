@@ -23,6 +23,8 @@ import javafx.stage.Stage;
 import said.ahmad.javafx.tracker.app.DialogHelper;
 import said.ahmad.javafx.tracker.app.ResourcesHelper;
 import said.ahmad.javafx.tracker.app.ThreadExecutors;
+import said.ahmad.javafx.tracker.app.look.IconLoader;
+import said.ahmad.javafx.tracker.app.look.IconLoader.ICON_TYPE;
 import said.ahmad.javafx.tracker.app.look.ThemeManager;
 import said.ahmad.javafx.tracker.controller.connection.ftp.FTPConnectionController;
 import said.ahmad.javafx.tracker.controller.connection.local.LocalConnectionController;
@@ -51,8 +53,7 @@ public class ConnectionController {
 	@FXML
 	private BorderPane viewPane;
 
-	public static final Image CONNECTION_ICON_IMAGE = new Image(
-			ResourcesHelper.getResourceAsStream("/img/connection/link-symbol.png"));
+	public static final Image CONNECTION_ICON_IMAGE = IconLoader.getIconImage(ICON_TYPE.LINK_SYMBOL);
 
 	private HashMap<ConnectionType, Pane> cachedConnectionPane = new HashMap<>();
 	private GenericConnectionController currentConnection;

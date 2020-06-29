@@ -1557,7 +1557,10 @@ public class SplitViewController implements Initializable {
 			message += conflict.addedItems.size() + " New Items\n";
 			for (PathLayer p : conflict.addedItems) {
 				MenuItem mn = new MenuItem("- New: " + p.getName());
-				mn.setOnAction(e -> ScrollToName(p.getName()));
+				mn.setOnAction(e -> {
+					table.getSelectionModel().clearSelection();
+					ScrollToName(p.getName());
+				});
 				menus.add(mn);
 			}
 		}
@@ -1565,7 +1568,6 @@ public class SplitViewController implements Initializable {
 			message += conflict.removedItems.size() + " Removed Items\n";
 			for (PathLayer p : conflict.addedItems) {
 				MenuItem mn = new MenuItem("- Removed: " + p.getName());
-				mn.setOnAction(e -> ScrollToName(p.getName()));
 				menus.add(mn);
 			}
 		}
@@ -3065,6 +3067,15 @@ public class SplitViewController implements Initializable {
 		} else {
 			mn.show(parentWelcome.getStage(), xLoc, yLoc);
 		}
+		mn.addEventHandler(KeyEvent.ANY, e -> {
+			switch (e.getCode()) {
+			case ENTER:
+				mn.hide();
+				break;
+			default:
+				break;
+			}
+		});
 		return mn;
 	}
 

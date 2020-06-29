@@ -1682,11 +1682,19 @@ public class ImageGridItem extends ImageView {
 	}
 
 	public ImagePosition getCurImgPosition() {
-		return curImgPosition;
+		// implementation notice, keep curImgPosition as private element that cannot be
+		// changed from outside, as user may ask for it to cache it and return it later
+		// using setImage(..) methods
+		return curImgPosition.clone();
 	}
 
+	/**
+	 * Same as {@link #setPosition(ImagePosition)}
+	 *
+	 * @param curImgPosition
+	 */
 	public void setCurImgPosition(ImagePosition curImgPosition) {
-		this.curImgPosition = curImgPosition;
+		setPosition(curImgPosition);
 	}
 
 	public Dimension2D getOriginalImageDim() {

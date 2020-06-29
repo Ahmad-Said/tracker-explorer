@@ -20,7 +20,13 @@ public class PathLayerXMLConverter implements Converter {
 	public void marshal(Object source, HierarchicalStreamWriter writer, MarshallingContext context) {
 		PathLayer path = (PathLayer) source;
 		writer.startNode("PathURI");
-		writer.setValue(path.toURI().toString());
+		if (path.isLocal()) {
+			// normal path.toUri() for local file cause problem parsing URI back to file
+			// using new File(URI) for WebDAV location mounted in windows
+			writer.setValue(path.toFileIfLocal().toURI().toString());
+		} else {
+			writer.setValue(path.toURI().toString());
+		}
 		writer.endNode();
 	}
 
