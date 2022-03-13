@@ -12,20 +12,9 @@ import java.net.URISyntaxException;
 import java.net.URL;
 import java.nio.file.Path;
 import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import java.time.Instant;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.ResourceBundle;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -1401,10 +1390,10 @@ public class SplitViewController implements Initializable {
 					t.initializerRowFactory();
 					rowMap.put(t, this);
 					// on row hover
-					String rowtooltipPreText = "Name:\t" + t.getName();
+					String rowtooltipPreText = "Name:\t " + t.getName();
 					if (!t.getFilePath().isDirectory()) {
-						rowtooltipPreText += "\nSize:\t\t" + String.format("%.2f MB", t.getFileSize())
-								+ "\nModified:\t\t" + t.getDateModified();
+						rowtooltipPreText += "\nSize:\t\t " + String.format("%.2f MB", t.getFileSize())
+								+ "\nModified: " + t.getDateModified();
 					}
 					if (isOutOfTheBoxHelper && !isOutOfTheBoxRecursive()) {
 						return;

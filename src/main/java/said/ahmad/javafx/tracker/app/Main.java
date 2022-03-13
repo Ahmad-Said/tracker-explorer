@@ -132,9 +132,11 @@ public class Main extends Application {
 
 		primaryStage.setMaximized(Setting.isMaximized());
 		primaryStage.show();
-		mWelcomeController.initializePart2AddSplitView(primaryStage, true);
+		// one refresh occur here when adding split view
+		mWelcomeController.initializePart2AddSplitView(primaryStage);
+		// another refresh occur here after loading xml setting
 		ThreadExecutors.recursiveExecutor.execute(
-				() -> Setting.loadSettingPartTwo(() -> mWelcomeController.initializePart3AddTabs(primaryStage, false)));
+				() -> Setting.loadSettingPartTwo(() -> mWelcomeController.initializePart3AddTabs(primaryStage, true)));
 		primaryStage.setOnCloseRequest(new EventHandler<WindowEvent>() {
 			@Override
 			public void handle(WindowEvent t) {

@@ -20,6 +20,7 @@ import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.net.io.Util;
 
 import said.ahmad.javafx.tracker.app.StringHelper;
+import said.ahmad.javafx.tracker.app.pref.Setting;
 import said.ahmad.javafx.tracker.system.file.ftp.FTPPathLayer;
 import said.ahmad.javafx.tracker.system.file.local.FilePathLayer;
 
@@ -44,7 +45,7 @@ public abstract class PathLayer {
 		}
 	}
 
-	private static DateFormat dateFormat = new SimpleDateFormat("dd-MM-yyyy hh:mm:ss");
+	private static DateFormat dateFormat = new SimpleDateFormat("dd-MM-yyyy hh:mm:ss a");
 	private static long allowedCopySizeInBytes = 10 * 1024 * 1024; // 10 MB by default
 
 	private static HashMap<PathLayer, FilePathLayer> cachedCopies = new HashMap<>();

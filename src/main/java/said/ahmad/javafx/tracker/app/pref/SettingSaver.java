@@ -15,6 +15,7 @@ import com.thoughtworks.xstream.annotations.XStreamOmitField;
 
 import javafx.application.Platform;
 import said.ahmad.javafx.tracker.app.DialogHelper;
+import said.ahmad.javafx.tracker.controller.WelcomeController;
 import said.ahmad.javafx.tracker.datatype.FavoriteView;
 import said.ahmad.javafx.tracker.datatype.FavoriteView_OldV5_2;
 import said.ahmad.javafx.tracker.datatype.SplitViewState;
@@ -24,6 +25,20 @@ import said.ahmad.javafx.tracker.system.file.ftp.FTPPathLayer;
 import said.ahmad.javafx.tracker.system.file.local.FilePathLayer;
 import said.ahmad.javafx.util.CallBackToDo;
 
+/**
+ * ------------- Setting -----------------<br>
+ * when adding a new setting To do:<br>
+ * 0- Setting declaration in Setting + getters and setters <br>
+ * 1- same declaration here with no modifiers (no static) <br>
+ * 2- add Setting.getVar() in {@link SettingSaver#pushToSetting} <br>
+ * 3- add Setting.setVar() in {@link SettingSaver#pullFromSetting} <br>
+ * (if the setting have no null default value add: null check for part 3 <br>
+ * i.e. check null status for no primitive types)<br>
+ * ---- functional notes <br>
+ * 4- if setting can be changed (usually the case) and UI don't access setting class directly like {@link PathLayer#getDateFormat()} <br>
+ * add affectation in method {@link WelcomeController#initializeSettingXmlRelated()},
+ * that's called after committing changes to Setting UI or at initialization<br>
+ */
 @SuppressWarnings("deprecation")
 class SettingSaver {
 	private static File mSettingFileXML = new File(
@@ -35,13 +50,6 @@ class SettingSaver {
 	// just to save version that was used to generate XML
 	private String version = Setting.getVersion();
 
-	// ------------- Setting -----------------
-	/// when adding a new setting To do:
-	// 0- Setting declaration in Setting + getters and setters
-	// 1- same declaration here with no modifiers (no static)
-	// 2- add Setting.getVar() in pushToSetting
-	// 3- add Setting.setVar() in pullFromSetting
-	// check null status for no primitive types
 
 	// favorite stuff
 	private boolean restoreLastOpenedFavorite = true;
@@ -57,6 +65,7 @@ class SettingSaver {
 
 	private boolean notifyFilesChanges;
 	private boolean showWindowOnTopWhenNotify;
+	private String dateFormatPattern;
 
 	public static void pushToSetting() {
 		// favorite stuff
@@ -82,6 +91,8 @@ class SettingSaver {
 
 		Setting.setNotifyFilesChanges(toBeSaved.notifyFilesChanges);
 		Setting.setShowWindowOnTopWhenNotify(toBeSaved.showWindowOnTopWhenNotify);
+		if (toBeSaved.dateFormatPattern != null)
+			Setting.setDateFormatPattern(toBeSaved.dateFormatPattern);
 	}
 
 	public static void pullFromSetting() {
@@ -97,6 +108,7 @@ class SettingSaver {
 
 		toBeSaved.notifyFilesChanges = Setting.isNotifyFilesChanges();
 		toBeSaved.showWindowOnTopWhenNotify = Setting.isShowWindowOnTopWhenNotify();
+		toBeSaved.dateFormatPattern = Setting.getDateFormatPattern();
 	}
 
 	private static XStream getXStream() {

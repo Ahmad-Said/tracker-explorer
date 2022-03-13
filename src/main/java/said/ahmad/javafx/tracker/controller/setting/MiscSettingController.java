@@ -1,20 +1,28 @@
 package said.ahmad.javafx.tracker.controller.setting;
 
+import java.awt.*;
 import java.io.File;
 import java.io.IOException;
+import java.net.URISyntaxException;
+import java.net.URL;
+import java.text.DateFormat;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 
+import javafx.scene.control.*;
+import javafx.scene.control.Label;
+import javafx.scene.control.ScrollPane;
+import javafx.scene.control.TextField;
+import javafx.scene.paint.Color;
+import javafx.scene.paint.Paint;
 import org.jetbrains.annotations.Nullable;
 
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
 import javafx.scene.control.Alert.AlertType;
-import javafx.scene.control.CheckBox;
-import javafx.scene.control.Label;
-import javafx.scene.control.ScrollPane;
-import javafx.scene.control.TitledPane;
 import javafx.scene.image.Image;
 import javafx.stage.FileChooser;
 import said.ahmad.javafx.fxGraphics.IntField;
@@ -46,6 +54,8 @@ public class MiscSettingController extends GenericSettingController {
 	private TitledPane autoClearOperationPane;
 	@FXML
 	private TitledPane openLastFavoritesStartup;
+	@FXML
+	private TitledPane dateFormatPane;
 
 	private List<TitledPane> allTitledPanes = new ArrayList<>();
 
@@ -56,6 +66,11 @@ public class MiscSettingController extends GenericSettingController {
 	private CheckBox notifyFilesChanges;
 	@FXML
 	private CheckBox showWindowOnTopWhenNotify;
+
+	@FXML
+	private TextField inputDateFormatPattern;
+	@FXML
+	private Label outputDateFormatExample;
 
 	@FXML
 	private Label teraCopyPath;
@@ -94,6 +109,7 @@ public class MiscSettingController extends GenericSettingController {
 
 	@Override
 	public void initializeNodes() {
+		// allTitledPanes uses titles in search operations
 		allTitledPanes.add(notificationPane);
 		allTitledPanes.add(teraCopyPane);
 		allTitledPanes.add(autoRenameUTFPane);
@@ -101,6 +117,10 @@ public class MiscSettingController extends GenericSettingController {
 		allTitledPanes.add(limitFileRecursivePane);
 		allTitledPanes.add(autoClearOperationPane);
 		allTitledPanes.add(openLastFavoritesStartup);
+		allTitledPanes.add(dateFormatPane);
+		inputDateFormatPattern.textProperty().addListener((observable, oldValue, newValue) -> {
+			validateDateFormat();
+		});
 	}
 
 	@Override
@@ -145,6 +165,7 @@ public class MiscSettingController extends GenericSettingController {
 
 		showWindowOnTopWhenNotify.setSelected(Setting.isShowWindowOnTopWhenNotify());
 		notifyFilesChanges.setSelected(Setting.isNotifyFilesChanges());
+		inputDateFormatPattern.setText(Setting.getDateFormatPattern());
 
 		useTeraCopy.setSelected(Setting.isUseTeraCopyByDefault());
 		limitFilesRercursive.setValue(Setting.getMaxLimitFilesRecursive());
@@ -162,6 +183,8 @@ public class MiscSettingController extends GenericSettingController {
 
 		Setting.setNotifyFilesChanges(notifyFilesChanges.isSelected());
 		Setting.setShowWindowOnTopWhenNotify(showWindowOnTopWhenNotify.isSelected());
+		if (validateDateFormat())
+			Setting.setDateFormatPattern(inputDateFormatPattern.getText());
 
 		Setting.setUseTeraCopyByDefault(useTeraCopy.isSelected());
 		Setting.setBackSync(autoBackSyncCheckBox.isSelected());
@@ -195,6 +218,28 @@ public class MiscSettingController extends GenericSettingController {
 		} else {
 			DialogHelper.showAlert(AlertType.ERROR, "Configure TeraCopy Path", "TeraCopy misconfigured",
 					"Please chose the right file 'TeraCopy.exe'\n\nCurrent Path:\n " + TeraCopy.getPath_Setup());
+		}
+	}
+
+	private boolean validateDateFormat() {
+		try {
+			DateFormat dateFormat = new SimpleDateFormat(inputDateFormatPattern.getText());
+			outputDateFormatExample.setText(dateFormat.format(new Date(1646515917000L)));
+			outputDateFormatExample.setTextFill(Color.BLACK);
+		} catch (Exception e) {
+			outputDateFormatExample.setText(e.getMessage());
+			outputDateFormatExample.setTextFill(Color.RED);
+			return false;
+		}
+		return true;
+	}
+
+	@FXML
+	public void openPatternJavaHelpLink() {
+		try {
+			Desktop.getDesktop().browse(new URL("https://help.gooddata.com/cloudconnect/manual/date-and-time-format.html").toURI());
+		} catch (IOException | URISyntaxException e) {
+			e.printStackTrace();
 		}
 	}
 
