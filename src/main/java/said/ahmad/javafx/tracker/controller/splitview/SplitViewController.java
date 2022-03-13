@@ -11,6 +11,7 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
 import java.nio.file.Path;
+import java.text.ParseException;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -262,6 +263,8 @@ public class SplitViewController implements Initializable {
 	@FXML
 	private TableColumn<TableViewModel, Double> sizeCol;
 	@FXML
+	private TableColumn<TableViewModel, String> dateModifiedCol;
+	@FXML
 	private TableColumn<TableViewModel, HBox> hBoxActionsCol;
 
 	@FXML
@@ -323,6 +326,7 @@ public class SplitViewController implements Initializable {
 		hBoxActionsCol.setCellValueFactory(new PropertyValueFactory<TableViewModel, HBox>("hboxActions"));
 		iconCol.setCellValueFactory(new PropertyValueFactory<TableViewModel, ImageView>("imgIcon"));
 		sizeCol.setCellValueFactory(new PropertyValueFactory<TableViewModel, Double>("FileSize"));
+		dateModifiedCol.setCellValueFactory(new PropertyValueFactory<TableViewModel, String>("dateModified"));
 
 		if (isLeft) {
 			noteCol.setVisible(Setting.getShowLeftNotesColumn());
@@ -972,7 +976,19 @@ public class SplitViewController implements Initializable {
 		});
 		noteCol.setComparator(WindowsExplorerComparator.getComparator());
 		nameCol.setComparator(WindowsExplorerComparator.getComparator());
-
+		dateModifiedCol.setComparator(new Comparator<String>() {
+			@Override
+			public int compare(String dateFormatted1, String dateFormatted2) {
+				try {
+					long date1 = PathLayer.getDateFormat().parse(dateFormatted1).getTime();
+					long date2 = PathLayer.getDateFormat().parse(dateFormatted2).getTime();
+					return (date1 - date2)>0?-1:1;
+				} catch (ParseException e) {
+					e.printStackTrace();
+				}
+				return 0;
+			}
+		});
 		table.setOnContextMenuRequested(e -> showContextMenu());
 
 		table.setOnKeyPressed(key -> {
@@ -1387,7 +1403,8 @@ public class SplitViewController implements Initializable {
 					// on row hover
 					String rowtooltipPreText = "Name:\t" + t.getName();
 					if (!t.getFilePath().isDirectory()) {
-						rowtooltipPreText += "\nSize:\t\t" + String.format("%.2f MB", t.getFileSize());
+						rowtooltipPreText += "\nSize:\t\t" + String.format("%.2f MB", t.getFileSize())
+								+ "\nModified:\t\t" + t.getDateModified();
 					}
 					if (isOutOfTheBoxHelper && !isOutOfTheBoxRecursive()) {
 						return;

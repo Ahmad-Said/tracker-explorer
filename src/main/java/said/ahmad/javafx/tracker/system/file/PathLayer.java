@@ -57,7 +57,7 @@ public abstract class PathLayer {
 	 * measured in milliseconds since the epoch (00:00:00 GMT, January 1, 1970), or
 	 * <code>0L</code>
 	 */
-	private long lastModified;
+	private long dateModified;
 
 	/*** Creates an empty MyPath. ***/
 	public PathLayer() {
@@ -65,7 +65,7 @@ public abstract class PathLayer {
 		absolutePath = "";
 		pathType = FileType.NONE;
 		size = 0; // 0 is valid, so use -1
-		lastModified = 0;
+		dateModified = 0;
 		providerType = ProviderType.NONE;
 	}
 
@@ -74,16 +74,16 @@ public abstract class PathLayer {
 	 * @param absolutePath  must be unique in same or different provider
 	 * @param PROVIDER_TYPE
 	 * @param isDirectory
-	 * @param lastModified
+	 * @param dateModified
 	 * @param size
 	 */
-	public PathLayer(String absolutePath, String name, ProviderType ProviderType, FileType fileType, long lastModified,
+	public PathLayer(String absolutePath, String name, ProviderType ProviderType, FileType fileType, long dateModified,
 			long size) {
 		this.absolutePath = absolutePath;
 		this.name = name.isEmpty() ? absolutePath : name;
 		providerType = ProviderType;
 		pathType = fileType;
-		this.lastModified = lastModified;
+		this.dateModified = dateModified;
 		this.size = size; // 0 is valid, so use -1
 	}
 
@@ -173,17 +173,17 @@ public abstract class PathLayer {
 	 *         modified, measured in milliseconds since the epoch (00:00:00 GMT,
 	 *         January 1, 1970), or <code>0L</code>
 	 */
-	public long getLastModified() {
-		return lastModified;
+	public long getDateModified() {
+		return dateModified;
 	}
 
 	/**
 	 * Change last modified variable
 	 *
-	 * @param lastModified
+	 * @param dateModified
 	 */
-	public void setLastModified(long lastModified) {
-		this.lastModified = lastModified;
+	public void setDateModified(long dateModified) {
+		this.dateModified = dateModified;
 	}
 
 	/**
@@ -227,8 +227,8 @@ public abstract class PathLayer {
 		PathLayer.dateFormat = dateFormat;
 	}
 
-	public String getFormattedDate() {
-		return dateFormat.format(new Date(lastModified));
+	public String getDateModifiedFormatted() {
+		return dateFormat.format(new Date(dateModified));
 	}
 
 	/**
