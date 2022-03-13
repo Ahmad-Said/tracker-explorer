@@ -1566,7 +1566,7 @@ public class SplitViewController implements Initializable {
 		}
 		if (conflict.removedItems.size() != 0) {
 			message += conflict.removedItems.size() + " Removed Items\n";
-			for (PathLayer p : conflict.addedItems) {
+			for (PathLayer p : conflict.removedItems) {
 				MenuItem mn = new MenuItem("- Removed: " + p.getName());
 				menus.add(mn);
 			}

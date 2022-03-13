@@ -28,6 +28,7 @@ import said.ahmad.javafx.tracker.app.pref.Setting;
 import said.ahmad.javafx.tracker.controller.splitview.SplitViewController;
 import said.ahmad.javafx.tracker.system.file.PathLayer;
 import said.ahmad.javafx.tracker.system.file.PathLayerHelper;
+import said.ahmad.javafx.tracker.system.file.ProviderType;
 import said.ahmad.javafx.tracker.system.file.local.FilePathLayer;
 import said.ahmad.javafx.tracker.system.operation.FileHelper.ActionOperation;
 
@@ -132,16 +133,31 @@ public class FileTracker {
 	}
 
 	private PathLayer workingDirPath;
+
 	/**
 	 * Changed to true when loading files that are not brothers,<br>
 	 * so to be aware how to write map and
 	 * {@link #commitTrackerDataChange(PathLayer)} <br>
-	 * value updated in:
+	 * value updated after:
 	 *
 	 * {@link #loadMap(PathLayer, boolean)}<br>
-	 * {@link #loadResolvedMapOrEmpty(PathLayer)}
+	 * {@link #loadResolvedMapOrEmpty(PathLayer)}<br>
+	 * or when manually adding new files to mapDetails
 	 */
-	private boolean isLoadedOtherThanWorkingDir;
+	private boolean isLoadedOtherThanWorkingDir() {
+		// in case working dir is undefined (constructor paramter as null)
+		if (workingDirPath.getProviderType().equals(ProviderType.NONE)) {
+			return true;
+		}
+		HashSet<String> parents = new HashSet<>();
+		for (PathLayer pathLayer : mapDetailsRevolved.keySet()) {
+			parents.add(pathLayer.getParent());
+			if (parents.size() > 1) {
+				return true;
+			}
+		}
+		return false;
+	}
 
 	/**
 	 * Main working directory, see {@link #isLoadedOtherThanWorkingDir}
@@ -153,14 +169,8 @@ public class FileTracker {
 	}
 
 	/**
-	 * Use with caution
-	 *
-	 * Used to determine if map {@link #isLoadedOtherThanWorkingDir} that is used to
-	 * ensure {@link #commitTrackerDataChange()} is writing map correctly in a
-	 * single directory when loading one directory<br>
-	 * {@link #isLoadedOtherThanWorkingDir} become true after call of
-	 * {@link #loadMap(PathLayer, boolean, Map)} with no clear option and with
-	 * PathLayer directory other than the previously loaded
+	 * Used to use easy function access with no parameter to give like
+	 * {@link #writeMap()}...
 	 *
 	 * @param workingDirPath the workingDirPath to set
 	 */
@@ -289,12 +299,6 @@ public class FileTracker {
 		if (doclear) {
 			mapDetailsRevolved.clear();
 		}
-		// every time get the new path before loading in normal case
-		if (mapDetailsRevolved.size() != 0 && !dirPath.equals(workingDirPath)) {
-			isLoadedOtherThanWorkingDir = true;
-		} else {
-			isLoadedOtherThanWorkingDir = false;
-		}
 		workingDirPath = dirPath;
 		PathLayer file = dirPath.resolve(UserFileName);
 		if (!file.exists()) {
@@ -382,9 +386,6 @@ public class FileTracker {
 	 */
 	public void loadResolvedMapOrEmpty(PathLayer Dirto) {
 		File tracker = new File(Dirto.resolve(UserFileName).toString());
-		if (!Dirto.equals(workingDirPath)) {
-			isLoadedOtherThanWorkingDir = true;
-		}
 		List<PathLayer> listOfNoHiddenPath = null;
 		try {
 			listOfNoHiddenPath = Dirto.listNoHiddenPathLayers();
@@ -1115,7 +1116,7 @@ public class FileTracker {
 	 * {@link #onWriteMapAction} will be called
 	 */
 	public void commitTrackerDataChange() {
-		if (!isLoadedOtherThanWorkingDir) {
+		if (!isLoadedOtherThanWorkingDir()) {
 			writeMapDir(workingDirPath, true);
 		}
 	}
@@ -1126,7 +1127,7 @@ public class FileTracker {
 	 * @param path
 	 */
 	public void commitTrackerDataChange(PathLayer path) {
-		if (!isLoadedOtherThanWorkingDir) {
+		if (!isLoadedOtherThanWorkingDir()) {
 			writeMapDir(workingDirPath, true);
 		} else {
 			// creating a new file tracker is indeed
@@ -1141,7 +1142,7 @@ public class FileTracker {
 	 * Do write map for list of Paths
 	 */
 	public void commitTrackerDataChange(List<PathLayer> paths) {
-		if (!isLoadedOtherThanWorkingDir) {
+		if (!isLoadedOtherThanWorkingDir()) {
 			writeMapDir(workingDirPath, true);
 		} else {
 			// creating a new file tracker is indeed

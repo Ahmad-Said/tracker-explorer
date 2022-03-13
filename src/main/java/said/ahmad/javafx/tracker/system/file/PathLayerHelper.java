@@ -13,6 +13,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import org.jetbrains.annotations.Nullable;
 
@@ -96,6 +97,16 @@ public class PathLayerHelper {
 
 	public static Set<PathLayer> getParentsPaths(List<? extends PathLayer> sonPaths) {
 		return sonPaths.stream().filter(p -> p != null).map(p -> p.getParentPath()).collect(Collectors.toSet());
+	}
+
+	/**
+	 * Stream parameter should not be terminated
+	 *
+	 * @param sonPaths
+	 * @return a set parent path absolute string using {@link PathLayer#getParent()}
+	 */
+	public static Set<String> getParentsPathsAsString(Stream<? extends PathLayer> sonPaths) {
+		return sonPaths.filter(p -> p != null).map(p -> p.getParent()).collect(Collectors.toSet());
 	}
 
 	public static Map<String, PathLayer> getAbsolutePathToPaths(List<PathLayer> listOfPaths) {

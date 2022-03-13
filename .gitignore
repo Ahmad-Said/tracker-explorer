@@ -76,3 +76,8 @@ build.fxbuild
 /build
 /nbproject/private/
 /target/
+
+# Intellij
+.idea/
+*.iml
+*.iws

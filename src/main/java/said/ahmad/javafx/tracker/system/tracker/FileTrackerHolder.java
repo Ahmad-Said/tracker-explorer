@@ -75,7 +75,8 @@ public class FileTrackerHolder {
 	/**
 	 *
 	 * @param noteText Using char '>' or empty string in note if forbidden always
-	 *                 clean note use, if not sure use: {@link #setNoteText(String)}
+	 *                 clean note use, if not sure use:
+	 *                 {@link #setNoteTextCleaned(String)}
 	 * @return
 	 */
 	public FileTrackerHolder setNoteText(String noteText) {
@@ -90,12 +91,13 @@ public class FileTrackerHolder {
 	 * @return
 	 */
 	public String setNoteTextCleaned(String noteText) {
-		return noteText;
+		this.noteText = noteText.replaceAll(">", "_");
+		return this.noteText;
 	}
 
 	/**
 	 * <code>-1</code> is the default time to live
-	 * 
+	 *
 	 * @return
 	 */
 	public int getTimeToLive() {

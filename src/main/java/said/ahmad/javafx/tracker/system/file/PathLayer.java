@@ -308,7 +308,12 @@ public abstract class PathLayer {
 	/** @return parent as new PathLayer or null if it's a root */
 	public abstract PathLayer getParentPath();
 
-	/** @return parent as absolute path String or empty string if it's a root */
+	/**
+	 * @return parent as absolute path String or empty string if it's a root <br>
+	 *         Will not create a new PathLayer while returning parent, it just split
+	 *         absolute path string using file separator that depend on each system
+	 *         provider
+	 */
 	public abstract String getParent();
 
 	/**

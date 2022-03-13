@@ -1427,7 +1427,16 @@ public class ImageGridItem extends ImageView {
 	}
 
 	private void copyImageToClipBoard() {
-		putClipBoardImage(getImage());
+		if (!isFullyLoaded()) {
+			EventHandler<Event> temp = onFinishLoading;
+			onFinishLoading = e -> {
+				putClipBoardImage(getImage());
+				onFinishLoading = temp;
+			};
+			doLoadFullImage();
+		} else {
+			putClipBoardImage(getImage());
+		}
 	}
 
 	private void saveToClipBoard() {

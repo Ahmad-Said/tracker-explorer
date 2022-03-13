@@ -497,6 +497,9 @@ public class PhotoViewerController {
 			boolean didDownPad = false;
 			boolean didLeftPad = false;
 			boolean didRightPad = false;
+			if (key.getCode().isLetterKey() && key.isShiftDown()) {
+				return;
+			}
 			switch (key.getCode()) {
 			case UP:
 				key.consume();
@@ -1188,7 +1191,8 @@ public class PhotoViewerController {
 			return;
 		}
 		String note = noteInput.getText();
-		fileTracker.getMapDetails().get(curFile).setNoteText(note);
+		note = fileTracker.getMapDetails().get(curFile).setNoteTextCleaned(note);
+		noteInput.setText(note);
 		fileTracker.commitTrackerDataChange(curFile);
 		allGridItems.get(rollerPhoto % gridSize).setNoteLabel(note);
 		if (!note.isEmpty()) {

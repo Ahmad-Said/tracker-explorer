@@ -37,7 +37,7 @@ public class VLC {
 	public final static ArrayList<String> ArrayPlayListExt = new ArrayList<String>(
 			Arrays.asList("XSPF", "M3U", "M3U8"));
 	public final static ArrayList<String> ArrayVideoExt = new ArrayList<String>(Arrays.asList("3GP", "ASF", "AVI",
-			"DVR-MS", "FLV", "MKV", "MIDI", "MP4", "Ogg", "OGM", "WAV", "MPEG-2", "MXF", "VOB", "RM", "Blu-ray",
+			"DVR-MS", "FLV", "MKV", "MIDI", "MP4", "OGG", "OGM", "WAV", "MPEG-2", "MXF", "VOB", "RM", "Blu-ray",
 			"DVD-Video", "VCD", "SVCD", "DVB", "HEIF", "AVIF", "WMV", "TS", "MPEG", "M4V"));
 
 	// private static String Path_Config= "%appdata%/vlc/vlc-qt-interface.ini";
