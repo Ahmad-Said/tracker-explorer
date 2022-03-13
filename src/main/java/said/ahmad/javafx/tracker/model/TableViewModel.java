@@ -29,6 +29,8 @@ public class TableViewModel {
 
 	private SimpleDoubleProperty FileSize;
 
+	private SimpleStringProperty dateModified;
+
 	private HBox hboxActions;
 	private ToggleButton MarkSeen;
 	private Button noteButton;
@@ -57,6 +59,7 @@ public class TableViewModel {
 		noteText = new SimpleStringProperty();
 		this.name = new SimpleStringProperty();
 		FileSize = new SimpleDoubleProperty();
+		dateModified = new SimpleStringProperty();
 		setup(note, name, path);
 		hboxActions = new HBox();
 		// testing
@@ -74,6 +77,7 @@ public class TableViewModel {
 		this.name.setValue(name);
 		filePath = path;
 		FileSize.setValue(path.getSize() / 1024.0 / 1024.0);
+		dateModified.setValue(path.getDateModifiedFormatted());
 	}
 
 	public void emptyCell() {
@@ -209,6 +213,19 @@ public class TableViewModel {
 
 	}
 
+	public String getDateModified() {
+		return dateModified.get();
+	}
+
+	public SimpleStringProperty dateModifiedProperty() {
+		return dateModified;
+	}
+
+	public void setDateModified(String dateModified) {
+		this.dateModified.set(dateModified);
+	}
+
+
 	/**
 	 * @param fileSize the fileSize to set
 	 */
@@ -307,6 +324,7 @@ public class TableViewModel {
 		name.setValue("");
 		filePath = null;
 		FileSize.setValue(0);
+		dateModified.setValue("");
 		imgIcon.setImage(null);
 		wasInitializedRowFactory = false;
 	}

@@ -6,6 +6,7 @@ import java.io.IOException;
 import java.net.URISyntaxException;
 import java.net.URL;
 import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -149,7 +150,7 @@ public class WelcomeController implements Initializable {
 		// for a faster show stage implementation was moved to initializeViewStage
 	}
 
-	public void initializePart2AddSplitView(Stage stage, boolean doRefresh) {
+	public void initializePart2AddSplitView(Stage stage) {
 		this.stage = stage;
 		try {
 			allSplitViewController = new Stack<>();
@@ -161,14 +162,14 @@ public class WelcomeController implements Initializable {
 			e1.printStackTrace();
 			DialogHelper.showException(e1);
 		}
-		if (doRefresh) {
-			refreshAllSplitViews();
-		}
 	}
 
 	/** To be called after setting a scene to the stage */
 	public void initializePart3AddTabs(Stage stage, boolean doRefresh) {
-		initializeMenuBar();
+		initializeSettingXmlRelated();
+		if (doRefresh)
+			refreshAllSplitViews();
+		// the rest don't need to refresh since addSplitView have its own refresh
 		Setting.getFavoritesViews().addListener((MapChangeListener<String, FavoriteView>) change -> {
 			allSplitViewController
 					.forEach(sp -> sp.onFavoriteChanges(change, Setting.getFavoritesViews().isReloadingMapOperation()));
@@ -532,8 +533,20 @@ public class WelcomeController implements Initializable {
 		}
 	}
 
-	public void changeInSetting() {
+	/**
+	 * Method can be used to initialize UI setting related for xml,
+	 * or for normal setting with delay in part 3 initialization
+	 */
+	private void initializeSettingXmlRelated() {
 		initializeMenuBar();
+		PathLayer.setDateFormat(new SimpleDateFormat(Setting.getDateFormatPattern()));
+	}
+
+	/**
+	 * To be called at initialization and after setting changes via UI.
+	 */
+	public void changeInSetting() {
+		initializeSettingXmlRelated();
 		refreshAllSplitViews();
 	}
 
@@ -1225,7 +1238,7 @@ public class WelcomeController implements Initializable {
 		ThemeManager.applyTheme(scene);
 		stage.getIcons().add(ThemeManager.DEFAULT_ICON_IMAGE);
 		stage.show();
-		anotherWelcome.initializePart2AddSplitView(stage, true);
+		anotherWelcome.initializePart2AddSplitView(stage);
 		anotherWelcome.initializePart3AddTabs(stage, false);
 		return anotherWelcome;
 	}

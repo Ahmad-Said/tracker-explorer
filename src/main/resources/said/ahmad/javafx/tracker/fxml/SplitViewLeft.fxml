@@ -149,6 +149,7 @@
                 <TableColumn fx:id="nameCol" maxWidth="1.7976931348623157E308" minWidth="100.0" prefWidth="267.0" text="Name" />
                   <TableColumn fx:id="noteCol" maxWidth="1.7976931348623157E308" minWidth="75.0" prefWidth="-1.0" text="Notes" visible="false" />
                   <TableColumn fx:id="sizeCol" maxWidth="1.7976931348623157E308" minWidth="75.0" prefWidth="-1.0" text="Size(MB)" visible="false" />
+            <TableColumn fx:id="dateModifiedCol" maxWidth="1.7976931348623157E308" minWidth="75.0" prefWidth="-1.0" text="Modified" visible="false" />
                   <TableColumn fx:id="hBoxActionsCol" maxWidth="200.0" minWidth="100.0" prefWidth="105.0" text="Action" />
               </columns>
                <GridPane.margin>

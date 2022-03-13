@@ -7,6 +7,7 @@ import java.io.IOException;
 import java.io.PrintStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -38,7 +39,7 @@ public class Setting {
 	public static final File SETTING_DIRECTORY = new File(System.getenv("APPDATA") + "\\Tracker Explorer");
 
 	// ---------------- Setting To be loaded as Part One ----------------
-	private static final String Version = "5.2";
+	private static final String Version = "5.3";
 	/** @since v5.1 */
 	private static long ApplicationTimesLunched = 1;
 	/** @since v5.1 */
@@ -64,6 +65,8 @@ public class Setting {
 
 	private static boolean notifyFilesChanges = true;
 	private static boolean showWindowOnTopWhenNotify = false;
+	/**@since v5.3*/
+	private static String dateFormatPattern = "dd-MM-yyyy HH:mm:ss";
 
 	// ---------------- Setting To be loaded as Part Two ----------------
 	private static boolean restoreLastOpenedFavorite = true;
@@ -635,5 +638,13 @@ public class Setting {
 	 */
 	public static void setShowWindowOnTopWhenNotify(boolean showWindowOnTopWhenNotify) {
 		Setting.showWindowOnTopWhenNotify = showWindowOnTopWhenNotify;
+	}
+
+	public static String getDateFormatPattern() {
+		return dateFormatPattern;
+	}
+
+	public static void setDateFormatPattern(String dateFormatPattern) {
+		Setting.dateFormatPattern = dateFormatPattern;
 	}
 }
