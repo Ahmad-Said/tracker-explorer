@@ -1,9 +1,6 @@
 package said.ahmad.javafx.tracker.controller.splitview;
 
-import java.awt.Desktop;
-import java.awt.HeadlessException;
-import java.awt.MouseInfo;
-import java.awt.Point;
+import java.awt.*;
 import java.io.File;
 import java.io.IOException;
 import java.net.MalformedURLException;
@@ -12,9 +9,9 @@ import java.net.URISyntaxException;
 import java.net.URL;
 import java.nio.file.Path;
 import java.text.ParseException;
-import java.text.SimpleDateFormat;
 import java.time.Instant;
 import java.util.*;
+import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -43,39 +40,18 @@ import javafx.fxml.FXMLLoader;
 import javafx.fxml.Initializable;
 import javafx.geometry.Pos;
 import javafx.scene.Node;
+import javafx.scene.control.*;
 import javafx.scene.control.Alert.AlertType;
 import javafx.scene.control.Button;
-import javafx.scene.control.CheckBox;
-import javafx.scene.control.ContextMenu;
 import javafx.scene.control.Label;
 import javafx.scene.control.Menu;
-import javafx.scene.control.MenuButton;
 import javafx.scene.control.MenuItem;
-import javafx.scene.control.ProgressIndicator;
-import javafx.scene.control.SelectionMode;
-import javafx.scene.control.TableColumn;
-import javafx.scene.control.TableRow;
-import javafx.scene.control.TableView;
 import javafx.scene.control.TableView.TableViewSelectionModel;
 import javafx.scene.control.TextField;
-import javafx.scene.control.ToggleButton;
-import javafx.scene.control.Tooltip;
 import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
-import javafx.scene.input.Clipboard;
-import javafx.scene.input.ClipboardContent;
-import javafx.scene.input.DataFormat;
-import javafx.scene.input.DragEvent;
-import javafx.scene.input.Dragboard;
-import javafx.scene.input.KeyCode;
-import javafx.scene.input.KeyCodeCombination;
-import javafx.scene.input.KeyCombination;
-import javafx.scene.input.KeyEvent;
-import javafx.scene.input.MouseButton;
-import javafx.scene.input.MouseEvent;
-import javafx.scene.input.ScrollEvent;
-import javafx.scene.input.TransferMode;
+import javafx.scene.input.*;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
@@ -85,12 +61,7 @@ import javafx.scene.text.TextFlow;
 import javafx.util.Duration;
 import javafx.util.Pair;
 import mslinks.ShellLink;
-import said.ahmad.javafx.tracker.app.DialogHelper;
-import said.ahmad.javafx.tracker.app.Main;
-import said.ahmad.javafx.tracker.app.ResourcesHelper;
-import said.ahmad.javafx.tracker.app.StringHelper;
-import said.ahmad.javafx.tracker.app.ThreadExecutors;
-import said.ahmad.javafx.tracker.app.WindowsExplorerComparator;
+import said.ahmad.javafx.tracker.app.*;
 import said.ahmad.javafx.tracker.app.look.ContextMenuLook;
 import said.ahmad.javafx.tracker.app.look.IconLoader;
 import said.ahmad.javafx.tracker.app.look.IconLoader.ICON_TYPE;
@@ -102,10 +73,8 @@ import said.ahmad.javafx.tracker.controller.WelcomeController;
 import said.ahmad.javafx.tracker.controller.connection.ConnectionController;
 import said.ahmad.javafx.tracker.controller.connection.ConnectionController.ConnectionType;
 import said.ahmad.javafx.tracker.controller.connection.ftp.FTPConnectionController;
-import said.ahmad.javafx.tracker.datatype.ConnectionAccount;
-import said.ahmad.javafx.tracker.datatype.FavoriteView;
-import said.ahmad.javafx.tracker.datatype.MediaCutData;
-import said.ahmad.javafx.tracker.datatype.SplitViewState;
+import said.ahmad.javafx.tracker.datatype.*;
+import said.ahmad.javafx.tracker.datatype.DirectoryViewOptions.COLUMN;
 import said.ahmad.javafx.tracker.model.TableViewModel;
 import said.ahmad.javafx.tracker.system.RecursiveFileWalker;
 import said.ahmad.javafx.tracker.system.WatchServiceHelper;
@@ -126,8 +95,7 @@ import said.ahmad.javafx.tracker.system.tracker.FileTrackerHolder;
 import said.ahmad.javafx.util.ControlListHelper;
 
 /**
- * For a structure view read
- * {@link #SplitViewController(Path, Boolean, WelcomeController, ObservableList, TextField, Button, TextField, Button, TableView, Button, TableColumn, Button, Button, TextField, CheckBox, Label, Button, MenuButton, TableColumn, TableColumn)}
+ * For a structure view read {@link #SplitViewController}
  *
  * For a functional flow read {@link #refresh(String)}
  *
@@ -317,11 +285,6 @@ public class SplitViewController implements Initializable {
 		sizeCol.setCellValueFactory(new PropertyValueFactory<TableViewModel, Double>("FileSize"));
 		dateModifiedCol.setCellValueFactory(new PropertyValueFactory<TableViewModel, String>("dateModified"));
 
-		if (isLeft) {
-			noteCol.setVisible(Setting.getShowLeftNotesColumn());
-		} else {
-			noteCol.setVisible(Setting.getShowRightNotesColumn());
-		}
 		table.getSelectionModel().setSelectionMode(SelectionMode.MULTIPLE);
 		initializeTable();
 
@@ -1467,11 +1430,9 @@ public class SplitViewController implements Initializable {
 		});
 	}
 
-	private long displayInThisCall = 0;
-
 	/**
 	 * if you want to change directory view then change mDirectory then refresh view
-	 * you can use instead {@link #setmDirectoryThenRefresh(File)}
+	 * you can use instead {@link #setmDirectoryThenRefresh}
 	 */
 	public void refresh(String isOutOfTheBoxPath) {
 		if (isOutOfTheBoxPath != null) {
@@ -1483,7 +1444,6 @@ public class SplitViewController implements Initializable {
 			parentWelcome.UpdateTitle(truePathField);
 			directoryNameLabel.setText("");
 		} else {
-			long thisCall = ++displayInThisCall;
 			DataTable.clear();
 			if (mDirectory.exists()) {
 				table.setPlaceholder(loadingTablePlaceHolder);
@@ -1517,15 +1477,9 @@ public class SplitViewController implements Initializable {
 			ThreadExecutors.filesLister.execute(() -> {
 				try {
 					List<PathLayer> currentFileList = getCurrentFilesList();
-					if (thisCall != displayInThisCall) {
-						return;
-					}
 					@Nullable
 					HashMap<PathLayer, FileTrackerHolder> isLoaded = fileTracker.loadMap(getmDirectoryPath(), true,
 							PathLayerHelper.getAbsolutePathToPaths(currentFileList));
-					if (thisCall != displayInThisCall) {
-						return;
-					}
 
 					// note that newly added files to map have null seen status so user got noticed
 					// of the for the first time
@@ -1534,9 +1488,6 @@ public class SplitViewController implements Initializable {
 							: fileTracker.resolveConflict(new HashSet<>(currentFileList));
 
 					Platform.runLater(() -> {
-						if (thisCall != displayInThisCall) {
-							return;
-						}
 						showList(currentFileList);
 						if (conflict != null && conflict.didChangeOccurs() && Setting.isNotifyFilesChanges()) {
 							showConflictLogNotification(conflict);
@@ -2801,7 +2752,7 @@ public class SplitViewController implements Initializable {
 	}
 
 	/**
-	 * Only use for {@link FileTracker#FileTracker(Path)}
+	 * Only use for {@link FileTracker#FileTracker}
 	 *
 	 * @param value
 	 */
@@ -3433,6 +3384,7 @@ public class SplitViewController implements Initializable {
 	public void saveStateToSplitState(SplitViewState state) {
 		// Save current state view to state
 		state.setmDirectory(getmDirectoryPath());
+		state.setDirectoryViewOptions(getDirectoryViewOptions());
 		state.setAutoExpandRight(isAutoExpand());
 
 		state.setSearchKeyword(searchField.getText());
@@ -3457,6 +3409,9 @@ public class SplitViewController implements Initializable {
 				RemoveLastFalseQueue();
 			}
 		}
+		// The view options saved in state are higher priority than saved in directory
+		// tracker data
+		restoreDirectoryViewOptions(state.getDirectoryViewOptions());
 		setAutoExpand(state.isAutoExpandRight());
 		// restore search keyword
 		searchField.setText(state.getSearchKeyword());
@@ -3465,6 +3420,79 @@ public class SplitViewController implements Initializable {
 		table.getSelectionModel().clearSelection();
 		table.getSelectionModel().selectIndices(-1, state.getSelectedIndices());
 		table.scrollTo(smartScrollIndex(state.getScrollTo()));
+	}
+	public DirectoryViewOptions getDirectoryViewOptions() {
+		DirectoryViewOptions dirOptions = new DirectoryViewOptions();
+		dirOptions.setColumnVisible(COLUMN.ICON, iconCol.isVisible());
+		dirOptions.setColumnVisible(COLUMN.NAME, nameCol.isVisible());
+		dirOptions.setColumnVisible(COLUMN.NOTE, noteCol.isVisible());
+		dirOptions.setColumnVisible(COLUMN.SIZE, sizeCol.isVisible());
+		dirOptions.setColumnVisible(COLUMN.DATE_MODIFIED, dateModifiedCol.isVisible());
+		dirOptions.setColumnVisible(COLUMN.HBOX_ACTION, hBoxActionsCol.isVisible());
+
+		int sortOrder = 0;
+		for (TableColumn col : table.getSortOrder()) {
+			if (col == iconCol) {
+				dirOptions.setColumnSorted(COLUMN.ICON, true, iconCol.getSortType());
+				dirOptions.setColumnPrioritySort(COLUMN.ICON, sortOrder);
+			} else if (col == nameCol) {
+				dirOptions.setColumnSorted(COLUMN.NAME, true, nameCol.getSortType());
+				dirOptions.setColumnPrioritySort(COLUMN.NAME, sortOrder);
+			} else if (col == noteCol) {
+				dirOptions.setColumnSorted(COLUMN.NOTE, true, noteCol.getSortType());
+				dirOptions.setColumnPrioritySort(COLUMN.NOTE, sortOrder);
+			} else if (col == sizeCol) {
+				dirOptions.setColumnSorted(COLUMN.SIZE, true, sizeCol.getSortType());
+				dirOptions.setColumnPrioritySort(COLUMN.SIZE, sortOrder);
+			} else if (col == dateModifiedCol) {
+				dirOptions.setColumnSorted(COLUMN.DATE_MODIFIED, true, dateModifiedCol.getSortType());
+				dirOptions.setColumnPrioritySort(COLUMN.DATE_MODIFIED, sortOrder);
+			} else if (col == hBoxActionsCol) {
+				dirOptions.setColumnSorted(COLUMN.HBOX_ACTION, true, hBoxActionsCol.getSortType());
+				dirOptions.setColumnPrioritySort(COLUMN.HBOX_ACTION, sortOrder);
+			}
+			sortOrder++;
+		}
+		return dirOptions;
+	}
+
+	public void restoreDirectoryViewOptions(DirectoryViewOptions dirOptions) {
+		iconCol.setVisible(dirOptions.isColumnVisible(COLUMN.ICON));
+		nameCol.setVisible(dirOptions.isColumnVisible(COLUMN.NAME));
+		noteCol.setVisible(dirOptions.isColumnVisible(COLUMN.NOTE));
+		sizeCol.setVisible(dirOptions.isColumnVisible(COLUMN.SIZE));
+		dateModifiedCol.setVisible(dirOptions.isColumnVisible(COLUMN.DATE_MODIFIED));
+		hBoxActionsCol.setVisible(dirOptions.isColumnVisible(COLUMN.HBOX_ACTION));
+
+		ArrayList<Pair<TableColumn, Integer>> columnsToOrder = new ArrayList<>();
+		if (dirOptions.isColumnSorted(COLUMN.ICON)) {
+			iconCol.setSortType(dirOptions.getColumnSortType(COLUMN.ICON));
+			columnsToOrder.add(new Pair<>(iconCol, dirOptions.getColumnPrioritySort(COLUMN.ICON)));
+		}
+		if (dirOptions.isColumnSorted(COLUMN.NAME)) {
+			nameCol.setSortType(dirOptions.getColumnSortType(COLUMN.NAME));
+			columnsToOrder.add(new Pair<>(nameCol, dirOptions.getColumnPrioritySort(COLUMN.NAME)));
+		}
+		if (dirOptions.isColumnSorted(COLUMN.NOTE)) {
+			noteCol.setSortType(dirOptions.getColumnSortType(COLUMN.NOTE));
+			columnsToOrder.add(new Pair<>(noteCol, dirOptions.getColumnPrioritySort(COLUMN.NOTE)));
+		}
+		if (dirOptions.isColumnSorted(COLUMN.SIZE)) {
+			sizeCol.setSortType(dirOptions.getColumnSortType(COLUMN.SIZE));
+			columnsToOrder.add(new Pair<>(sizeCol, dirOptions.getColumnPrioritySort(COLUMN.SIZE)));
+		}
+		if (dirOptions.isColumnSorted(COLUMN.DATE_MODIFIED)) {
+			dateModifiedCol.setSortType(dirOptions.getColumnSortType(COLUMN.DATE_MODIFIED));
+			columnsToOrder.add(new Pair<>(dateModifiedCol, dirOptions.getColumnPrioritySort(COLUMN.DATE_MODIFIED)));
+		}
+		if (dirOptions.isColumnSorted(COLUMN.HBOX_ACTION)) {
+			hBoxActionsCol.setSortType(dirOptions.getColumnSortType(COLUMN.HBOX_ACTION));
+			columnsToOrder.add(new Pair<>(hBoxActionsCol, dirOptions.getColumnPrioritySort(COLUMN.HBOX_ACTION)));
+		}
+		table.getSortOrder().clear();
+		columnsToOrder.stream().sorted(Comparator.comparingInt(colPair -> colPair.getValue()))
+				.forEach(col -> table.getSortOrder().add(col.getKey()));
+
 	}
 
 	/**

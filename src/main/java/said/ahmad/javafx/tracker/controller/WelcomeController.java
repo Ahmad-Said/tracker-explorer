@@ -1156,8 +1156,6 @@ public class WelcomeController implements Initializable {
 	public void saveSetting() {
 		Setting.setLeftLastKnowLocation(getLeftLastKnowLocation());
 		Setting.setRightLastKnowLocation(getRightLastKnowLocation());
-		Setting.setShowLeftNotesColumn(getMostLeftView().isNoteColumnVisible());
-		Setting.setShowRightNotesColumn(getMostRightView().isNoteColumnVisible());
 		Setting.setAutoExpand(getMostLeftView().isAutoExpand());
 		if (Setting.isRestoreLastOpenedFavorite()) {
 			ArrayList<String> lastOpenedFavoritesIndex = new ArrayList<>();

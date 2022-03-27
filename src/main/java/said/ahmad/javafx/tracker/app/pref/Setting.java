@@ -49,8 +49,6 @@ public class Setting {
 	private static Boolean LoadAllIcon = true;
 	private static PathLayer LeftLastKnowLocation = null;
 	private static PathLayer RightLastKnowLocation = null;
-	private static Boolean ShowLeftNotesColumn = false;
-	private static Boolean ShowRightNotesColumn = false;
 	private static String ActiveUser = "default";
 	private static String VLCHttpPass = "1234";
 	private static int MaxLimitFilesRecursive = 10000;
@@ -117,8 +115,6 @@ public class Setting {
 			p.println("restoreLastOpenedFavorite=" + restoreLastOpenedFavorite);
 			p.println("LoadAllIcon=" + LoadAllIcon);
 			p.println("ActiveUser=" + ActiveUser);
-			p.println("ShowLeftNotesColumn=" + ShowLeftNotesColumn);
-			p.println("ShowRightNotesColumn=" + ShowRightNotesColumn);
 			p.println("MaxLimitFilesRecursive=" + MaxLimitFilesRecursive);
 
 			// In General was using Path.toUri() and was all good
@@ -219,10 +215,6 @@ public class Setting {
 						AutoExpand = Boolean.parseBoolean(value);
 					} else if (key.equalsIgnoreCase("LoadAllIcon")) {
 						LoadAllIcon = Boolean.parseBoolean(value);
-					} else if (key.equalsIgnoreCase("ShowLeftNotesColumn")) {
-						ShowLeftNotesColumn = Boolean.parseBoolean(value);
-					} else if (key.equalsIgnoreCase("ShowRightNotesColumn")) {
-						ShowRightNotesColumn = Boolean.parseBoolean(value);
 					} else if (key.equals("MaxLimitFilesRecursive")) {
 						MaxLimitFilesRecursive = Integer.parseInt(value);
 					} else if (key.equals("LeftLastKnowLocation")) {
@@ -413,22 +405,6 @@ public class Setting {
 
 	public static void setActiveUser(String activeUser) {
 		ActiveUser = activeUser;
-	}
-
-	public static Boolean getShowLeftNotesColumn() {
-		return ShowLeftNotesColumn;
-	}
-
-	public static void setShowLeftNotesColumn(Boolean showLeftNotesColumn) {
-		ShowLeftNotesColumn = showLeftNotesColumn;
-	}
-
-	public static Boolean getShowRightNotesColumn() {
-		return ShowRightNotesColumn;
-	}
-
-	public static void setShowRightNotesColumn(Boolean showRightNotesColumn) {
-		ShowRightNotesColumn = showRightNotesColumn;
 	}
 
 	public static String getVersion() {
