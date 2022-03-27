@@ -15,6 +15,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Scanner;
 
+import lombok.Getter;
 import org.jetbrains.annotations.Nullable;
 
 import javafx.scene.control.Alert.AlertType;
@@ -75,6 +76,8 @@ public class Setting {
 	// ---------------- On finish Loading Functional services ----------------
 	private static ArrayList<CallBackToDo> onFinishLoadingAllPartToDo = new ArrayList<>();
 	private static boolean didLoadedAllPart = false;
+	@Getter
+	private static boolean didLoadedAllPartAndExecuteRegistredTask = false;
 
 	private static void callOnceLater() {
 		VLC.initializeDefaultVLCPath();
@@ -260,6 +263,7 @@ public class Setting {
 			callOnceLater();
 		});
 		onFinishLoadingAllPartToDo.addAll(Arrays.asList(onFinishLoadingLateSetting));
+		onFinishLoadingAllPartToDo.add(() -> didLoadedAllPartAndExecuteRegistredTask = true);
 		SettingSaver.loadSetting(onFinishLoadingAllPartToDo);
 	}
 

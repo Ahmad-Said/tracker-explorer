@@ -1,5 +1,8 @@
 package said.ahmad.javafx.tracker.datatype;
 
+import com.jsoniter.JsonIterator;
+import com.jsoniter.output.JsonStream;
+import com.thoughtworks.xstream.io.json.JsonWriter;
 import javafx.scene.control.TableColumn;
 
 /**
@@ -19,7 +22,8 @@ public class DirectoryViewOptions {
 	// unset bit at position k: value & ~(1 << k)
 
 	// -------------- Convention on column preference -----------------
-	// Format 32 bit: X000 0000 0000 PPPP PPPP 0000 0ASV
+	// Format 64 bit MSB: X000 0000 0000 0000 0000 0000 0000
+	// 				 LSB: 0000 0000 0000 PPPP PPPP 0000 0ASV
 
 	// -- X: MSB unused bit to get rid of conflict of arithmetic shift
 	// a bit at position: 31
@@ -49,16 +53,24 @@ public class DirectoryViewOptions {
 	// setValue table.getSortOrder().insert(byte, desiredColumn)
 	// implementation may differ just a general idea
 
-	private int iconColumn = 1; // visible default, and not used to sort by
-	private int nameColumn = 1;
-	private int noteColumn = 0;
-	private int sizeColumn = 0;
-	private int dateModifiedColumn = 0;
-	private int hBoxActionColumn = 1;
+	private long iconColumn = 1; // visible default, and not used to sort by
+	private long nameColumn = 1;
+	private long noteColumn = 0;
+	private long sizeColumn = 0;
+	private long dateModifiedColumn = 0;
+	private long hBoxActionColumn = 1;
+
+	public String toJSONString(){
+		return JsonStream.serialize(this);
+	}
+
+	public static DirectoryViewOptions fromJSONString(String serializedObject){
+		return JsonIterator.deserialize(serializedObject, DirectoryViewOptions.class);
+	}
 
 	public boolean isColumnVisible(COLUMN column) {
 		// mask with first bit (1 = ..0001)
-		int mask = 0b001;
+		long mask = 0b001;
 		switch (column) {
 			case ICON :
 				return (iconColumn & mask) == mask;
@@ -81,7 +93,7 @@ public class DirectoryViewOptions {
 	public void setColumnVisible(COLUMN column, boolean isVisible) {
 		// clear the first bit
 		// then 'OR' to copy isVisible value
-		int mask = 0b001;
+		long mask = 0b001;
 		switch (column) {
 			case ICON :
 				iconColumn = (iconColumn & ~(mask)) | (isVisible ? mask : 0);
@@ -108,7 +120,7 @@ public class DirectoryViewOptions {
 
 	public boolean isColumnSorted(COLUMN column) {
 		// mask with second bit (1 << 1 = ..0010)
-		int mask = (1 << 1);
+		long mask = (1 << 1);
 		switch (column) {
 			case ICON :
 				return (iconColumn & mask) == mask;
@@ -130,7 +142,7 @@ public class DirectoryViewOptions {
 
 	public TableColumn.SortType getColumnSortType(COLUMN column) {
 		// mask with third bit (1 << 1 = ..0100)
-		int mask = 0b100;
+		long mask = 0b100;
 		boolean isDescending = false;
 		switch (column) {
 			case ICON :
@@ -160,7 +172,7 @@ public class DirectoryViewOptions {
 
 	public void setColumnSorted(COLUMN column, boolean isSorted, TableColumn.SortType sortType) {
 		// clear the second and third bit
-		int mask = 0b110;
+		long mask = 0b110;
 		// then 'OR' to copy the byte value
 		int newBits = isSorted ? 1 << 1 : 0; // set sorted value
 		// set sort type
@@ -199,20 +211,20 @@ public class DirectoryViewOptions {
 	 * @return Number between 0 and 255
 	 */
 	public int getColumnPrioritySort(COLUMN column) {
-		int mask = 0b1111111100000000;
+		long mask = 0b1111111100000000;
 		switch (column) {
 			case ICON :
-				return (iconColumn & mask) >> 8;
+				return (int) ((iconColumn & mask) >> 8);
 			case NAME :
-				return (nameColumn & mask) >> 8;
+				return (int) ((nameColumn & mask) >> 8);
 			case NOTE :
-				return (noteColumn & mask) >> 8;
+				return (int) ((noteColumn & mask) >> 8);
 			case SIZE :
-				return (sizeColumn & mask) >> 8;
+				return (int) ((sizeColumn & mask) >> 8);
 			case DATE_MODIFIED :
-				return (dateModifiedColumn & mask) >> 8;
+				return (int) ((dateModifiedColumn & mask) >> 8);
 			case HBOX_ACTION :
-				return (hBoxActionColumn & mask) >> 8;
+				return (int) ((hBoxActionColumn & mask) >> 8);
 			default :
 				System.err.println("Column priority get option is not defined yet for this column: " + column);
 				return 255;
@@ -228,7 +240,7 @@ public class DirectoryViewOptions {
 	 */
 	public void setColumnPrioritySort(COLUMN column, int priority) {
 		// clear the second 8th bit
-		int mask = 0b1111111100000000;
+		long mask = 0b1111111100000000;
 		// then 'OR' to copy the byte value
 		priority = priority << 8;
 		switch (column) {

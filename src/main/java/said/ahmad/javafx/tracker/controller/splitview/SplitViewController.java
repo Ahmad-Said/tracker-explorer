@@ -60,6 +60,8 @@ import javafx.scene.text.Text;
 import javafx.scene.text.TextFlow;
 import javafx.util.Duration;
 import javafx.util.Pair;
+import lombok.Getter;
+import lombok.Setter;
 import mslinks.ShellLink;
 import said.ahmad.javafx.tracker.app.*;
 import said.ahmad.javafx.tracker.app.look.ContextMenuLook;
@@ -91,6 +93,7 @@ import said.ahmad.javafx.tracker.system.services.TrackerPlayer;
 import said.ahmad.javafx.tracker.system.services.VLC;
 import said.ahmad.javafx.tracker.system.tracker.FileTracker;
 import said.ahmad.javafx.tracker.system.tracker.FileTrackerConflictLog;
+import said.ahmad.javafx.tracker.system.tracker.FileTrackerDirectoryOptions;
 import said.ahmad.javafx.tracker.system.tracker.FileTrackerHolder;
 import said.ahmad.javafx.util.ControlListHelper;
 
@@ -901,8 +904,12 @@ public class SplitViewController implements Initializable {
 			loadingTablePlaceHolder.setMaxHeight(newHeight.doubleValue() / 4);
 		});
 		noContentTablePlaceHolder = new Label("No content");
-		table.addEventFilter(Event.ANY, event -> {
+		table.addEventFilter(MouseEvent.MOUSE_CLICKED, event -> {
 			if (event.getTarget() instanceof TableColumnHeader) {
+				// Detect change on sort order of columns require saving it to tracker data
+				onDirectoryViewOptionsChange();
+				// consume event to prevent propagation and open things on double-click
+				// the column header
 				event.consume();
 			}
 		});
@@ -942,7 +949,7 @@ public class SplitViewController implements Initializable {
 			}
 		});
 		table.setOnContextMenuRequested(e -> showContextMenu());
-
+		startListeningToDirViewOptChanges();
 		table.setOnKeyPressed(key -> {
 			String test = predictNavigation.getText().trim();
 			TableViewModel lastSelectedTemp = table.getSelectionModel().getSelectedItem();
@@ -1484,8 +1491,16 @@ public class SplitViewController implements Initializable {
 					// note that newly added files to map have null seen status so user got noticed
 					// of the for the first time
 					@Nullable
-					FileTrackerConflictLog conflict = isLoaded == null ? null
+					FileTrackerConflictLog conflict = isLoaded == null
+							? null
 							: fileTracker.resolveConflict(new HashSet<>(currentFileList));
+					fileTracker.getMapDetails().values().stream().filter(opt -> opt.isVirtualOption()).forEach(opt -> {
+						if (opt instanceof FileTrackerDirectoryOptions
+								&& Setting.isDidLoadedAllPartAndExecuteRegistredTask()) {
+							FileTrackerDirectoryOptions optionsDir = (FileTrackerDirectoryOptions) opt;
+							Platform.runLater(() -> restoreDirectoryViewOptions(optionsDir.getDirectoryViewOptions()));
+						}
+					});
 
 					Platform.runLater(() -> {
 						showList(currentFileList);
@@ -3455,8 +3470,17 @@ public class SplitViewController implements Initializable {
 		}
 		return dirOptions;
 	}
-
+	@Getter
+	@Setter
+	private boolean isDirOptionsChangedByCode;
 	public void restoreDirectoryViewOptions(DirectoryViewOptions dirOptions) {
+		/**
+		 * locker to prevent listeners from saving changes to tracker data
+		 * 
+		 * @see #onDirectoryViewOptionsChange()
+		 */
+		isDirOptionsChangedByCode = true;
+
 		iconCol.setVisible(dirOptions.isColumnVisible(COLUMN.ICON));
 		nameCol.setVisible(dirOptions.isColumnVisible(COLUMN.NAME));
 		noteCol.setVisible(dirOptions.isColumnVisible(COLUMN.NOTE));
@@ -3489,10 +3513,29 @@ public class SplitViewController implements Initializable {
 			hBoxActionsCol.setSortType(dirOptions.getColumnSortType(COLUMN.HBOX_ACTION));
 			columnsToOrder.add(new Pair<>(hBoxActionsCol, dirOptions.getColumnPrioritySort(COLUMN.HBOX_ACTION)));
 		}
-		table.getSortOrder().clear();
-		columnsToOrder.stream().sorted(Comparator.comparingInt(colPair -> colPair.getValue()))
-				.forEach(col -> table.getSortOrder().add(col.getKey()));
+		Platform.runLater(() -> {
+			table.getSortOrder().clear();
+			columnsToOrder.stream().sorted(Comparator.comparingInt(colPair -> colPair.getValue()))
+					.forEach(col -> table.getSortOrder().add(col.getKey()));
+			isDirOptionsChangedByCode = false;
+		});
+	}
 
+	/**
+	 * Called once on initialization
+	 */
+	private void startListeningToDirViewOptChanges() {
+		table.getVisibleLeafColumns()
+				.addListener((ListChangeListener<TableColumn<TableViewModel, ?>>) c -> onDirectoryViewOptionsChange());
+		// sort order check is added to TableColumnHeader EventFilter MouseClick on
+		// table
+	}
+
+	private void onDirectoryViewOptionsChange() {
+		// ignore change made by restore split state or after loading tracker data
+		if (isDirOptionsChangedByCode)
+			return;
+		fileTrackerAdapter.addDirectoryViewOptions(getDirectoryViewOptions());
 	}
 
 	/**

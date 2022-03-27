@@ -12,6 +12,12 @@ import said.ahmad.javafx.tracker.system.tracker.FileTracker.CommandOption;
 public class FileTrackerHolder {
 
 	/**
+	 * Default empty file tracker with no name
+	 */
+	public FileTrackerHolder() {
+	}
+
+	/**
 	 * Empty file tracker with null Seen/empty status Manually set seen if needed
 	 *
 	 * @param name
@@ -102,6 +108,20 @@ public class FileTrackerHolder {
 	 */
 	public int getTimeToLive() {
 		return timeToLive;
+	}
+
+
+	public boolean isForDisplayRecord() {
+		return timeToLive < 0;
+	}
+	/**
+	 * Important to note that {@link #getName()} is used as name for the option in map
+	 * @return <code>true</code> in case the record point to an option setting, not
+	 *         a real file that can exist (like directory view options) <br>
+	 *         <code>false</code> the record point to a valid path file that can exist
+	 */
+	public boolean isVirtualOption() {
+		return false;
 	}
 
 	public FileTrackerHolder setTimeToLive(int timeToLive) {

@@ -1,11 +1,6 @@
 package said.ahmad.javafx.tracker.system.file.local;
 
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
+import java.io.*;
 import java.net.URI;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -26,10 +21,17 @@ public class FilePathLayer extends PathLayer {
 	public final static String FILE_SEPARATOR = File.separator;
 
 	private File file;
-
 	/** Empty constructor */
-	public FilePathLayer() {
+	public FilePathLayer() {}
+
+	/**
+	 * Empty constructor used to create virtual FilePathLayer usually used for
+	 * options to be saved in tracker data
+	 */
+	public FilePathLayer(String OptionName) {
 		super();
+		setName(OptionName);
+		setAbsolutePath("Virtual/TrackerExplorer/" + OptionName);
 	}
 
 	public FilePathLayer(File file) {

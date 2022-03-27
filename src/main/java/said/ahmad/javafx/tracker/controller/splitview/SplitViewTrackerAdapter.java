@@ -9,9 +9,12 @@ import java.util.stream.Stream;
 import org.jetbrains.annotations.Nullable;
 
 import javafx.util.Pair;
+import said.ahmad.javafx.tracker.datatype.DirectoryViewOptions;
 import said.ahmad.javafx.tracker.model.TableViewModel;
 import said.ahmad.javafx.tracker.system.file.PathLayer;
+import said.ahmad.javafx.tracker.system.file.local.FilePathLayer;
 import said.ahmad.javafx.tracker.system.tracker.FileTracker;
+import said.ahmad.javafx.tracker.system.tracker.FileTrackerDirectoryOptions;
 import said.ahmad.javafx.tracker.system.tracker.FileTrackerMultipleReturn;
 
 class SplitViewTrackerAdapter {
@@ -130,5 +133,20 @@ class SplitViewTrackerAdapter {
 					pathsToUpdate.add(t.getFilePath());
 				});
 		return new Pair<List<PathLayer>, List<TableViewModel>>(pathsToUpdate, viewsToUpdate);
+	}
+
+	/**
+	 * Save directoryViewOptions for the current directory in tracker file
+	 * 
+	 * @param directoryViewOptions
+	 */
+	public void addDirectoryViewOptions(DirectoryViewOptions directoryViewOptions) {
+		if(splitView.isOutOfTheBoxHelper())
+			return;
+		FilePathLayer curDirVirtual = new FilePathLayer(FileTrackerDirectoryOptions.OPTION_NAME);
+		FileTrackerDirectoryOptions dirOptionsHolder = new FileTrackerDirectoryOptions(
+				directoryViewOptions);
+		fileTracker.getMapDetails().put(curDirVirtual, dirOptionsHolder);
+		fileTracker.writeMapDir(splitView.getmDirectoryPath(), false);
 	}
 }
