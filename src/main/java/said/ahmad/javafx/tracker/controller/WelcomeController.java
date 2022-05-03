@@ -1013,6 +1013,19 @@ public class WelcomeController implements Initializable {
 				.forEach(spCon -> spCon.refreshAsPathField());
 	}
 
+	/**
+	 * Check if directory is opened in other views
+	 *
+	 * @param directoryView
+	 * @param exception     Do not refresh given splitView <br>
+	 *                      can be null
+	 */
+	public boolean isDirOpenedInOtherView(PathLayer directoryView, SplitViewController exception) {
+		return allSplitViewController.stream()
+				.filter(spCon -> spCon != exception && spCon.getmDirectoryPath().equals(directoryView))
+				.findAny().isPresent();
+	}
+
 	public void refreshUnExistingViewsDir() {
 		allSplitViewController.forEach(spCon -> {
 			boolean doRefresh = false;
@@ -1156,8 +1169,6 @@ public class WelcomeController implements Initializable {
 	public void saveSetting() {
 		Setting.setLeftLastKnowLocation(getLeftLastKnowLocation());
 		Setting.setRightLastKnowLocation(getRightLastKnowLocation());
-		Setting.setShowLeftNotesColumn(getMostLeftView().isNoteColumnVisible());
-		Setting.setShowRightNotesColumn(getMostRightView().isNoteColumnVisible());
 		Setting.setAutoExpand(getMostLeftView().isAutoExpand());
 		if (Setting.isRestoreLastOpenedFavorite()) {
 			ArrayList<String> lastOpenedFavoritesIndex = new ArrayList<>();

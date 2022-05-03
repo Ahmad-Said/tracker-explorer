@@ -5,11 +5,39 @@ import java.util.List;
 
 import com.thoughtworks.xstream.annotations.XStreamOmitField;
 
+import lombok.Data;
 import said.ahmad.javafx.tracker.app.pref.Setting;
+import said.ahmad.javafx.tracker.controller.splitview.SplitViewController;
 import said.ahmad.javafx.tracker.system.file.PathLayer;
 
+/**
+ * When adding a new field into SplitViewState to do: <br>
+ * 0- define the field in this class <br>
+ * 1- add how the field get its value in
+ * {@link SplitViewController#saveStateToSplitState} <br>
+ * 2- add the action on applying it in
+ * {@link SplitViewController#restoreSplitViewStateWithoutQueue} <br>
+ * Then we have 2 cases:<br>
+ * a. Omitted field i.e. just a variable used at runtime and don't need to be
+ * saved <br>
+ * a.1 add @XStreamOmitField on top of the attribute to prevent XStream from
+ * saving it <br>
+ * a.2 define its default value in
+ * {@link SplitViewState#initializeOmittedFields()} (called after any instance
+ * creation) <br>
+ *
+ * b. Savable field: <br>
+ * b.1 add affectation in all constructor except empty constructor <br>
+ * b.2 make sure to check null status of objects charged by XStream in
+ * {@link SplitViewState#SplitViewState(SplitViewState)}<br>
+ * otherwise, for primitive types it takes for the first time the default value
+ * defined in java. (int->0, boolean->false...)
+ *
+ */
+@Data
 public class SplitViewState {
 	private PathLayer mDirectory;
+	private DirectoryViewOptions directoryViewOptions;
 	private boolean autoExpandRight;
 
 	@XStreamOmitField
@@ -18,7 +46,7 @@ public class SplitViewState {
 	private LinkedList<PathLayer> nextQueue;
 
 	@XStreamOmitField
-	private int selectedIndices[];
+	private int[] selectedIndices;
 	@XStreamOmitField
 	private int scrollTo;
 
@@ -26,7 +54,7 @@ public class SplitViewState {
 
 	/** Empty constructor */
 	public SplitViewState() {
-		initializeOmmittedFields();
+		initializeOmittedFields();
 	}
 
 	// initial state conditions
@@ -34,21 +62,26 @@ public class SplitViewState {
 		this.mDirectory = mDirectory;
 		autoExpandRight = Setting.isAutoExpand();
 		searchKeyword = "";
-		initializeOmmittedFields();
+		directoryViewOptions = new DirectoryViewOptions();
+		initializeOmittedFields();
 	}
 
-	public SplitViewState(SplitViewState ommittedSplitState) {
-		mDirectory = ommittedSplitState.mDirectory;
-		autoExpandRight = ommittedSplitState.autoExpandRight;
-		searchKeyword = ommittedSplitState.searchKeyword;
-		initializeOmmittedFields();
+	public SplitViewState(SplitViewState omittedSplitState) {
+		mDirectory = omittedSplitState.mDirectory;
+		autoExpandRight = omittedSplitState.autoExpandRight;
+		searchKeyword = omittedSplitState.searchKeyword;
+		if (omittedSplitState.directoryViewOptions == null) {
+			directoryViewOptions = new DirectoryViewOptions();
+		} else {
+			directoryViewOptions = omittedSplitState.directoryViewOptions;
+		}
+		initializeOmittedFields();
 	}
 
-	private void initializeOmmittedFields() {
-		backQueue = new LinkedList<PathLayer>();
-		nextQueue = new LinkedList<PathLayer>();
-		int selected[] = {};
-		selectedIndices = selected;
+	private void initializeOmittedFields() {
+		backQueue = new LinkedList<>();
+		nextQueue = new LinkedList<>();
+		selectedIndices = new int[]{};
 		scrollTo = 0;
 	}
 
@@ -60,22 +93,6 @@ public class SplitViewState {
 		this.mDirectory = mDirectory;
 	}
 
-	public LinkedList<PathLayer> getBackQueue() {
-		return backQueue;
-	}
-
-	public void setBackQueue(LinkedList<PathLayer> backQueue) {
-		this.backQueue = backQueue;
-	}
-
-	public LinkedList<PathLayer> getNextQueue() {
-		return nextQueue;
-	}
-
-	public void setNextQueue(LinkedList<PathLayer> nextQueue) {
-		this.nextQueue = nextQueue;
-	}
-
 	/**
 	 * @return the selectedIndices
 	 */
@@ -84,7 +101,7 @@ public class SplitViewState {
 	}
 
 	/**
-	 * @param selectedIndices the selectedIndices to set
+	 * @param selections the selectedIndices to set
 	 */
 	public void setSelectedIndices(List<Integer> selections) {
 		selectedIndices = new int[selections.size()];

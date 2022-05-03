@@ -99,6 +99,19 @@
 			<version>0.7</version>
 		</dependency>
 
+		<dependency>
+			<groupId>org.projectlombok</groupId>
+			<artifactId>lombok</artifactId>
+			<version>1.18.22</version>
+			<scope>provided</scope>
+		</dependency>
+		<!-- based on https://github.com/fabienrenaud/java-json-benchmark-->
+		<dependency>
+			<groupId>com.jsoniter</groupId>
+			<artifactId>jsoniter</artifactId>
+			<version>0.9.23</version>
+		</dependency>
+
 	</dependencies>
 
 	<build>

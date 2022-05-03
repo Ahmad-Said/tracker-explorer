@@ -30,10 +30,11 @@ import said.ahmad.javafx.util.CallBackToDo;
  * when adding a new setting To do:<br>
  * 0- Setting declaration in Setting + getters and setters <br>
  * 1- same declaration here with no modifiers (no static) <br>
- * 2- add Setting.getVar() in {@link SettingSaver#pushToSetting} <br>
- * 3- add Setting.setVar() in {@link SettingSaver#pullFromSetting} <br>
+ * 2- add Setting.getVar() in {@link SettingSaver#pullFromSetting} <br>
+ * 3- add Setting.setVar() in {@link SettingSaver#pushToSetting} <br>
  * (if the setting have no null default value add: null check for part 3 <br>
  * i.e. check null status for no primitive types)<br>
+ * Note primitive type takes default value as in java, int->0, boolean->false...<br>
  * ---- functional notes <br>
  * 4- if setting can be changed (usually the case) and UI don't access setting class directly like {@link PathLayer#getDateFormat()} <br>
  * add affectation in method {@link WelcomeController#initializeSettingXmlRelated()},

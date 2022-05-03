@@ -1,20 +1,9 @@
 package said.ahmad.javafx.tracker.system.tracker;
 
-import java.io.BufferedReader;
-import java.io.File;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.io.OutputStream;
-import java.io.OutputStreamWriter;
+import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -26,6 +15,7 @@ import javafx.scene.control.Alert.AlertType;
 import said.ahmad.javafx.tracker.app.DialogHelper;
 import said.ahmad.javafx.tracker.app.pref.Setting;
 import said.ahmad.javafx.tracker.controller.splitview.SplitViewController;
+import said.ahmad.javafx.tracker.datatype.DirectoryViewOptions;
 import said.ahmad.javafx.tracker.system.file.PathLayer;
 import said.ahmad.javafx.tracker.system.file.PathLayerHelper;
 import said.ahmad.javafx.tracker.system.file.ProviderType;
@@ -112,7 +102,7 @@ public class FileTracker {
 	 * </pre>
 	 */
 	public enum CommandOption {
-		TimeToLive
+		NONE, TimeToLive, DirectoryOptions
 	}
 
 	// Used when doing a file operation and no need to clear map immediately
@@ -151,6 +141,8 @@ public class FileTracker {
 		}
 		HashSet<String> parents = new HashSet<>();
 		for (PathLayer pathLayer : mapDetailsRevolved.keySet()) {
+			if(mapDetailsRevolved.get(pathLayer).isVirtualOption())
+				continue;
 			parents.add(pathLayer.getParent());
 			if (parents.size() > 1) {
 				return true;
@@ -280,13 +272,15 @@ public class FileTracker {
 
 	/**
 	 *
-	 * @param dirPath                 Directory to read tracker data from
-	 * @param doclear                 clear already loaded data in map
-	 * @param cachedPathsForKeysInMap a map from absolute path (String) to it's
-	 *                                corresponding PathLayer<br>
-	 *                                It can be null and so will create a new
-	 *                                PathLayer by resolving name from tracker data
-	 *                                with dirPath
+	 * @param dirPath
+	 *            Directory to read tracker data from
+	 * @param doclear
+	 *            clear already loaded data in map
+	 * @param cachedPathsForKeysInMap
+	 *            a map from absolute path (String) to it's corresponding
+	 *            PathLayer<br>
+	 *            It can be null and so will create a new PathLayer by resolving
+	 *            name from tracker data with dirPath
 	 *
 	 * @return loaded map in directory provided, (null if directory is not tracked
 	 *         or failed to load it due to permission reading file)
@@ -294,7 +288,7 @@ public class FileTracker {
 	 */
 	@Nullable
 	public HashMap<PathLayer, FileTrackerHolder> loadMap(PathLayer dirPath, boolean doclear,
-			Map<String, PathLayer> cachedPathsForKeysInMap) {
+														 Map<String, PathLayer> cachedPathsForKeysInMap) {
 		HashMap<PathLayer, FileTrackerHolder> loadedMap = new HashMap<>();
 		if (doclear) {
 			mapDetailsRevolved.clear();
@@ -312,11 +306,11 @@ public class FileTracker {
 				return null;
 			}
 
-			in = new BufferedReader(new InputStreamReader(inputPathLayer, "UTF8"));
+			in = new BufferedReader(new InputStreamReader(inputPathLayer, StandardCharsets.UTF_8));
 			in.readLine(); // to ignore first comment line
 			while ((line = in.readLine()) != null) {
 				FileTrackerHolder optionsItem;
-				String lineSplit[] = line.split(">");
+				String[] lineSplit = line.split(">");
 				// Minimum allowed length of split line is name/isSeen/note
 				if (lineSplit.length >= 2) {
 					optionsItem = new FileTrackerHolder(lineSplit[0]);
@@ -332,13 +326,29 @@ public class FileTracker {
 				for (int i = 3; i < lineSplit.length; i++) {
 					if (!lineSplit[i].isEmpty() && lineSplit[i].charAt(0) == '|') {
 						if (i + 1 < lineSplit.length) {
-							switch (CommandOption.valueOf(lineSplit[i].substring(1))) {
-							case TimeToLive:
-								optionsItem.setTimeToLive(Integer.parseInt(lineSplit[++i]) - 1);
-								break;
+							CommandOption command = CommandOption.NONE;
+							String commandAsString = lineSplit[i].substring(1);
+							String commandValue = lineSplit[++i];
+							try {
+								command = CommandOption.valueOf(commandAsString);
+							} catch (IllegalArgumentException e) {
+								System.err.println("Failed to parse command '" + commandAsString + "' having the value: '" + commandValue +"'");
+								optionsItem.setTimeToLiveDefaultMax();
+								e.printStackTrace();
+								continue;
+							}
+							switch (command) {
+								case TimeToLive:
+									optionsItem.setTimeToLive(Integer.parseInt(commandValue) - 1);
+									break;
+								case DirectoryOptions:
+									FileTrackerDirectoryOptions optionsItemDir = new FileTrackerDirectoryOptions();
+									optionsItem = optionsItemDir;
+									optionsItemDir.setDirectoryViewOptions(DirectoryViewOptions.fromJSONString(commandValue));
+									break;
 
-							default:
-								break;
+								default:
+									break;
 							}
 						}
 					} else {
@@ -350,11 +360,15 @@ public class FileTracker {
 					}
 				}
 				PathLayer keyInMap;
-				String keyInCachedMap = workingDirPath.resolveAsString(optionsItem.getName());
-				if (cachedPathsForKeysInMap != null && cachedPathsForKeysInMap.containsKey(keyInCachedMap)) {
-					keyInMap = cachedPathsForKeysInMap.get(keyInCachedMap);
+				if (optionsItem.isVirtualOption()) {
+					keyInMap = new FilePathLayer(optionsItem.getName());
 				} else {
-					keyInMap = dirPath.resolve(optionsItem.getName());
+					String keyInCachedMap = workingDirPath.resolveAsString(optionsItem.getName());
+					if (cachedPathsForKeysInMap != null && cachedPathsForKeysInMap.containsKey(keyInCachedMap)) {
+						keyInMap = cachedPathsForKeysInMap.get(keyInCachedMap);
+					} else {
+						keyInMap = dirPath.resolve(optionsItem.getName());
+					}
 				}
 				// Force biggest time to live to be overridden
 				// in case of 2 concurrent file operation the last one
@@ -465,7 +479,7 @@ public class FileTracker {
 
 			for (FileTrackerHolder data : mapDetailsRevolved.values()) {
 				if (data.getTimeToLive() != 0) {
-					content.append(data.toString());
+					content.append(data);
 				}
 			}
 			writer.write(content.toString());
@@ -711,18 +725,20 @@ public class FileTracker {
 			if (!mapDetailsRevolved.containsKey(p)) {
 				// @AddInHere
 				currentConflict.addedItems.add(p);
-				mapDetailsRevolved.put(p, new FileTrackerHolder(p.getName().toString()));
+				mapDetailsRevolved.put(p, new FileTrackerHolder(p.getName()));
 			}
 		}
 
 		for (PathLayer key : mapDetailsRevolved.keySet()) {
-
-			if (mapDetailsRevolved.get(key).getTimeToLive() > 0) {
+			FileTrackerHolder optionItem = mapDetailsRevolved.get(key);
+			if (optionItem.getTimeToLive() > 0) {
 				// File can stay maybe it's coming in some operation
 				// but if it exist in directory do clear TimeToLive
 				if (listToCompareWith.contains(key)) {
 					mapDetailsRevolved.get(key).setTimeToLive(-1);
 				}
+				continue;
+			} else if (optionItem.isVirtualOption()) {
 				continue;
 			} else if (!listToCompareWith.contains(key)) {
 				// if time to live reach 0 -> silent remove
