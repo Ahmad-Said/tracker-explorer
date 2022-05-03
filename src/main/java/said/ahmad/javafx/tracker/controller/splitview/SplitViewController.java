@@ -13,6 +13,7 @@ import java.time.Instant;
 import java.util.*;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -1494,13 +1495,24 @@ public class SplitViewController implements Initializable {
 					FileTrackerConflictLog conflict = isLoaded == null
 							? null
 							: fileTracker.resolveConflict(new HashSet<>(currentFileList));
+
+					// Virtual options sections
+					AtomicBoolean hasDirOption = new AtomicBoolean(false);
 					fileTracker.getMapDetails().values().stream().filter(opt -> opt.isVirtualOption()).forEach(opt -> {
-						if (opt instanceof FileTrackerDirectoryOptions
-								&& Setting.isDidLoadedAllPartAndExecuteRegistredTask()) {
-							FileTrackerDirectoryOptions optionsDir = (FileTrackerDirectoryOptions) opt;
-							Platform.runLater(() -> restoreDirectoryViewOptions(optionsDir.getDirectoryViewOptions()));
+						if (opt instanceof FileTrackerDirectoryOptions && Setting.isDidLoadedAllPartAndExecuteRegistredTask()) {
+							// prevent update views if changes occur in other views to allow differentiation between views
+							if (!parentWelcome.isDirOpenedInOtherView(mDirectory, this)) {
+								FileTrackerDirectoryOptions optionsDir = (FileTrackerDirectoryOptions) opt;
+								Platform.runLater(() -> restoreDirectoryViewOptions(optionsDir.getDirectoryViewOptions()));
+							}
+							hasDirOption.set(true);
 						}
 					});
+					// Default virtual options setting if it doesn't exist
+					if (!hasDirOption.get() && Setting.isDidLoadedAllPartAndExecuteRegistredTask()) {
+						Platform.runLater(() -> restoreDirectoryViewOptions(new DirectoryViewOptions()));
+					}
+					// END virtual options sections
 
 					Platform.runLater(() -> {
 						showList(currentFileList);
@@ -3468,6 +3480,24 @@ public class SplitViewController implements Initializable {
 			}
 			sortOrder++;
 		}
+
+		int columnOrder = 0;
+		for (TableColumn col : table.getColumns()) {
+			if (col == iconCol) {
+				dirOptions.setColumnOrder(COLUMN.ICON, columnOrder);
+			} else if (col == nameCol) {
+				dirOptions.setColumnOrder(COLUMN.NAME, columnOrder);
+			} else if (col == noteCol) {
+				dirOptions.setColumnOrder(COLUMN.NOTE, columnOrder);
+			} else if (col == sizeCol) {
+				dirOptions.setColumnOrder(COLUMN.SIZE, columnOrder);
+			} else if (col == dateModifiedCol) {
+				dirOptions.setColumnOrder(COLUMN.DATE_MODIFIED, columnOrder);
+			} else if (col == hBoxActionsCol) {
+				dirOptions.setColumnOrder(COLUMN.HBOX_ACTION, columnOrder);
+			}
+			columnOrder++;
+		}
 		return dirOptions;
 	}
 	@Getter
@@ -3488,35 +3518,53 @@ public class SplitViewController implements Initializable {
 		dateModifiedCol.setVisible(dirOptions.isColumnVisible(COLUMN.DATE_MODIFIED));
 		hBoxActionsCol.setVisible(dirOptions.isColumnVisible(COLUMN.HBOX_ACTION));
 
-		ArrayList<Pair<TableColumn, Integer>> columnsToOrder = new ArrayList<>();
+		ArrayList<Pair<TableColumn, Integer>> columnsSortPriority = new ArrayList<>();
 		if (dirOptions.isColumnSorted(COLUMN.ICON)) {
 			iconCol.setSortType(dirOptions.getColumnSortType(COLUMN.ICON));
-			columnsToOrder.add(new Pair<>(iconCol, dirOptions.getColumnPrioritySort(COLUMN.ICON)));
+			columnsSortPriority.add(new Pair<>(iconCol, dirOptions.getColumnPrioritySort(COLUMN.ICON)));
 		}
 		if (dirOptions.isColumnSorted(COLUMN.NAME)) {
 			nameCol.setSortType(dirOptions.getColumnSortType(COLUMN.NAME));
-			columnsToOrder.add(new Pair<>(nameCol, dirOptions.getColumnPrioritySort(COLUMN.NAME)));
+			columnsSortPriority.add(new Pair<>(nameCol, dirOptions.getColumnPrioritySort(COLUMN.NAME)));
 		}
 		if (dirOptions.isColumnSorted(COLUMN.NOTE)) {
 			noteCol.setSortType(dirOptions.getColumnSortType(COLUMN.NOTE));
-			columnsToOrder.add(new Pair<>(noteCol, dirOptions.getColumnPrioritySort(COLUMN.NOTE)));
+			columnsSortPriority.add(new Pair<>(noteCol, dirOptions.getColumnPrioritySort(COLUMN.NOTE)));
 		}
 		if (dirOptions.isColumnSorted(COLUMN.SIZE)) {
 			sizeCol.setSortType(dirOptions.getColumnSortType(COLUMN.SIZE));
-			columnsToOrder.add(new Pair<>(sizeCol, dirOptions.getColumnPrioritySort(COLUMN.SIZE)));
+			columnsSortPriority.add(new Pair<>(sizeCol, dirOptions.getColumnPrioritySort(COLUMN.SIZE)));
 		}
 		if (dirOptions.isColumnSorted(COLUMN.DATE_MODIFIED)) {
 			dateModifiedCol.setSortType(dirOptions.getColumnSortType(COLUMN.DATE_MODIFIED));
-			columnsToOrder.add(new Pair<>(dateModifiedCol, dirOptions.getColumnPrioritySort(COLUMN.DATE_MODIFIED)));
+			columnsSortPriority.add(new Pair<>(dateModifiedCol, dirOptions.getColumnPrioritySort(COLUMN.DATE_MODIFIED)));
 		}
 		if (dirOptions.isColumnSorted(COLUMN.HBOX_ACTION)) {
 			hBoxActionsCol.setSortType(dirOptions.getColumnSortType(COLUMN.HBOX_ACTION));
-			columnsToOrder.add(new Pair<>(hBoxActionsCol, dirOptions.getColumnPrioritySort(COLUMN.HBOX_ACTION)));
+			columnsSortPriority.add(new Pair<>(hBoxActionsCol, dirOptions.getColumnPrioritySort(COLUMN.HBOX_ACTION)));
 		}
+
+		HashMap<TableColumn, Integer> columnsOrders = new HashMap<>();
+		for (TableColumn col : table.getColumns()) {
+			if (col == iconCol) {
+				columnsOrders.put(col, dirOptions.getColumnOrder(COLUMN.ICON));
+			} else if (col == nameCol) {
+				columnsOrders.put(col, dirOptions.getColumnOrder(COLUMN.NAME));
+			} else if (col == noteCol) {
+				columnsOrders.put(col, dirOptions.getColumnOrder(COLUMN.NOTE));
+			} else if (col == sizeCol) {
+				columnsOrders.put(col, dirOptions.getColumnOrder(COLUMN.SIZE));
+			} else if (col == dateModifiedCol) {
+				columnsOrders.put(col, dirOptions.getColumnOrder(COLUMN.DATE_MODIFIED));
+			} else if (col == hBoxActionsCol) {
+				columnsOrders.put(col, dirOptions.getColumnOrder(COLUMN.HBOX_ACTION));
+			}
+		}
+
 		Platform.runLater(() -> {
 			table.getSortOrder().clear();
-			columnsToOrder.stream().sorted(Comparator.comparingInt(colPair -> colPair.getValue()))
-					.forEach(col -> table.getSortOrder().add(col.getKey()));
+			columnsSortPriority.stream().sorted(Comparator.comparingInt(colPair -> colPair.getValue())).forEach(col -> table.getSortOrder().add(col.getKey()));
+			table.getColumns().sort(Comparator.comparingInt(col -> columnsOrders.get(col)));
 			isDirOptionsChangedByCode = false;
 		});
 	}

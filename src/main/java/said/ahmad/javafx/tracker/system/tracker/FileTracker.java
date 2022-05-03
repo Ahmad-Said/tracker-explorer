@@ -102,7 +102,7 @@ public class FileTracker {
 	 * </pre>
 	 */
 	public enum CommandOption {
-		TimeToLive, DirectoryOptions
+		NONE, TimeToLive, DirectoryOptions
 	}
 
 	// Used when doing a file operation and no need to clear map immediately
@@ -326,18 +326,28 @@ public class FileTracker {
 				for (int i = 3; i < lineSplit.length; i++) {
 					if (!lineSplit[i].isEmpty() && lineSplit[i].charAt(0) == '|') {
 						if (i + 1 < lineSplit.length) {
-							switch (CommandOption.valueOf(lineSplit[i].substring(1))) {
-								case TimeToLive :
-									optionsItem.setTimeToLive(Integer.parseInt(lineSplit[++i]) - 1);
+							CommandOption command = CommandOption.NONE;
+							String commandAsString = lineSplit[i].substring(1);
+							String commandValue = lineSplit[++i];
+							try {
+								command = CommandOption.valueOf(commandAsString);
+							} catch (IllegalArgumentException e) {
+								System.err.println("Failed to parse command '" + commandAsString + "' having the value: '" + commandValue +"'");
+								optionsItem.setTimeToLiveDefaultMax();
+								e.printStackTrace();
+								continue;
+							}
+							switch (command) {
+								case TimeToLive:
+									optionsItem.setTimeToLive(Integer.parseInt(commandValue) - 1);
 									break;
-								case DirectoryOptions :
+								case DirectoryOptions:
 									FileTrackerDirectoryOptions optionsItemDir = new FileTrackerDirectoryOptions();
 									optionsItem = optionsItemDir;
-									optionsItemDir.setDirectoryViewOptions(
-											DirectoryViewOptions.fromJSONString(lineSplit[++i]));
+									optionsItemDir.setDirectoryViewOptions(DirectoryViewOptions.fromJSONString(commandValue));
 									break;
 
-								default :
+								default:
 									break;
 							}
 						}

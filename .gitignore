@@ -81,3 +81,6 @@ build.fxbuild
 .idea/
 *.iml
 *.iws
+
+# Google drive
+.tmp.drive*
