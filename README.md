@@ -31,11 +31,11 @@ So Happy Exploring!
 
 Main View
 
-![Main](https://i.imgur.com/g4DADGi.png)
+![Main](https://i.imgur.com/2Q9Ct8O.png)
 
-Menu Tracker Options
+Menu Tracker Settings
 
-![Menu](https://i.imgur.com/kPYkr29.png)
+![Menu](https://i.imgur.com/tP2nRFG.png)
 
 Rename Utility
 
@@ -43,7 +43,7 @@ Rename Utility
 
 Photo Explorer
 
-![Photo](https://i.imgur.com/mECgVA8.png)
+![Photo](https://i.imgur.com/sS7iChy.png)
 
 ## Features
 
