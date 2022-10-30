@@ -1,11 +1,7 @@
 package said.ahmad.javafx.tracker.system.operation;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Queue;
-import java.util.Stack;
+import java.util.*;
 
 import org.apache.commons.lang3.exception.ExceptionUtils;
 
@@ -98,7 +94,6 @@ public class FileHelperGUIOperation {
 	private String Action; // 'Copy' 'Move'
 	private String ActionInPast; // 'Copied' 'Moved'
 	private String ActionInContinuous; // 'Copying' 'Moving'
-	private PathLayer TargetDirectory;
 	private Queue<PathLayer> SourceList;
 	private Queue<PathLayer> TargetList;
 	// old file to newly created file
@@ -120,37 +115,85 @@ public class FileHelperGUIOperation {
 	private Group gr;
 	private HBox hbox;
 
+
+
+	/**
+	 * Copy source list to their target files. Both list must be same size
+	 * 
+	 * @param action
+	 * @param sourceList can be null
+	 * @param targetList can be null
+	 * @throws IndexOutOfBoundsException
+	 *             in case both list weren't the same size
+	 */
+	public FileHelperGUIOperation(ActionOperation action, List<? extends PathLayer> sourceList,
+			List<? extends PathLayer> targetList) throws IndexOutOfBoundsException {
+		switch (action) {
+			case COPY:
+				Action = "Copy";
+				ActionInPast = "Copied";
+				ActionInContinuous = "Copying";
+				break;
+			case MOVE:
+				Action = "Move";
+				ActionInPast = "Moved";
+				ActionInContinuous = "Moving";
+				break;
+			default:
+				DialogHelper.showAlert(AlertType.ERROR, "File Operation", "Unsuported File Operation: " + action.toString(),
+						"");
+				return;
+		}
+		if(sourceList != null && targetList != null) {
+			if (sourceList.size() != targetList.size()){
+				throw new IndexOutOfBoundsException("Sources list and Target list parameter must be same size");
+			}
+			this.SourceList = new LinkedList<>();
+			this.TargetList = new LinkedList<>();
+			FilesCounts = sourceList.size();
+			Iterator<? extends PathLayer> sourceIt = sourceList.iterator();
+			Iterator<? extends PathLayer> targetIt = targetList.iterator();
+			while(sourceIt.hasNext() && targetIt.hasNext()){
+				PathLayer sourcePath = sourceIt.next();
+				PathLayer targetPath = targetIt.next();
+				if (sourcePath.isDirectory()) {
+					HashMap<PathLayer, String> dirToNewName = new HashMap<>();
+					dirToNewName.put(sourcePath, targetPath.getName());
+					// we split directory to get more control of files
+					FileHelperOperationWalker directorySplitter = new FileHelperOperationWalker(targetPath.getParentPath(), SourceList,
+							TargetList, toDeleteLater, action, dirToNewName);
+					try {
+						PathLayerHelper.walkFileTree(sourcePath, Integer.MAX_VALUE, true, directorySplitter);
+					} catch (IOException e) {
+						e.printStackTrace();
+					}
+				} else {
+					this.SourceList.add(sourcePath);
+					this.TargetList.add(targetPath);
+				}
+			}
+		}
+		isRuning = false;
+		isOperationComplete = false;
+		// initialize view
+		initializeOperationView();
+	}
+
 	/**
 	 * static method {@link #initializeView()} must be called once before creating
 	 * any operation
 	 *
 	 * @param action    check {@linkplain ActionOperation}
-	 * @param targetDir
+	 * @param targetDirectory
 	 * @param src
 	 */
-	public FileHelperGUIOperation(ActionOperation action, PathLayer targetDir, List<? extends PathLayer> src) {
-		switch (action) {
-		case COPY:
-			Action = "Copy";
-			ActionInPast = "Copied";
-			ActionInContinuous = "Copying";
-			break;
-		case MOVE:
-			Action = "Move";
-			ActionInPast = "Moved";
-			ActionInContinuous = "Moving";
-			break;
-		default:
-			DialogHelper.showAlert(AlertType.ERROR, "File Operation", "Unsuported File Operation: " + action.toString(),
-					"");
-			return;
-		}
-		TargetDirectory = targetDir;
+	public FileHelperGUIOperation(ActionOperation action, PathLayer targetDirectory, List<? extends PathLayer> src) {
+		this(action, (List<? extends PathLayer>) null, null);
 		SourceList = new LinkedList<>();
 		TargetList = new LinkedList<>();
 		FilesCounts = 0;
 		// for more control if source was a directory we split all files in it.
-		FileHelperOperationWalker directorySplitter = new FileHelperOperationWalker(TargetDirectory, SourceList,
+		FileHelperOperationWalker directorySplitter = new FileHelperOperationWalker(targetDirectory, SourceList,
 				TargetList, toDeleteLater, action);
 		for (PathLayer p : src) {
 			if (p.isDirectory()) {
@@ -161,16 +204,13 @@ public class FileHelperGUIOperation {
 				}
 			} else {
 				SourceList.add(p);
-				TargetList.add(TargetDirectory.resolve(p.getName()));
+				TargetList.add(targetDirectory.resolve(p.getName()));
 			}
 		}
 		FilesCounts = SourceList.size();
-
-		isRuning = false;
-		isOperationComplete = false;
-		// initialize view
-		initializeOperationView();
 	}
+
+
 
 	private Thread getThread() {
 		// Create new Task and Thread - Bind Progress Property to Task Progress
@@ -339,16 +379,24 @@ public class FileHelperGUIOperation {
 	}
 
 	private double updateMsgText(boolean asStarted) {
+		if(SourceList == null || TargetList == null){
+			return FilesCounts;
+		}
 		double remaining = FilesCounts - SourceList.size();
 
 		if (asStarted && remaining != FilesCounts) {
 			remaining += 0.5;
 		}
 		final double remaindisplayHelper = remaining;
-		// defining this tempName here as when run later source may be empty!
-		String tempName = SourceList.peek().getName();
-		Platform.runLater(() -> Msg.setText(" (" + remaindisplayHelper + "/" + FilesCounts + ") " + ActionInContinuous
-				+ " " + tempName + "\nTo " + TargetDirectory.getName()));
+		// defining this tempName here as when we Platform.run later source may be empty!
+		if (SourceList.size() != 0) {
+			String tempName = SourceList.peek().getName();
+			String targetDir = TargetList.peek().getParent();
+			Platform.runLater(() -> Msg.setText(" (" + remaindisplayHelper + "/" + FilesCounts + ") " + ActionInContinuous
+					+ " " + tempName + "\nTo " + targetDir));
+		} else {
+			Platform.runLater(() -> Msg.setText("Horray ! nothing to do !"));
+		}
 		return remaining;
 	}
 

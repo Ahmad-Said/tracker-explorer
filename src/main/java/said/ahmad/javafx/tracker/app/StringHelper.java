@@ -112,6 +112,15 @@ public class StringHelper {
 		return FilenameUtils.getExtension(fileName).toUpperCase();
 	}
 
+	/**
+	 * Make upper case all elements found and collect them into a new list
+	 * @param list
+	 * @return
+	 */
+	public static List<String> getUpperCaseList(List<String> list) {
+		return list.stream().map(s -> s.toUpperCase()).collect(Collectors.toList());
+	}
+
 	public static String getBaseName(String fileName) {
 		return FilenameUtils.getBaseName(fileName);
 	}
@@ -308,4 +317,8 @@ public class StringHelper {
 			return path.toString();
 		}
 	}
+
+    public static boolean isEmpty(String string) {
+		return string == null || string.isEmpty();
+    }
 }

@@ -15,6 +15,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Scanner;
 
+import javafx.concurrent.Task;
+import javafx.event.EventHandler;
 import org.jetbrains.annotations.Nullable;
 
 import javafx.scene.control.Alert.AlertType;
@@ -37,7 +39,7 @@ public class VLC {
 	public final static ArrayList<String> ArrayPlayListExt = new ArrayList<String>(
 			Arrays.asList("XSPF", "M3U", "M3U8"));
 	public final static ArrayList<String> ArrayVideoExt = new ArrayList<String>(Arrays.asList("3GP", "ASF", "AVI",
-			"DVR-MS", "FLV", "MKV", "MIDI", "MP4", "OGG", "OGM", "WAV", "MPEG-2", "MXF", "VOB", "RM", "Blu-ray",
+			"DVR-MS", "FLV", "MKV", "MIDI+", "MP4", "OGG", "OGM", "WAV", "MPEG-2", "MXF", "VOB", "RM", "Blu-ray",
 			"DVD-Video", "VCD", "SVCD", "DVB", "HEIF", "AVIF", "WMV", "TS", "MPEG", "M4V"));
 
 	// private static String Path_Config= "%appdata%/vlc/vlc-qt-interface.ini";
@@ -127,7 +129,8 @@ public class VLC {
 
 	/**
 	 * This does start a process and block until a value is returned<br>
-	 * So be aware to call it in another thread other than Platform thread
+	 * So be aware to call it in another thread other than Platform thread.<br>
+	 * Also UI interface update must happen in JavaFX thread, so use {@link Task#setOnSucceeded} for that.
 	 *
 	 * @param pathURI
 	 * @param resumeTime can be null

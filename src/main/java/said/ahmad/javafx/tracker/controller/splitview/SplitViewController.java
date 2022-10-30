@@ -69,10 +69,7 @@ import said.ahmad.javafx.tracker.app.look.ContextMenuLook;
 import said.ahmad.javafx.tracker.app.look.IconLoader;
 import said.ahmad.javafx.tracker.app.look.IconLoader.ICON_TYPE;
 import said.ahmad.javafx.tracker.app.pref.Setting;
-import said.ahmad.javafx.tracker.controller.FilterVLCController;
-import said.ahmad.javafx.tracker.controller.PhotoViewerController;
-import said.ahmad.javafx.tracker.controller.RenameUtilityController;
-import said.ahmad.javafx.tracker.controller.WelcomeController;
+import said.ahmad.javafx.tracker.controller.*;
 import said.ahmad.javafx.tracker.controller.connection.ConnectionController;
 import said.ahmad.javafx.tracker.controller.connection.ConnectionController.ConnectionType;
 import said.ahmad.javafx.tracker.controller.connection.ftp.FTPConnectionController;
@@ -96,6 +93,7 @@ import said.ahmad.javafx.tracker.system.tracker.FileTracker;
 import said.ahmad.javafx.tracker.system.tracker.FileTrackerConflictLog;
 import said.ahmad.javafx.tracker.system.tracker.FileTrackerDirectoryOptions;
 import said.ahmad.javafx.tracker.system.tracker.FileTrackerHolder;
+import said.ahmad.javafx.util.ArrayListHelper;
 import said.ahmad.javafx.util.ControlListHelper;
 
 /**
@@ -942,7 +940,7 @@ public class SplitViewController implements Initializable {
 				try {
 					long date1 = PathLayer.getDateFormat().parse(dateFormatted1).getTime();
 					long date2 = PathLayer.getDateFormat().parse(dateFormatted2).getTime();
-					return (date1 - date2)>0?-1:1;
+					return (date1 - date2) > 0 ? -1 : 1;
 				} catch (ParseException e) {
 					e.printStackTrace();
 				}
@@ -955,97 +953,97 @@ public class SplitViewController implements Initializable {
 			String test = predictNavigation.getText().trim();
 			TableViewModel lastSelectedTemp = table.getSelectionModel().getSelectedItem();
 			switch (key.getCode()) {
-			case ENTER:
-				if (table.isFocused()) {
-					if (lastSelectedTemp != null) {
-						navigate(lastSelectedTemp.getFilePath());
+				case ENTER :
+					if (table.isFocused()) {
+						if (lastSelectedTemp != null) {
+							navigate(lastSelectedTemp.getFilePath());
+						}
 					}
-				}
-				break;
-			case BACK_SPACE:
-				if (doBack) {
-					back();
-				} else {
-					if (!test.isEmpty()) {
-						test = test.substring(0, test.length() - 1);
-						predictNavigation.setText(test);
+					break;
+				case BACK_SPACE :
+					if (doBack) {
+						back();
 					} else {
-						ThreadExecutors.recursiveExecutor.execute(EnableMisBack);
-					}
-				}
-				break;
-			case SPACE:
-				// to do here if i make a selection using prediction do not make so
-				// always space do mark seen and auto enter space is enabled
-				// if (!test.isEmpty())
-				// PredictNavigation.insertText(PredictNavigation.getText().length(), " ");
-				// else if (temp != null)
-				if (lastSelectedTemp != null) {
-					lastSelectedTemp.getMarkSeen().fire();
-				}
-				break;
-			// leaved for navigation
-			case UP:
-			case DOWN:
-				break;
-			case LEFT:
-				if (leftViewNeighbor != null) {
-					PathLayer tempPath = getSelectedPathIfDirectoryOrParent();
-					if (tempPath == null) {
-						break;
-					}
-					synctoLeft(tempPath.toString());
-					if (!getSelectedItem().getFilePath().isDirectory() && leftViewNeighbor != null) {
-						leftViewNeighbor.onFinishLoadingScrollToName = lastSelectedTemp.getName();
-					}
-				}
-				break;
-			case RIGHT:
-				if (rightViewNeighbor != null) {
-					PathLayer tempPath2 = getSelectedPathIfDirectoryOrParent();
-					if (tempPath2 == null) {
-						break;
-					}
-					synctoRight(tempPath2.toString());
-					if (!getSelectedItem().getFilePath().isDirectory() && rightViewNeighbor != null) {
-						rightViewNeighbor.onFinishLoadingScrollToName = lastSelectedTemp.getName();
-					}
-				}
-				break;
-			case ESCAPE:
-				predictNavigation.setText("");
-				break;
-			// TODO check declaration there is a lot of key to define
-			default:
-				// ignore special character
-				String newText = predictNavigation.getText();
-				// detect special character event
-				if (key.isControlDown() || key.isAltDown()) {
-					if (key.getText().toLowerCase().equals("a")) {
-						int i = table.getSelectionModel().getSelectedIndex();
-						table.getSelectionModel().clearSelection();
-						table.getSelectionModel().selectAll();
-						table.getSelectionModel().clearSelection(i);
-						table.getSelectionModel().select(i);
+						if (!test.isEmpty()) {
+							test = test.substring(0, test.length() - 1);
+							predictNavigation.setText(test);
+						} else {
+							ThreadExecutors.recursiveExecutor.execute(EnableMisBack);
+						}
 					}
 					break;
-				}
-				if (key.isShiftDown()) {
-					// if (StringHelper.getKeyAsShiftDown().containsKey(key.getText()))
-					// newText += StringHelper.getKeyAsShiftDown().get(key.getText());
-					// Get Note Prompt
-					if (key.getText().toLowerCase().equals("n") && lastSelectedTemp != null) {
-						lastSelectedTemp.getNoteButton().fire();
+				case SPACE :
+					// to do here if i make a selection using prediction do not make so
+					// always space do mark seen and auto enter space is enabled
+					// if (!test.isEmpty())
+					// PredictNavigation.insertText(PredictNavigation.getText().length(), " ");
+					// else if (temp != null)
+					if (lastSelectedTemp != null) {
+						lastSelectedTemp.getMarkSeen().fire();
 					}
 					break;
-				}
-				if (newText.equals(predictNavigation.getText())) {
-					newText += key.getText();
-				}
-				predictNavigation.setText(newText.toLowerCase());
+				// leaved for navigation
+				case UP :
+				case DOWN :
+					break;
+				case LEFT :
+					if (leftViewNeighbor != null) {
+						PathLayer tempPath = getSelectedPathIfDirectoryOrParent();
+						if (tempPath == null) {
+							break;
+						}
+						synctoLeft(tempPath.toString());
+						if (!getSelectedItem().getFilePath().isDirectory() && leftViewNeighbor != null) {
+							leftViewNeighbor.onFinishLoadingScrollToName = lastSelectedTemp.getName();
+						}
+					}
+					break;
+				case RIGHT :
+					if (rightViewNeighbor != null) {
+						PathLayer tempPath2 = getSelectedPathIfDirectoryOrParent();
+						if (tempPath2 == null) {
+							break;
+						}
+						synctoRight(tempPath2.toString());
+						if (!getSelectedItem().getFilePath().isDirectory() && rightViewNeighbor != null) {
+							rightViewNeighbor.onFinishLoadingScrollToName = lastSelectedTemp.getName();
+						}
+					}
+					break;
+				case ESCAPE :
+					predictNavigation.setText("");
+					break;
+				// TODO check declaration there is a lot of key to define
+				default :
+					// ignore special character
+					String newText = predictNavigation.getText();
+					// detect special character event
+					if (key.isControlDown() || key.isAltDown()) {
+						if (key.getText().equalsIgnoreCase("a")) {
+							int i = table.getSelectionModel().getSelectedIndex();
+							table.getSelectionModel().clearSelection();
+							table.getSelectionModel().selectAll();
+							table.getSelectionModel().clearSelection(i);
+							table.getSelectionModel().select(i);
+						}
+						break;
+					}
+					if (key.isShiftDown()) {
+						// if (StringHelper.getKeyAsShiftDown().containsKey(key.getText()))
+						// newText += StringHelper.getKeyAsShiftDown().get(key.getText());
+						// Get Note Prompt
+						if (key.getText().equalsIgnoreCase("n") && lastSelectedTemp != null) {
+							lastSelectedTemp.getNoteButton().fire();
+						}
+						break;
+					}
+					if (newText.equals(predictNavigation.getText())) {
+						newText += key.getText();
+					}
+					predictNavigation.setText(newText.toLowerCase());
 
-				doBack = false;
-				break;
+					doBack = false;
+					break;
 			}
 		});
 
@@ -1089,7 +1087,8 @@ public class SplitViewController implements Initializable {
 					mn.show(parentWelcome.getStage(), event.getScreenX(), event.getScreenY());
 				} else if (db.hasFiles()) {
 					/** Working in local Mode */
-					FilePathLayer targetDirAsFile = getmDirectoryPath().isLocal() ? (FilePathLayer) getmDirectoryPath()
+					FilePathLayer targetDirAsFile = getmDirectoryPath().isLocal()
+							? (FilePathLayer) getmDirectoryPath()
 							: null;
 					List<FilePathLayer> ToOperatePath = new ArrayList<>();
 					List<FilePathLayer> ToOperatePathSameDir = new ArrayList<>();
@@ -1106,20 +1105,57 @@ public class SplitViewController implements Initializable {
 						mnCopy.setGraphic(new ImageView(ContextMenuLook.copyIcon));
 						MenuItem mnMove = new MenuItem("Move Here");
 						mnMove.setGraphic(new ImageView(ContextMenuLook.moveIcon));
+						MenuItem mnCopyAs = null;
+						MenuItem mnMoveAs = null;
 						MenuItem mnCancel = new MenuItem("Cancel");
 						mnCancel.setGraphic(new ImageView(ContextMenuLook.cancelIcon));
 
 						mnMove.setOnAction(e -> FileHelper.move(ToOperatePath, getmDirectoryPath()));
 						mnCopy.setOnAction(e -> FileHelper.copy(ToOperatePath, getmDirectoryPath()));
+						// ask to overwrite if file already exist or to rename to a new file
+						if (ToOperatePath.size() == 1) {
+							PathLayer sourceFile = ToOperatePath.get(0);
+							PathLayer targetFile = getmDirectoryPath().resolve(ToOperatePath.get(0).getName());
+							PathLayer renamedTargetFile = FileHelper.getAvailablePath(sourceFile.getName(), getmDirectoryPath());
+							if (targetFile.exists()) {
+								final String overwriteHeaderConfirmation  = "Overwrite confirmation";
+								final String overwriteContentConfirmation = "This will delete original files and replace them.\n" +
+										"Do you really want to overwrite this file ?";
+								mnCopy.setText("Copy and overwrite here!");
+								mnMove.setText("Move and overwrite here!");
+								mnCopy.setOnAction(e -> FileHelper.delete(Collections.singletonList(targetFile),
+										c -> FileHelper.copy(ToOperatePath, getmDirectoryPath()),
+										overwriteHeaderConfirmation, overwriteContentConfirmation));
+								mnMove.setOnAction(e -> FileHelper.delete(Collections.singletonList(targetFile),
+										c -> FileHelper.move(ToOperatePath, getmDirectoryPath()),
+										overwriteHeaderConfirmation, overwriteContentConfirmation));
+
+								mnCopyAs = new MenuItem("Copy here as '" + renamedTargetFile.getName() + "'");
+								mnCopyAs.setGraphic(new ImageView(ContextMenuLook.copyIcon));
+
+								mnMoveAs = new MenuItem("Move here as '" + renamedTargetFile.getName() + "'");
+								mnMoveAs.setGraphic(new ImageView(ContextMenuLook.moveIcon));
+
+								mnCopyAs.setOnAction(r -> FileHelper.copyFiles(Collections.singletonList(sourceFile), Collections.singletonList(renamedTargetFile)));
+								mnMoveAs.setOnAction(r -> FileHelper.moveFiles(Collections.singletonList(sourceFile), Collections.singletonList(renamedTargetFile)));
+
+							}
+						}
+
 						if (Setting.isUseTeraCopyByDefault() && targetDirAsFile != null) {
 							MenuItem mnTeraCopy = new MenuItem("Copy With TeraCopy");
 							MenuItem mnTeraMove = new MenuItem("Move With TeraCopy");
 							mnTeraCopy.setOnAction(e -> FileHelper.copyWithTeraCopy(ToOperatePath, targetDirAsFile));
 							mnTeraMove.setOnAction(e -> FileHelper.moveWithTeraCopy(ToOperatePath, targetDirAsFile));
-							mn.getItems().addAll(mnCopy, mnTeraCopy, mnMove, mnTeraMove, mnCancel);
+							mn.getItems().addAll(mnCopy, mnTeraCopy, mnMove, mnTeraMove);
 						} else {
-							mn.getItems().addAll(mnCopy, mnMove, mnCancel);
+							mn.getItems().addAll(mnCopy, mnMove);
 						}
+
+						if(mnCopyAs != null && mnMoveAs != null) {
+							mn.getItems().addAll(mnCopyAs, mnMoveAs);
+						}
+						mn.getItems().add(mnCancel);
 					} else if (ToOperatePathSameDir.size() != 0) {
 
 						Optional<TableViewModel> onDroppedT = rowMap.values().stream().collect(Collectors.toSet())
@@ -1161,13 +1197,11 @@ public class SplitViewController implements Initializable {
 						MenuItem mnCancel = new MenuItem("Cancel");
 						mnCancel.setGraphic(new ImageView(ContextMenuLook.cancelIcon));
 						mnCopy.setOnAction(e -> {
-							List<File> targetFiles = new ArrayList<>();
+							List<PathLayer> targetFiles = new ArrayList<>();
 							for (FilePathLayer file : ToOperatePathSameDir) {
-								targetFiles.add(FileHelper.getCopyFileName(file.getFile()));
+								targetFiles.add(FileHelper.getCopyFileName(file));
 							}
-							FileHelper.copyFiles(
-									ToOperatePathSameDir.stream().map(p -> p.getFile()).collect(Collectors.toList()),
-									targetFiles);
+							FileHelper.copyFiles(ToOperatePathSameDir, targetFiles);
 						});
 						if (Setting.isUseTeraCopyByDefault() && targetDirAsFile != null) {
 							MenuItem mnTeraCopy = new MenuItem("Create Copy Here With TeraCopy");
@@ -1327,7 +1361,8 @@ public class SplitViewController implements Initializable {
 
 	public void synctoRight(String pathField) {
 		if (rightViewNeighbor != null) {
-			rightViewNeighbor.onFinishLoadingScrollToName = getSelectedItem() == null ? null
+			rightViewNeighbor.onFinishLoadingScrollToName = getSelectedItem() == null
+					? null
 					: getSelectedItem().getName();
 			rightViewNeighbor.setPathFieldThenRefresh(pathField);
 		}
@@ -1363,8 +1398,8 @@ public class SplitViewController implements Initializable {
 					// on row hover
 					String rowtooltipPreText = "Name:\t " + t.getName();
 					if (!t.getFilePath().isDirectory()) {
-						rowtooltipPreText += "\nSize:\t\t " + String.format("%.2f MB", t.getFileSize())
-								+ "\nModified: " + t.getDateModified();
+						rowtooltipPreText += "\nSize:\t\t " + String.format("%.2f MB", t.getFileSize()) + "\nModified: "
+								+ t.getDateModified();
 					}
 					if (isOutOfTheBoxHelper && !isOutOfTheBoxRecursive()) {
 						return;
@@ -1515,6 +1550,10 @@ public class SplitViewController implements Initializable {
 					// END virtual options sections
 
 					Platform.runLater(() -> {
+						// added another datatable clear because sometime when lunching application with 3 split views
+						// due that second view will use the 3rd last view location, concurent change after loading xml
+						// may cause the view to aggregate both files without clearing it
+						DataTable.clear();
 						showList(currentFileList);
 						if (conflict != null && conflict.didChangeOccurs() && Setting.isNotifyFilesChanges()) {
 							showConflictLogNotification(conflict);
@@ -1616,7 +1655,8 @@ public class SplitViewController implements Initializable {
 	/**
 	 * Scroll to this name only till next refresh is done
 	 *
-	 * @param onFinishLoadingScrollToName the onFinishLoadingScrollToName to set
+	 * @param onFinishLoadingScrollToName
+	 *            the onFinishLoadingScrollToName to set
 	 */
 	public void setOnFinishLoadingScrollToName(String onFinishLoadingScrollToName) {
 		this.onFinishLoadingScrollToName = onFinishLoadingScrollToName;
@@ -1857,7 +1897,7 @@ public class SplitViewController implements Initializable {
 				}
 				List<TableViewModel> allRowModel = new ArrayList<>();
 				for (PathLayer pathItem : fileTracker.getMapDetails().keySet()) {
-					if (pathItem != null && fileTracker.getMapDetails().get(pathItem).getTimeToLive() < 0) {
+					if (pathItem != null && fileTracker.getMapDetails().get(pathItem).isForDisplayRecord()) {
 						allRowModel.add(new TableViewModel(" ", pathItem.getName(), pathItem));
 					}
 				}
@@ -1901,11 +1941,12 @@ public class SplitViewController implements Initializable {
 
 	/**
 	 *
-	 * @param searchPattern ';' to combine multiple search statement '!' to exclude
-	 *                      from search
+	 * @param searchPattern
+	 *            ';' to combine multiple search statement '!' to exclude from
+	 *            search
 	 *
-	 *                      example i want all vlc media that contain name word and
-	 *                      not excel i search: 'vlc;word;!excel'
+	 *            example i want all vlc media that contain name word and not excel
+	 *            i search: 'vlc;word;!excel'
 	 * @param model
 	 * @return
 	 */
@@ -2153,7 +2194,12 @@ public class SplitViewController implements Initializable {
 	};
 
 	private void initializeToolsMenu() {
-		toolsMenu.getItems().addAll(getContextMenuList());
+		toolsMenu.showingProperty().addListener((observable, oldValue, newValue) -> {
+			if (toolsMenu.isShowing()) {
+				toolsMenu.getItems().clear();
+				toolsMenu.getItems().addAll(getContextMenuList());
+			}
+		});
 	}
 
 	private List<MenuItem> getContextMenuList() {
@@ -2292,8 +2338,14 @@ public class SplitViewController implements Initializable {
 		allMenu.add(tracker);
 		allMenu.add(hiddenView);
 		allMenu.add(systemContextMenu);
+		List<PathLayer> selections = getSelection();
+		UserContextMenuController.generateUserContextMenus(selections,
+				parentAdd -> allMenu.add(
+						ArrayListHelper.getCyclicIndex(parentAdd.getKey().getMenuOrder(), allMenu.size()),
+						parentAdd.getValue()));
 		return allMenu;
 	}
+
 
 	private HBox sortControlVbox;
 
@@ -2356,7 +2408,7 @@ public class SplitViewController implements Initializable {
 
 	private void pasteBaseNames() {
 		boolean error = false;
-		tryBlock: try {
+		tryBlock : try {
 			String myString = Clipboard.getSystemClipboard().getString();
 			if (myString == null) {
 				error = true;
@@ -2566,8 +2618,8 @@ public class SplitViewController implements Initializable {
 	}
 
 	public void cleanRecursively() {
-		String labels[] = { "Depth", "User" };
-		String hints[] = { "0", Setting.getActiveUser() };
+		String[] labels = {"Depth", "User"};
+		String[] hints = {"0", Setting.getActiveUser()};
 		int focusAt = 0;
 		@Nullable
 		HashMap<String, String> answers = DialogHelper.showMultiTextInputDialog("Recursive Cleaner",
@@ -2610,8 +2662,8 @@ public class SplitViewController implements Initializable {
 	}
 
 	private void bulkNoteOrdering() {
-		String labels[] = { "Depth", "Start From" };
-		String hints[] = { "1", "1" };
+		String[] labels = {"Depth", "Start From"};
+		String[] hints = {"1", "1"};
 		int focusAt = 0;
 		@Nullable
 		HashMap<String, String> answer = DialogHelper.showMultiTextInputDialog("Bulk Note Ordering",
@@ -2913,7 +2965,8 @@ public class SplitViewController implements Initializable {
 	/**
 	 * Otherwise TableViewModel in sorted data that have corresponding name
 	 *
-	 * @param fileName name to search for
+	 * @param fileName
+	 *            name to search for
 	 * @return
 	 */
 	private TableViewModel getViewModelOfName(String fileName) {
@@ -3018,7 +3071,8 @@ public class SplitViewController implements Initializable {
 	/**
 	 *
 	 * @param message
-	 * @param subMenuDescription can be null
+	 * @param subMenuDescription
+	 *            can be null
 	 * @return
 	 */
 	public ContextMenu showToastMessage(String message, @Nullable List<MenuItem> subMenuDescription) {
@@ -3053,11 +3107,11 @@ public class SplitViewController implements Initializable {
 		}
 		mn.addEventHandler(KeyEvent.ANY, e -> {
 			switch (e.getCode()) {
-			case ENTER:
-				mn.hide();
-				break;
-			default:
-				break;
+				case ENTER :
+					mn.hide();
+					break;
+				default :
+					break;
 			}
 		});
 		return mn;
@@ -3211,36 +3265,38 @@ public class SplitViewController implements Initializable {
 			askIsCopyOnPaste(sources);
 		} else {
 			switch (clipboard.getString()) {
-			case COPY_CLIPBOARD_ACTION:
-				finilizePasteAction(true, sources);
-				break;
-			case MOVE_CLIPBOARD_ACTION:
-				finilizePasteAction(false, sources);
-				break;
-			default:
-				askIsCopyOnPaste(sources);
-				break;
+				case COPY_CLIPBOARD_ACTION :
+					finalizePasteAction(true, sources);
+					break;
+				case MOVE_CLIPBOARD_ACTION :
+					finalizePasteAction(false, sources);
+					break;
+				default :
+					askIsCopyOnPaste(sources);
+					break;
 			}
 		}
 	}
 
-	private void finilizePasteAction(boolean isCopyAction, List<PathLayer> sources) {
+	private void finalizePasteAction(boolean isCopyAction, List<PathLayer> sources) {
 		if (isCopyAction) {
 			// check if sources are copied in same directory if yes do create copies files
 			boolean isLocalSource = sources.size() > 0 ? sources.get(0).isLocal() : false;
 			if (isLocalSource) {
-				List<File> srcFiles = new ArrayList<>();
-				List<File> targetsFiles = new ArrayList<>();
+				List<PathLayer> srcFiles = new ArrayList<>();
+				List<PathLayer> targetsFiles = new ArrayList<>();
 				Iterator<PathLayer> iterator = sources.iterator();
 				while (iterator.hasNext()) {
-					File src = iterator.next().toFileIfLocal();
+					PathLayer src = iterator.next();
 					if (src.getParent().equals(mDirectory.getAbsolutePath())) {
 						srcFiles.add(src);
 						targetsFiles.add(FileHelper.getCopyFileName(src));
 						iterator.remove();
 					}
 				}
-				FileHelper.copyFiles(srcFiles, targetsFiles);
+				if ( srcFiles.size() != 0) {
+					FileHelper.copyFiles(srcFiles, targetsFiles);
+				}
 			}
 			if (sources.size() != 0) {
 				FileHelper.copy(sources, mDirectory);
@@ -3267,12 +3323,12 @@ public class SplitViewController implements Initializable {
 
 		// Copy Section
 		MenuItem mnChildCopy = new MenuItem("Confirm Copy");
-		mnChildCopy.setOnAction(e -> finilizePasteAction(true, sources));
+		mnChildCopy.setOnAction(e -> finalizePasteAction(true, sources));
 		mnChildCopy.setGraphic(new ImageView(ContextMenuLook.copyIcon));
 
 		// Move Section
 		MenuItem mnChildMove = new MenuItem("Confirm Cut/Move");
-		mnChildMove.setOnAction(e -> finilizePasteAction(false, sources));
+		mnChildMove.setOnAction(e -> finalizePasteAction(false, sources));
 		mnChildMove.setGraphic(new ImageView(ContextMenuLook.moveIcon));
 
 		mn.getItems().addAll(mnChildCopy, mnChildMove);
@@ -3506,7 +3562,7 @@ public class SplitViewController implements Initializable {
 	public void restoreDirectoryViewOptions(DirectoryViewOptions dirOptions) {
 		/**
 		 * locker to prevent listeners from saving changes to tracker data
-		 * 
+		 *
 		 * @see #onDirectoryViewOptionsChange()
 		 */
 		isDirOptionsChangedByCode = true;
@@ -3595,7 +3651,8 @@ public class SplitViewController implements Initializable {
 	}
 
 	/**
-	 * @param leftViewNeighbor the leftViewNeighbor to set
+	 * @param leftViewNeighbor
+	 *            the leftViewNeighbor to set
 	 */
 	public void setLeftViewNeighbor(SplitViewController leftViewNeighbor) {
 		this.leftViewNeighbor = leftViewNeighbor;
@@ -3610,7 +3667,8 @@ public class SplitViewController implements Initializable {
 	}
 
 	/**
-	 * @param rightViewNeighbor the rightViewNeighbor to set
+	 * @param rightViewNeighbor
+	 *            the rightViewNeighbor to set
 	 */
 	public void setRightViewNeighbor(SplitViewController rightViewNeighbor) {
 		this.rightViewNeighbor = rightViewNeighbor;

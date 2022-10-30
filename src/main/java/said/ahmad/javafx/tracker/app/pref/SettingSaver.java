@@ -4,6 +4,7 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.OutputStream;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -19,6 +20,7 @@ import said.ahmad.javafx.tracker.controller.WelcomeController;
 import said.ahmad.javafx.tracker.datatype.FavoriteView;
 import said.ahmad.javafx.tracker.datatype.FavoriteView_OldV5_2;
 import said.ahmad.javafx.tracker.datatype.SplitViewState;
+import said.ahmad.javafx.tracker.datatype.UserContextMenu;
 import said.ahmad.javafx.tracker.system.file.PathLayer;
 import said.ahmad.javafx.tracker.system.file.PathLayerXMLConverter;
 import said.ahmad.javafx.tracker.system.file.ftp.FTPPathLayer;
@@ -37,7 +39,7 @@ import said.ahmad.javafx.util.CallBackToDo;
  * Note primitive type takes default value as in java, int->0, boolean->false...<br>
  * ---- functional notes <br>
  * 4- if setting can be changed (usually the case) and UI don't access setting class directly like {@link PathLayer#getDateFormat()} <br>
- * add affectation in method {@link WelcomeController#initializeSettingXmlRelated()},
+ * add affectation in method {@link WelcomeController initializeSettingXmlRelated()},
  * that's called after committing changes to Setting UI or at initialization<br>
  */
 @SuppressWarnings("deprecation")
@@ -67,6 +69,8 @@ class SettingSaver {
 	private boolean notifyFilesChanges;
 	private boolean showWindowOnTopWhenNotify;
 	private String dateFormatPattern;
+	private HashMap<String, ArrayList<String>> extensionGroups;
+	private List<UserContextMenu> userContextMenus;
 
 	public static void pushToSetting() {
 		// favorite stuff
@@ -94,6 +98,10 @@ class SettingSaver {
 		Setting.setShowWindowOnTopWhenNotify(toBeSaved.showWindowOnTopWhenNotify);
 		if (toBeSaved.dateFormatPattern != null)
 			Setting.setDateFormatPattern(toBeSaved.dateFormatPattern);
+		if(toBeSaved.extensionGroups != null)
+			Setting.setExtensionGroups(toBeSaved.extensionGroups);
+		if(toBeSaved.userContextMenus != null)
+			Setting.setUserContextMenus(toBeSaved.userContextMenus);
 	}
 
 	public static void pullFromSetting() {
@@ -110,6 +118,8 @@ class SettingSaver {
 		toBeSaved.notifyFilesChanges = Setting.isNotifyFilesChanges();
 		toBeSaved.showWindowOnTopWhenNotify = Setting.isShowWindowOnTopWhenNotify();
 		toBeSaved.dateFormatPattern = Setting.getDateFormatPattern();
+		toBeSaved.extensionGroups = Setting.getExtensionGroups();
+		toBeSaved.userContextMenus = Setting.getUserContextMenus();
 	}
 
 	private static XStream getXStream() {
@@ -131,6 +141,9 @@ class SettingSaver {
 
 		xstream.alias("SplitViewState", SplitViewState.class);
 		xstream.processAnnotations(SplitViewState.class);
+
+		xstream.alias("UserContextMenu", UserContextMenu.class);
+		xstream.processAnnotations(UserContextMenu.class);
 
 		xstream.allowTypesByWildcard(new String[] { "said.ahmad.javafx.**" });
 		xstream.ignoreUnknownElements();

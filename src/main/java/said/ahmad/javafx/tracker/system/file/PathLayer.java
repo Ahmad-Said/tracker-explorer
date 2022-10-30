@@ -151,6 +151,11 @@ public abstract class PathLayer {
 		return StringHelper.getExtention(name);
 	};
 
+	/**
+	 *
+	 * @return
+	 * @see FilenameUtils#getExtension
+	 */
 	public String getExtension() {
 		return FilenameUtils.getExtension(name);
 	};

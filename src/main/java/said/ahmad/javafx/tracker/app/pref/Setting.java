@@ -1,30 +1,29 @@
 package said.ahmad.javafx.tracker.app.pref;
 
-import java.awt.Desktop;
+import java.awt.*;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.PrintStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.text.SimpleDateFormat;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashMap;
+import java.util.*;
 import java.util.List;
-import java.util.Map;
-import java.util.Scanner;
 
 import lombok.Getter;
 import org.jetbrains.annotations.Nullable;
 
 import javafx.scene.control.Alert.AlertType;
+import lombok.Getter;
+import lombok.Setter;
 import said.ahmad.javafx.tracker.app.DialogHelper;
 import said.ahmad.javafx.tracker.app.StringHelper;
 import said.ahmad.javafx.tracker.app.look.THEME;
 import said.ahmad.javafx.tracker.app.look.THEME_COLOR;
 import said.ahmad.javafx.tracker.datatype.FavoriteView;
 import said.ahmad.javafx.tracker.datatype.FavoriteViewList;
+import said.ahmad.javafx.tracker.datatype.UserContextMenu;
+import said.ahmad.javafx.tracker.system.call.CommandVariable;
 import said.ahmad.javafx.tracker.system.call.RunMenu;
 import said.ahmad.javafx.tracker.system.call.TeraCopy;
 import said.ahmad.javafx.tracker.system.file.PathLayer;
@@ -39,8 +38,8 @@ public class Setting {
 			System.getenv("APPDATA") + "\\Tracker Explorer\\TrackerExplorerSetting.txt");
 	public static final File SETTING_DIRECTORY = new File(System.getenv("APPDATA") + "\\Tracker Explorer");
 
-	// ---------------- Setting To be loaded as Part One ----------------
-	private static final String Version = "5.3";
+	// ---------------- Setting To be loaded as Part One TXT File ----------------
+	private static final String Version = "6.0";
 	/** @since v5.1 */
 	private static long ApplicationTimesLunched = 1;
 	/** @since v5.1 */
@@ -61,17 +60,32 @@ public class Setting {
 	private static ArrayList<String> userNames = new ArrayList<String>(Arrays.asList("default"));
 	private static THEME lastTheme = THEME.BOOTSTRAPV3;
 	private static THEME_COLOR lastThemeColor = THEME_COLOR.NONE;
-
+	private static final FavoriteViewList favoritesViews = new FavoriteViewList();
+	// ---------------- Setting To be loaded as Part Two XML ----------------
+	private static boolean restoreLastOpenedFavorite = true;
+	private static ArrayList<String> lastOpenedFavoriteTitle = new ArrayList<>();
+	private static FavoriteView lastOpenedView;
 	private static boolean notifyFilesChanges = true;
 	private static boolean showWindowOnTopWhenNotify = false;
 	/**@since v5.3*/
 	private static String dateFormatPattern = "dd-MM-yyyy HH:mm:ss";
 
-	// ---------------- Setting To be loaded as Part Two ----------------
-	private static boolean restoreLastOpenedFavorite = true;
-	private static ArrayList<String> lastOpenedFavoriteTitle = new ArrayList<>();
-	private static final FavoriteViewList favoritesViews = new FavoriteViewList();
-	private static FavoriteView lastOpenedView;
+	/** Initial set of groups */
+	@Getter
+	@Setter
+	private static HashMap<String, ArrayList<String>> extensionGroups = new HashMap<String, ArrayList<String>>() {
+		{
+			putAll(UserContextMenuDefaultSetting.getInitializedExtensionGroupsMap());
+		}
+	};
+
+	@Getter
+	@Setter
+	private static List<UserContextMenu> userContextMenus = new ArrayList<UserContextMenu>() {
+		{
+			addAll(UserContextMenuDefaultSetting.getInitializedMenuList());
+		}
+	};
 
 	// ---------------- On finish Loading Functional services ----------------
 	private static ArrayList<CallBackToDo> onFinishLoadingAllPartToDo = new ArrayList<>();
@@ -262,7 +276,9 @@ public class Setting {
 			didLoadedAllPart = true;
 			callOnceLater();
 		});
-		onFinishLoadingAllPartToDo.addAll(Arrays.asList(onFinishLoadingLateSetting));
+		if (onFinishLoadingLateSetting != null) {
+			onFinishLoadingAllPartToDo.addAll(Arrays.asList(onFinishLoadingLateSetting));
+		}
 		onFinishLoadingAllPartToDo.add(() -> didLoadedAllPartAndExecuteRegistredTask = true);
 		SettingSaver.loadSetting(onFinishLoadingAllPartToDo);
 	}
@@ -447,8 +463,8 @@ public class Setting {
 	/**
 	 * @param autoRenameUTFFile the autoRenameUTFFile to set
 	 */
-	public static void setAutoRenameUTFFile(boolean autorenameUTFFile) {
-		autoRenameUTFFile = autorenameUTFFile;
+	public static void setAutoRenameUTFFile(boolean autoRenameUTFFile) {
+		Setting.autoRenameUTFFile = autoRenameUTFFile;
 	}
 
 	public static File getmSettingFile() {

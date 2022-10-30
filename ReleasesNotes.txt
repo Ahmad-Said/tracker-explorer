@@ -1,3 +1,11 @@
+V6.0:
+NEW: Dynamic used defined context menu with integration of external apps such as adobe, winrar...
+NEW: Merge PDF files
+
+IMPROVE: Better handle rename error
+
+FIX: Directory view showing unrelated items when loading 3 or plus split view
+
 v5.0:
 NEW: Create Cortana shortcut voice command
 NEW: Integration of TeraCopy for Files operations (Copy/Move)
