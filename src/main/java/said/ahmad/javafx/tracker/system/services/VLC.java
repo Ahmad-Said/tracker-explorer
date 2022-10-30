@@ -1,10 +1,6 @@
 package said.ahmad.javafx.tracker.system.services;
 
-import java.io.File;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.OutputStream;
-import java.io.OutputStreamWriter;
+import java.io.*;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
@@ -15,8 +11,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Scanner;
 
-import javafx.concurrent.Task;
-import javafx.event.EventHandler;
+import org.apache.commons.text.StringEscapeUtils;
 import org.jetbrains.annotations.Nullable;
 
 import javafx.scene.control.Alert.AlertType;
@@ -46,9 +41,9 @@ public class VLC {
 	private static Path Path_Config = new File(System.getenv("APPDATA") + "\\vlc\\vlc-qt-interface.ini").toPath();
 
 	private static Path Path_Setup = null;
-	private static String FILE_NAME = "vlc.exe";
+	private static final String FILE_NAME = "vlc.exe";
 
-	public static Map<URI, Integer> RecentTracker = new HashMap<>();
+	public static Map<URI, Long> recentTracker = new HashMap<>();
 
 	/**
 	 * @return the path_Setup
@@ -128,65 +123,70 @@ public class VLC {
 	}
 
 	/**
-	 * This does start a process and block until a value is returned<br>
-	 * So be aware to call it in another thread other than Platform thread.<br>
-	 * Also UI interface update must happen in JavaFX thread, so use {@link Task#setOnSucceeded} for that.
+	 * Start VLC to run specified path at specific moment, if moment is null
+	 * will start at last saved time in VLC history.
 	 *
 	 * @param pathURI
-	 * @param resumeTime can be null
+	 * @param moment can be null
 	 * @return <b>millisSecond</b> time picked after closing vlc at specific moment
 	 *         in millisSecond beginning from start of video
 	 */
-	public static int pickTime(URI pathURI, Duration resumeTime) {
-		try {
-			ReloadRecentMRL();
-			String Resume = "";
-			if (resumeTime != null) {
-				Resume = " --start-time " + resumeTime.toSeconds();
-			} else if (RecentTracker.containsKey(pathURI)) {
-				Resume = " --start-time " + RecentTracker.get(pathURI) / 1000;
-			}
-			Process p = StartVlc(Resume + " " + pathURI);
-			if (p != null) {
-				p.waitFor();
-			}
-		} catch (InterruptedException e) {
+	public static void startVLCAtSpecificMoment(URI pathURI, Duration moment) throws VLCException, IOException {
+		reloadRecentMRL();
+		String Resume = "";
+		if (moment != null) {
+			Resume = " --start-time " + moment.toSeconds();
+		} else if (recentTracker.containsKey(pathURI)) {
+			Resume = " --start-time " + recentTracker.get(pathURI) / 1000;
 		}
-		ReloadRecentMRL();
-		if (RecentTracker.containsKey(pathURI)) {
-			return RecentTracker.get(pathURI);
+		StartVlc(Resume + " " + pathURI);
+	}
+
+	/**
+	 *
+	 * @param pathURI
+	 * @return last saved moment of media in millisecond
+	 * @throws VLCException @see {@link #reloadRecentMRL()}
+	 */
+	public static long getLastSavedMoment(URI pathURI) throws VLCException, IOException {
+		reloadRecentMRL();
+		if (recentTracker.containsKey(pathURI)) {
+			return recentTracker.get(pathURI);
 		} else {
-			DialogHelper.showAlert(AlertType.ERROR, "VLC Picker", "Something went wrong",
-					"Try Again.\nPossible Reason: \n - Recent mrl is turned Off."
-							+ "\n - Clip at early start or early end:\n\t Please enter time manually.");
 			return 0;
 		}
 	}
 
-	public static void ReloadRecentMRL() {
+	/**
+	 * Load configuration file {@link #Path_Config} of vlc and parse its recent MRL
+	 * field. After succesfull read it create map from file to last time the user has left of
+	 * @throws VLCException
+	 */
+	public static void reloadRecentMRL() throws VLCException, IOException {
 		// Thread.sleep(1000); // to let vlc write it's data not necessary because i
 		// waited the process...
 		String list = "";
 		String times = "";
-		Scanner scan = null;
+		BufferedReader scan = null;
 		try {
-			scan = new Scanner(Path_Config.toFile());
+			scan = new BufferedReader(
+					new InputStreamReader(new FilePathLayer(Path_Config.toFile()).getInputFileStream()
+							, StandardCharsets.US_ASCII));
 		} catch (Exception e) {
 			// e.printStackTrace();
-			DialogHelper.showAlert(AlertType.ERROR, "Auto Detect", "Something went wrong",
+			throw new VLCException("Auto Detect", "Something went wrong",
 					"Could not Get Data From VLC.\nPlease Choose manually");
 
 		}
 		// line=scan.next();
-		while (scan.hasNextLine()) {
-			list = scan.nextLine();
+		while ((list = scan.readLine()) != null) {
 			String temp = list.split("=")[0];
 
 			if (temp.equals("list")) {
 				break;
 			}
 		}
-		times = scan.nextLine();
+		times = scan.readLine();
 		list = list.substring(5);
 		times = times.substring(6);
 		if (!list.equals("@Invalid()")) // this how vlc show if recent was not set
@@ -198,11 +198,16 @@ public class VLC {
 				String tim = Times_Parsed[i];
 				String lis = List_Parsed[i].trim();
 				lis = lis.replace("\"", "");
+				if (list.contains("\\x")) {
+					// VLC use \xFFF for escaping unicode character but it is not translated
+					// in java
+					lis	= lis.replaceAll("\\\\x", "\\\\u0");
+					lis	= StringEscapeUtils.unescapeJava(lis);
+				}
 				try {
-					RecentTracker.put(URI.create(lis), Integer.parseInt(tim.trim()));
+					recentTracker.put(URI.create(lis), Long.parseLong(tim.trim()));
 				} catch (Exception e) {
-					// DialogHelper.showAlert(AlertType.ERROR, "Error", "Failed To parse VLC Config
-					// URI", lis);
+					 e.printStackTrace();
 				}
 			}
 		}
@@ -216,10 +221,10 @@ public class VLC {
 	 * t.getRunVLC().setOnAction}
 	 *
 	 * @param path         the Path fo media to run
-	 * @param MediaCutData 1 >> start; 2 >> end; 3 >> title
+	 * @param list         Media cut data 1 >> start; 2 >> end; 3 >> title
 	 */
 	public static PathLayer SavePlayListFile(PathLayer path, ArrayList<MediaCutData> list, boolean isFullPath,
-			boolean isfirst, boolean notifyEnd) {
+			boolean isfirst, boolean notifyEnd) throws VLCException {
 
 		PathLayer tempFile = null;
 		String mediaLocation = null;
@@ -321,17 +326,10 @@ public class VLC {
 	/**
 	 * Start VLC with given arguments
 	 *
-	 * <p>
-	 * <b>Important: </b> Call JVM for running Garbage Collector after calling this
-	 * function so VLC won't get stuck.<br>
-	 * ---------------><b> System.gc(); </b>
-	 *
-	 * @param arg
-	 * @return
+	 * @param arg general format "--option value URIfilePath"
 	 */
-	public static Process StartVlc(String arg) {
+	public static void StartVlc(String arg) throws VLCException {
 		try {
-			Process p = null;
 			int startSplit = 0, endSplit = 0, inc = 0;
 			while (endSplit != arg.length()) {
 				endSplit = arg.lastIndexOf("file:", inc += 15000);
@@ -339,49 +337,49 @@ public class VLC {
 				if (startSplit == endSplit || endSplit == -1) {
 					endSplit = arg.length();
 				}
-				p = Runtime.getRuntime()
-						.exec(Path_Setup.toAbsolutePath()
-								+ " --one-instance --video-title-timeout 12000 --video-title-position=4"
-								+ arg.substring(startSplit, endSplit));
+				String command = Path_Setup.toAbsolutePath()
+						+ " --one-instance --video-title-timeout 12000 --video-title-position=4"
+						+ arg.substring(startSplit, endSplit);
+				Runtime.getRuntime()
+						.exec(command);
 
 				startSplit = endSplit < arg.length() ? endSplit : arg.length();
 			}
-			return p;
+			/**
+			 * Important!! Call JVM for running Garbage Collector after calling this
+			 * function so VLC won't get stuck.
+			 *
+			 * requesting JVM for running Garbage Collector
+			 * in order to release process from memory from being expanded as vlc will
+			 * take large resources and may get freeze after certain ammount of time
+			 * read more at : https://www.geeksforgeeks.org/garbage-collection-java/
+			 */
+			System.gc();
 		} catch (IOException e) {
-			DialogHelper.showAlert(AlertType.ERROR, "Run VLC", "Could Not Run VLC",
-					"VLC is not installed on the system or misconfigured.\n\n Please Get/Configure VLC using VLC menu.");
 			e.printStackTrace();
+			throw new VLCException("Run VLC",
+					"Could Not Run VLC",
+					"VLC is not installed on the system or misconfigured." +
+							"\n\n Please Get/Configure VLC using VLC menu");
 		}
-		return null;
 	}
 
 	/**
 	 * Start Playlist in order with remote feature
 	 *
-	 * <p>
-	 * <b>Important: </b> Call JVM for running Garbage Collector after calling this
-	 * function so VLC won't get stuck.<br>
-	 * ---------------><b> System.gc(); </b>
-	 *
-	 * @param arg
-	 * @return
+	 * @param path path of playlist to run
 	 */
-	public static void startXSPFInOrder(PathLayer path) {
+	public static void startXSPFInOrder(PathLayer path) throws VLCException {
 		watchWithRemote(path.toURI(), "--no-random");
 	}
 
 	/**
 	 * Start VLC and open http Lua remote with the saved password(1234)
 	 *
-	 * <p>
-	 * <b>Important: </b> Call JVM for running Garbage Collector after calling this
-	 * function so VLC won't get stuck.<br>
-	 * ---------------><b> System.gc(); </b>
-	 *
-	 * @param path        can be null
+	 * @param uri         can be null
 	 * @param addArgument can be anything add at the last of command
 	 */
-	public static void watchWithRemote(URI uri, String addArgument) {
+	public static void watchWithRemote(URI uri, String addArgument) throws VLCException {
 		if (uri != null) {
 			addArgument += " " + uri;
 		}

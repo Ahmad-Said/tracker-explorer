@@ -36,6 +36,7 @@ import javafx.util.Pair;
 import said.ahmad.javafx.fxGraphics.IntField;
 import said.ahmad.javafx.tracker.app.look.ThemeManager;
 import said.ahmad.javafx.tracker.fxGraphics.DialogBlock;
+import said.ahmad.javafx.tracker.system.services.VLCException;
 
 public class DialogHelper {
 
@@ -325,6 +326,10 @@ public class DialogHelper {
 		});
 		Optional<HashMap<String, String>> result = dialog.showAndWait();
 		return result.isPresent() ? result.get() : null;
+	}
+
+	public static void showException(VLCException e) {
+		showAlert(AlertType.ERROR, e.getTitle(), e.getHeader(), e.getContent());
 	}
 
 	public static void showException(Exception e) {

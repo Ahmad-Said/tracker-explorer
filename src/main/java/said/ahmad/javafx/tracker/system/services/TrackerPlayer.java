@@ -108,8 +108,11 @@ public class TrackerPlayer {
 
 	public static File openPlaylistInLnk(File playlistFile) throws IOException, ParseException {
 		if (VLC.isWellSetup() && VLC.isVLCMediaExt(playlistFile.getName())) {
-			VLC.watchWithRemote(playlistFile.toPath().toUri(), "");
-			System.gc();
+			try {
+				VLC.watchWithRemote(playlistFile.toPath().toUri(), "");
+			} catch (VLCException e) {
+				DialogHelper.showException(e);
+			}
 		} else {
 			if (WindowsShortcut.isPotentialValidLink(playlistFile)) {
 				Desktop.getDesktop().open(new File(new WindowsShortcut(playlistFile).getRealFilename()));

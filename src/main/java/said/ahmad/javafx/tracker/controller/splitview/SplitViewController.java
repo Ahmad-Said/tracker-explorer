@@ -14,6 +14,7 @@ import java.util.*;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -89,6 +90,7 @@ import said.ahmad.javafx.tracker.system.operation.FileHelper;
 import said.ahmad.javafx.tracker.system.operation.FileHelper.ActionOperation;
 import said.ahmad.javafx.tracker.system.services.TrackerPlayer;
 import said.ahmad.javafx.tracker.system.services.VLC;
+import said.ahmad.javafx.tracker.system.services.VLCException;
 import said.ahmad.javafx.tracker.system.tracker.FileTracker;
 import said.ahmad.javafx.tracker.system.tracker.FileTrackerConflictLog;
 import said.ahmad.javafx.tracker.system.tracker.FileTrackerDirectoryOptions;
@@ -1427,12 +1429,16 @@ public class SplitViewController implements Initializable {
 									new FilterVLCController(t.getFilePath());
 								} else {
 									ArrayList<MediaCutData> list = tOption.getMediaCutDataParsed();
-									if (list.size() != 0) {
-										// if the media does contain a setting do load it
-										VLC.SavePlayListFile(t.getFilePath(), list, true, true, true);
-									} else {
-										// just start the file with remote features
-										VLC.watchWithRemote(t.getFilePath().toURI(), "");
+									try {
+										if (list.size() != 0) {
+											// if the media does contain a setting do load it
+											VLC.SavePlayListFile(t.getFilePath(), list, true, true, true);
+										} else {
+											// just start the file with remote features
+											VLC.watchWithRemote(t.getFilePath().toURI(), "");
+										}
+									} catch (VLCException e) {
+										DialogHelper.showException(e);
 									}
 								}
 							});
@@ -1447,7 +1453,11 @@ public class SplitViewController implements Initializable {
 									fileTrackerAdapter.untrackedBehaviorAndAskTrack(
 											table.getSelectionModel().getSelectedItems(), t);
 								} else {
-									VLC.watchWithRemote(t.getFilePath().toURI(), "");
+									try {
+										VLC.watchWithRemote(t.getFilePath().toURI(), "");
+									} catch (VLCException e) {
+										DialogHelper.showException(e);
+									}
 								}
 							});
 						}
@@ -1463,7 +1473,11 @@ public class SplitViewController implements Initializable {
 					// is XSPF start the file directly with custom argument
 					if (VLC.isPlaylist(t.getName())) {
 						t.getOpenVLC().setOnMouseClicked(m -> {
-							VLC.startXSPFInOrder(t.getFilePath());
+							try {
+								VLC.startXSPFInOrder(t.getFilePath());
+							} catch (VLCException e) {
+								DialogHelper.showException(e);
+							}
 						});
 					}
 
@@ -2872,12 +2886,6 @@ public class SplitViewController implements Initializable {
 						}
 					}
 					VLC.StartVlc(files);
-					// requesting JVM for running Garbage Collector
-					// in order to release process from memory from being expanded as vlc will
-					// take large resources and may get freeze after certain ammount of time
-					// read more at : https://www.geeksforgeeks.org/garbage-collection-java/
-					System.gc();
-
 					// we always start media because playlist do not start automatically
 				} else {
 					// deal other types of files

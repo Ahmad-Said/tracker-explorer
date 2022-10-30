@@ -1,11 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<?import javafx.scene.chart.*?>
 <?import javafx.geometry.*?>
 <?import javafx.scene.control.*?>
-<?import java.lang.*?>
 <?import javafx.scene.layout.*?>
-
+<?import java.lang.*?>
 <BorderPane prefHeight="450.0" prefWidth="654.0" xmlns="http://javafx.com/javafx/8" xmlns:fx="http://javafx.com/fxml/1">
    <center>
       <TableView fx:id="TimeTable" editable="true" prefHeight="342.0" prefWidth="506.0" tableMenuButtonVisible="true" BorderPane.alignment="CENTER">
@@ -27,7 +25,13 @@
                <children>
                   <Button fx:id="resetStart" mnemonicParsing="false" onAction="#ResetStart" styleClass="first" text=" " />
                   <TextField fx:id="inputStart" alignment="TOP_LEFT" styleClass="middle" />
-                  <Button fx:id="pickStart" alignment="CENTER" mnemonicParsing="false" onAction="#PickStart" text="Pick Start">
+                  <Button fx:id="pickStart" alignment="CENTER" layoutX="254.0" layoutY="19.0" mnemonicParsing="false" onAction="#PickStart" text="Pick Start">
+                     <styleClass>
+                        <String fx:value="btn" />
+                        <String fx:value="last" />
+                     </styleClass>
+                  </Button>
+                  <Button fx:id="fillStartFromVLCConfig" alignment="CENTER" mnemonicParsing="false" onAction="#fillStartFromVLCConfig" text="✔">
                      <HBox.margin>
                         <Insets right="40.0" />
                      </HBox.margin>
@@ -39,6 +43,12 @@
                   <Button fx:id="resetEnd" mnemonicParsing="false" onAction="#ResetEnd" styleClass="first" text=" " />
                   <TextField fx:id="inputEnd" alignment="TOP_LEFT" styleClass="middle" />
                   <Button fx:id="pickEnd" alignment="CENTER" mnemonicParsing="false" onAction="#PickEnd" text="Pick End">
+                     <styleClass>
+                        <String fx:value="btn" />
+                        <String fx:value="last" />
+                     </styleClass>
+                  </Button>
+                  <Button fx:id="fillEndFromVLCConfig" alignment="CENTER" layoutX="558.0" layoutY="19.0" mnemonicParsing="false" onAction="#fillEndFromVLCConfig" text="✔">
                      <styleClass>
                         <String fx:value="btn" />
                         <String fx:value="last" />

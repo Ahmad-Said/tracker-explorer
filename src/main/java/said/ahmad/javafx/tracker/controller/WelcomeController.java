@@ -74,6 +74,7 @@ import said.ahmad.javafx.tracker.system.operation.FileHelper;
 import said.ahmad.javafx.tracker.system.operation.FileHelperGUIOperation;
 import said.ahmad.javafx.tracker.system.services.TrackerPlayer;
 import said.ahmad.javafx.tracker.system.services.VLC;
+import said.ahmad.javafx.tracker.system.services.VLCException;
 import said.ahmad.javafx.tracker.system.tracker.FileTracker;
 import said.ahmad.javafx.util.IpAddress;
 
@@ -956,7 +957,11 @@ public class WelcomeController implements Initializable {
 		// do open in this instance of vlc
 		// pass is to set login access
 		// .. refer to https://wiki.videolan.org/VLC_command-line_help for more details
-		VLC.watchWithRemote(null, " --qt-start-minimized");
+		try {
+			VLC.watchWithRemote(null, " --qt-start-minimized");
+		} catch (VLCException e) {
+			DialogHelper.showException(e);
+		}
 		// do open in the web
 		boolean test = DialogHelper.showConfirmationDialog("VLC Over The Web", "Do you Want to test Connection ?",
 				"This will start url on current system browser");

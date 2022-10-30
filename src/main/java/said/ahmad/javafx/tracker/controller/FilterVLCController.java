@@ -8,7 +8,6 @@ import java.util.List;
 
 import javax.xml.ws.Holder;
 
-import javafx.application.Platform;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.event.ActionEvent;
@@ -18,15 +17,8 @@ import javafx.fxml.FXMLLoader;
 import javafx.scene.Node;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
+import javafx.scene.control.*;
 import javafx.scene.control.Alert.AlertType;
-import javafx.scene.control.Button;
-import javafx.scene.control.CheckBox;
-import javafx.scene.control.Label;
-import javafx.scene.control.TableColumn;
-import javafx.scene.control.TableRow;
-import javafx.scene.control.TableView;
-import javafx.scene.control.TextField;
-import javafx.scene.control.Tooltip;
 import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.image.Image;
 import javafx.scene.input.Clipboard;
@@ -40,16 +32,15 @@ import javafx.util.Duration;
 import said.ahmad.javafx.tracker.app.DialogHelper;
 import said.ahmad.javafx.tracker.app.Main;
 import said.ahmad.javafx.tracker.app.ResourcesHelper;
-import said.ahmad.javafx.tracker.app.ThreadExecutors;
 import said.ahmad.javafx.tracker.app.look.ThemeManager;
 import said.ahmad.javafx.tracker.controller.splitview.SplitViewController;
 import said.ahmad.javafx.tracker.datatype.MediaCutData;
 import said.ahmad.javafx.tracker.model.FilterVLCViewModel;
 import said.ahmad.javafx.tracker.system.file.PathLayer;
 import said.ahmad.javafx.tracker.system.services.VLC;
+import said.ahmad.javafx.tracker.system.services.VLCException;
 import said.ahmad.javafx.tracker.system.tracker.FileTracker;
 import said.ahmad.javafx.tracker.system.tracker.FileTrackerHolder;
-import said.ahmad.javafx.util.CallBackVoid;
 
 public class FilterVLCController {
 
@@ -72,6 +63,9 @@ public class FilterVLCController {
 	private Button pickEnd;
 
 	@FXML
+	private Button fillEndFromVLCConfig;
+
+	@FXML
 	private Button resetStart;
 
 	@FXML
@@ -79,6 +73,9 @@ public class FilterVLCController {
 
 	@FXML
 	private Button pickStart;
+
+	@FXML
+	private Button fillStartFromVLCConfig;
 
 	@FXML
 	private TextField inputStart;
@@ -113,10 +110,9 @@ public class FilterVLCController {
 	@FXML
 	private TableView<FilterVLCViewModel> TimeTable;
 
-	private ObservableList<FilterVLCViewModel> mDataTable = FXCollections.observableArrayList();
+	private final ObservableList<FilterVLCViewModel> mDataTable = FXCollections.observableArrayList();
 	private FileTracker mfileTracker;
 	private PathLayer mPath;
-	private Stage filterStage; // defined to close it later
 
 	public static final Image FILTER_ICON_IMAGE = new Image(ResourcesHelper.getResourceAsStream("/img/filter_vlc.png"));
 
@@ -135,21 +131,21 @@ public class FilterVLCController {
 	}
 
 	/**
-	 * this is called from {@linkplain SplitViewController#initializeTable(Boolean)
-	 * at button openVLC Action} This function required the path is already tracked
-	 * so check for it with {@link FileTracker#isTracked() (which already checked
+	 * this is called from {@linkplain SplitViewController#initializeTable()} at
+	 * button openVLC Action} This function required the path is already tracked so
+	 * check for it with {@link FileTracker#isTracked() (which already checked
 	 * before calling this constructor}
 	 *
-	 * @param path         Path of the file to configure
-	 * @param mfileTracker It's tracker came from it's parent
-	 *                     {@link SplitViewController#getFileTracker()}
+	 * @param path
+	 *            Path of the file to configure
 	 */
 	public FilterVLCController(PathLayer path) {
 
 		mPath = path;
 		mfileTracker = new FileTracker(path.getParentPath(), null);
 		mfileTracker.loadMap(path.getParentPath(), true, null);
-		filterStage = new Stage();
+		// defined to close it later
+		Stage filterStage = new Stage();
 		filterStage.sizeToScene();
 		// didn't work as expected
 		// filterStage.setAlwaysOnTop(true);
@@ -227,9 +223,6 @@ public class FilterVLCController {
 	/**
 	 * this consider that informations in file are sorted with no conflict in
 	 * interval
-	 *
-	 * @see FileTracker#FileTracker() # check private definition convention of map
-	 *      details also notes that input are in pairs
 	 */
 	private void initisalizeTable() {
 
@@ -274,11 +267,12 @@ public class FilterVLCController {
 											other.getDescription()));
 								}
 							}
-							boolean isFirst = false;
-							if (mDataTable.get(0) == t) {
-								isFirst = true;
+							boolean isFirst = mDataTable.get(0) == t;
+							try {
+								VLC.SavePlayListFile(mPath, list, true, isFirst, notifyend.isSelected());
+							} catch (VLCException e) {
+								DialogHelper.showException(e);
 							}
-							VLC.SavePlayListFile(mPath, list, true, isFirst, notifyend.isSelected());
 						}
 					});
 					t.getRemoveButton().setOnAction(new EventHandler<ActionEvent>() {
@@ -305,7 +299,7 @@ public class FilterVLCController {
 		if (studyConflict(start, end)) {
 			String desc = inputDescription.getText();
 			desc = desc.replace(">", "<"); // reserved char
-			if ((desc.length() < 7 || !desc.trim().substring(0, 5).equals("Scene")) && autoScene.isSelected()) {
+			if ((desc.length() < 7 || !desc.trim().startsWith("Scene")) && autoScene.isSelected()) {
 				desc = "Scene xx: " + desc;// this will make it enter later in batch numbering after sorting table
 			}
 			mDataTable.add(new FilterVLCViewModel(start, end, desc));
@@ -317,11 +311,11 @@ public class FilterVLCController {
 		}
 	}
 
-	public static Duration studyFormat(String sduration, String where, Boolean warn) {
+	public static Duration studyFormat(String sduration, String fieldName, Boolean warn) {
 		if (sduration == null || sduration.isEmpty()) {
 			if (warn) {
-				DialogHelper.showAlert(AlertType.ERROR, "Add Exclusion", "Missing " + where + " input",
-						"Please fill" + where + " Input , use Picker button to get help");
+				DialogHelper.showAlert(AlertType.ERROR, "Add Exclusion", "Missing " + fieldName + " input",
+						"Please fill" + fieldName + " Input , use Picker button to get help");
 			}
 			return null;
 		}
@@ -360,7 +354,7 @@ public class FilterVLCController {
 
 		} catch (Exception e) {
 			if (warn) {
-				DialogHelper.showAlert(AlertType.ERROR, "Add Exclusion", "Format Exception at " + where + " Input",
+				DialogHelper.showAlert(AlertType.ERROR, "Add Exclusion", "Format Exception at " + fieldName + " Input",
 						"Please Accepted format are:" + "\n\tss\t\t\t(example: 6660)" + "\n\tmm:ss\t\t(example: 110:20)"
 								+ "\n\thh:mm:ss\t\t(example: 1:50:20)\n\tOr just use picker button to auto detect");
 			}
@@ -421,7 +415,7 @@ public class FilterVLCController {
 			// if yes remove to index 9
 			// reorder with same format see
 			// https://stackoverflow.com/questions/12421444/how-to-format-a-number-0-9-to-display-with-2-digits-its-not-a-date
-			if (t.getDescription().length() >= 9 && t.getDescription().trim().substring(0, 5).equals("Scene")) {
+			if (t.getDescription().length() >= 9 && t.getDescription().trim().startsWith("Scene")) {
 				t.setDescription("Scene " + String.format("%02d", i) + ": " + t.getDescription().substring(10));
 			}
 			i++;
@@ -453,8 +447,11 @@ public class FilterVLCController {
 		mfileTracker.writeMap();
 	}
 
-	@FXML // this generate a PlayList XSPF file with same name next to movie to start it
-			// Independently
+	/**
+	 * Generate a PlayList XSPF file with same name next to movie to start it
+	 * Independently
+	 */
+	@FXML
 	public void SavePlayListFile() {
 		ArrayList<MediaCutData> list = new ArrayList<MediaCutData>();
 		for (FilterVLCViewModel other : mDataTable) {
@@ -464,7 +461,11 @@ public class FilterVLCController {
 		if (list.isEmpty()) {
 			return;
 		}
-		VLC.SavePlayListFile(mPath, list, false, true, notifyend.isSelected());
+		try {
+			VLC.SavePlayListFile(mPath, list, false, true, notifyend.isSelected());
+		} catch (VLCException e) {
+			DialogHelper.showException(e);
+		}
 	}
 
 	@FXML
@@ -479,53 +480,73 @@ public class FilterVLCController {
 
 	@FXML
 	public void PickStart() {
-		pickHelper("Start", pickedSecond -> {
-			Platform.runLater(
-					() -> inputStart.setText(FilterVLCViewModel.getDurationFormat(Duration.millis(pickedSecond))));
-		});
+		pickHelper(TimeMoment.START);
+	}
 
+	@FXML
+	public void fillStartFromVLCConfig() {
+		try {
+			inputStart.setText(
+					FilterVLCViewModel.getDurationFormat(Duration.millis(VLC.getLastSavedMoment(mPath.toURI()))));
+		} catch (VLCException | IOException e) {
+			DialogHelper.showException(e);
+		}
 	}
 
 	@FXML
 	public void PickEnd() {
-		pickHelper("End", pickedSecond -> {
-			Platform.runLater(
-					() -> inputEnd.setText(FilterVLCViewModel.getDurationFormat(Duration.millis(pickedSecond))));
-		});
+		pickHelper(TimeMoment.END);
+	}
+
+	@FXML
+	public void fillEndFromVLCConfig() {
+		try {
+			inputEnd.setText(
+					FilterVLCViewModel.getDurationFormat(Duration.millis(VLC.getLastSavedMoment(mPath.toURI()))));
+		} catch (VLCException | IOException e) {
+			DialogHelper.showException(e);
+		}
 	}
 
 	private boolean doshowAgain = true;
 
+	enum TimeMoment {
+		START, END
+	}
+
 	/**
-	 * Start a process in another thread waiting to read it from VLC
+	 * Start vlc at moment in "Start" or "End" field specified in parameter
 	 *
 	 * @param where
-	 * @param callBackPickedSecond have a parameter the picked second
+	 *            can be "Start" or "End"
 	 */
-	private void pickHelper(String where, CallBackVoid<Integer> callBackPickedSecond) {
+	private void pickHelper(TimeMoment where) {
 		if (doshowAgain) {
 			doshowAgain = !DialogHelper.showConfirmationDialog("Pick " + where,
 					"Go to position using VLC then close it!\nwe will do the rest.",
-					"Note: \n- VLC will now open the file" + "\n- Sometimes start and end video are not well detected"
-							+ "\n- The program in suspend waiting vlc do not close it"
-							+ "\n- Press OK to not Show Again");
+					"Note: \n- VLC will now open the file" + "\n- Go to the position you want to make the cut"
+							+ "\n- Exit VLC"
+							+ "\n- Press thr right sign after you exit VLC");
 		}
 		Holder<Duration> resume = new Holder<>(null);
-		if (where.equals("Start")) {
-			String sStart = inputStart.getText();
-			resume.value = studyFormat(sStart, "Start", false);
+		if (where.equals(TimeMoment.START)) {
+			String inputStartText = inputStart.getText();
+			resume.value = studyFormat(inputStartText, where.toString(), false);
 		} else {
-			String sEnd = inputEnd.getText();
-			resume.value = studyFormat(sEnd, "End", false);
+			String inputEndText = inputEnd.getText();
+			resume.value = studyFormat(inputEndText, where.toString(), false);
 		}
 		if (resume.value.toSeconds() == 0) {
 			resume.value = null;
 		}
 
-		ThreadExecutors.recursiveExecutor.execute(() -> {
-			int millisSec = VLC.pickTime(mPath.toURI(), resume.value);
-			callBackPickedSecond.call(millisSec);
-		});
+		try {
+			VLC.startVLCAtSpecificMoment(mPath.toURI(), resume.value);
+		} catch (VLCException e) {
+			DialogHelper.showException(e);
+		} catch (IOException e) {
+			DialogHelper.showException(e);
+		}
 		// this transition can be used to get focus but annoying
 		// filterStage.hide();
 		// filterStage.show();
@@ -539,12 +560,9 @@ public class FilterVLCController {
 		for (FilterVLCViewModel t : mDataTable) {
 			myString += ">" + t.getStart().toSeconds() + ">" + t.getEnd().toSeconds() + ">" + t.getDescription();
 		}
-		// StringSelection stringSelection = new StringSelection(myString);
 		// https://docs.oracle.com/javafx/2/api/javafx/scene/input/Clipboard.html
 		Clipboard clipboard = Clipboard.getSystemClipboard();
 		ClipboardContent content = new ClipboardContent();
-		// Clipboard clipboard = Toolkit.getDefaultToolkit().getSystemClipboard();
-		// clipboard.setContents("test", null);
 		content.putString(myString);
 		clipboard.setContent(content);
 		DialogHelper.showAlert(AlertType.INFORMATION, "Copy Raw Data", "Content Copied Successfully to Clipboard",
@@ -555,7 +573,7 @@ public class FilterVLCController {
 	public void pasteRaw() {
 		boolean error = false;
 		// https://stackoverflow.com/questions/6534072/how-can-i-break-from-a-try-catch-block-without-throwing-an-exception-in-java
-		tryBlock: try {
+		tryBlock : try {
 			// String myString = (String) Toolkit.getDefaultToolkit().getSystemClipboard()
 			// .getData(DataFlavor.stringFlavor);
 			String myString = Clipboard.getSystemClipboard().getString();
@@ -566,7 +584,7 @@ public class FilterVLCController {
 
 			List<String> options = Arrays.asList(myString.split(">"));
 			String Warn = "";
-			if (!options.get(0).equals(mPath.getName().toString())) {
+			if (!options.get(0).equals(mPath.getName())) {
 				Warn += "\n- Remark there is a difference in file name.";
 			}
 			mDataTable.clear();
