@@ -46,6 +46,7 @@
                         <MenuItem fx:id="newWindow" mnemonicParsing="false" text="New Window" />
                         <Menu fx:id="newEmbedWindow" mnemonicParsing="false" text="New Embed Window" />
                         <Menu fx:id="openConnectionMenu" mnemonicParsing="false" text="Open Connection" />
+                        <MenuItem fx:id="reloadXMLSetting" mnemonicParsing="false" text="Reload XML Setting" />
                   </items>
                 </Menu>
                 <Menu fx:id="TrackerMenu" mnemonicParsing="false" text="Tracker">

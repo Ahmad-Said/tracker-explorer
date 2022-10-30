@@ -5,6 +5,9 @@ import java.util.HashMap;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import said.ahmad.javafx.tracker.app.ResourcesHelper;
+import said.ahmad.javafx.tracker.fxGraphics.ImageGridItem;
+import said.ahmad.javafx.tracker.system.SystemIconsHelper;
+import said.ahmad.javafx.tracker.system.file.PathLayer;
 
 public class IconLoader {
 	/**
@@ -12,9 +15,9 @@ public class IconLoader {
 	 */
 	private static int defaultRequestedWH = 30;
 
-	public static enum ICON_TYPE {
+	public enum ICON_TYPE {
 		// Context Menu Stuff
-		OPEN, COPY, MOVE, CLIPBOARD,
+		OPEN, OPEN_WITH, COPY, MOVE, CLIPBOARD,
 
 		RENAME, BULK_RENAME, BULK_RENAME_UTILITY,
 
@@ -37,7 +40,7 @@ public class IconLoader {
 		CROP, ROTATE_RIGHT, CENTRALIZE, FIT,
 
 		// Misc Stuff
-		UP, DOWN, PLUS, ADD, MINUS,
+		UP, DOWN, PLUS, ADD, MINUS, MERGE_ARROW,
 
 		APPLY, UNDO, REFRESH,
 
@@ -47,7 +50,7 @@ public class IconLoader {
 
 		DRAG, ZOOM, GRID,
 
-		STAR, USER,
+		STAR, BLUE_CIRCLE,  USER,
 	}
 
 	private static final HashMap<ICON_TYPE, String> enumToName = new HashMap<IconLoader.ICON_TYPE, String>() {
@@ -58,6 +61,7 @@ public class IconLoader {
 		{
 			// Context Menu Stuff
 			put(ICON_TYPE.OPEN, "/img/context_menu/open.png");
+			put(ICON_TYPE.OPEN_WITH, "/img/context_menu/open_with.png");
 			put(ICON_TYPE.COPY, "/img/context_menu/copy.png");
 			put(ICON_TYPE.MOVE, "/img/context_menu/move.png");
 			put(ICON_TYPE.CLIPBOARD, "/img/context_menu/clipboard.png");
@@ -102,6 +106,7 @@ public class IconLoader {
 			put(ICON_TYPE.PLUS, "/img/misc/add.png");
 			put(ICON_TYPE.ADD, "/img/misc/add.png");
 			put(ICON_TYPE.MINUS, "/img/misc/minus.png");
+			put(ICON_TYPE.MERGE_ARROW, "/img/misc/merge_arrow.png");
 
 			put(ICON_TYPE.APPLY, "/img/misc/apply.png");
 			put(ICON_TYPE.UNDO, "/img/misc/undo.png");
@@ -117,6 +122,7 @@ public class IconLoader {
 			put(ICON_TYPE.GRID, "/img/grid_button.png");
 
 			put(ICON_TYPE.STAR, "/img/misc/star.png");
+			put(ICON_TYPE.BLUE_CIRCLE, "/img/misc/blue_circle.png");
 			put(ICON_TYPE.USER, "/img/misc/user.png");
 
 		}
@@ -192,10 +198,34 @@ public class IconLoader {
 	}
 
 	/**
-	 * @param default requested width/height to be used
+	 * @param requestedWH requested width/height to be used
 	 */
 	public static void setDefaultRequestedWH(int requestedWH) {
 		IconLoader.defaultRequestedWH = requestedWH;
 	}
 
+	/**
+	 * Load image from specified path which can be an exe file, so it extract system image.<br>
+	 * Or image can be a normal image.<br>
+	 * @param path path to exe/image file
+	 * @return image in specified path if supported type. null otherwise
+	 */
+	public static Image getIconImage(PathLayer path) {
+		Image img;
+		// allow using EXE file as icon like another executable, useful when running
+		// subprogram and to easy use parent program icon
+		if (path.getExtensionUPPERCASE().equals("EXE")) {
+			img = SystemIconsHelper.getFileIcon(path);
+		} else {
+			// use normal image for icon
+			if(ImageGridItem.ArrayIMGExt.contains(path.getExtensionUPPERCASE())) {
+				img = new Image(path.toURI().toString(), IconLoader.getDefaultRequestedWH(),
+						IconLoader.getDefaultRequestedWH(), true, true, true);
+			} else {
+				// extension not supported
+				img = null;
+			}
+		}
+		return img;
+	}
 }

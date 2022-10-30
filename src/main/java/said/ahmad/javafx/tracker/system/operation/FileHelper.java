@@ -3,6 +3,7 @@ package said.ahmad.javafx.tracker.system.operation;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.FileAlreadyExistsException;
+import java.nio.file.FileSystemException;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -48,6 +49,14 @@ public class FileHelper {
 		}
 	}
 
+	public static void copyFiles(List<? extends PathLayer> sourceFiles,  List<? extends PathLayer> targetFiles) {
+		FileTracker.operationUpdateAsList(sourceFiles, targetFiles, ActionOperation.COPY);
+		FileTracker.operationUpdateAsList(sourceFiles, targetFiles, ActionOperation.RENAME);
+		FileHelperGUIOperation.getOperationsList()
+				.add(new FileHelperGUIOperation(ActionOperation.COPY, sourceFiles, targetFiles));
+		FileHelperGUIOperation.doThreadOperationsAllList();
+	}
+
 	public static void copy(List<? extends PathLayer> source, PathLayer targetDirectory) {
 		FileTracker.operationUpdate(source, targetDirectory, ActionOperation.COPY);
 		FileHelperGUIOperation.getOperationsList()
@@ -65,6 +74,14 @@ public class FileHelper {
 		}
 	}
 
+	public static void moveFiles(List<? extends PathLayer> sourceFiles,  List<? extends PathLayer> targetFiles) {
+		FileTracker.operationUpdateAsList(sourceFiles, targetFiles, ActionOperation.MOVE);
+		FileTracker.operationUpdateAsList(sourceFiles, targetFiles, ActionOperation.RENAME);
+		FileHelperGUIOperation.getOperationsList()
+				.add(new FileHelperGUIOperation(ActionOperation.MOVE, sourceFiles, targetFiles));
+		FileHelperGUIOperation.doThreadOperationsAllList();
+	}
+
 	public static void move(List<? extends PathLayer> source, PathLayer targetDirectory) {
 		FileTracker.operationUpdate(source, targetDirectory, ActionOperation.MOVE);
 		FileHelperGUIOperation.getOperationsList()
@@ -73,33 +90,42 @@ public class FileHelper {
 	}
 
 	/**
-	 * --> Ask to confirm deletion<br>
-	 * --> Resolve FileTracker Data by using
-	 * {@link FileTracker#operationUpdate(List, PathLayer, ActionOperation)}
-	 * {@value ActionOperation#DELETE}<br>
-	 * --> Delete files <br>
-	 * --> call on onFinishTask only if the deletedPaths list is not empty (delete
-	 * occurs)
-	 *
-	 * @param source
-	 * @param onFinishTask call with list of deleted paths (same as returned list)
-	 *                     only if the list is not empty
-	 * @return successfully deleted paths list,<br>
-	 *         Empty list if was not confirmed
+	 * 
 	 */
 	public static HashSet<PathLayer> delete(List<PathLayer> source, CallBackVoid<HashSet<PathLayer>> onFinishTask) {
-		HashSet<PathLayer> deletedPaths = new HashSet<>();
-		if (source.size() == 0) {
-			return deletedPaths;
-		}
+		return delete(source, onFinishTask, "Delete",
+				"Do you really want to delete selected files?");
+	}
+
+		/**
+         * --> Ask to confirm deletion<br>
+         * --> Resolve FileTracker Data by using
+         * {@link FileTracker#operationUpdate(List, PathLayer, ActionOperation)}
+         * {@link ActionOperation#DELETE} <br>
+         * --> Delete files <br>
+         * --> call on onFinishTask only if the deletedPaths list is not empty (delete
+         * occurs)
+         *
+         * @param source
+         * @param onFinishTask call with list of deleted paths (same as returned list)
+         *                     only if the list is not empty
+         * @return successfully deleted paths list,<br>
+         *         Empty list if was not confirmed
+         */
+		public static HashSet<PathLayer> delete(List<PathLayer> source, CallBackVoid<HashSet<PathLayer>> onFinishTask,
+				String headerConfirmation, String contentConfirmation) {
+			HashSet<PathLayer> deletedPaths = new HashSet<>();
+			if (source.size() == 0) {
+				return deletedPaths;
+			}
 		String sourceDirectory = source.get(0).getParentPath().toString();
 
 		String filesToDelete = "";
 		for (PathLayer path : source) {
 			filesToDelete += path.toString() + System.lineSeparator();
 		}
-		boolean isConfirmed = DialogHelper.showExpandableConfirmationDialog(sourceDirectory, "Delete",
-				"Do you really want to delete selected files?", filesToDelete);
+		boolean isConfirmed = DialogHelper.showExpandableConfirmationDialog(sourceDirectory, headerConfirmation,
+				contentConfirmation, filesToDelete);
 
 		if (isConfirmed) {
 			try {
@@ -211,20 +237,49 @@ public class FileHelper {
 		return baseNames;
 	}
 
-	public static File getCopyFileName(File sourceFile) {
-		File copiedFile = sourceFile;
-		Path parentFile = sourceFile.getParentFile().toPath();
-		String ext = StringHelper.getExtention(copiedFile.getName()).toLowerCase();
-		String baseName = StringHelper.getBaseName(copiedFile.getName());
+	/**
+	 * return a non-existing file having name same as source file by using pattern 'fileName - Copy (i++).ext'
+	 * @param sourceFile
+	 * @return
+	 * @see #getAvailablePath 
+	 */
+	public static PathLayer getCopyFileName(PathLayer sourceFile) {
+		PathLayer copiedFile;
+		PathLayer parentFile = sourceFile.getParentPath();
+		String ext = StringHelper.getExtention(sourceFile.getName()).toLowerCase();
+		String baseName = StringHelper.getBaseName(sourceFile.getName());
 		if (!ext.isEmpty()) {
 			ext = "." + ext;
 		}
-		copiedFile = parentFile.resolve(baseName + " - Copy" + ext).toFile();
+		copiedFile = parentFile.resolve(baseName + " - Copy" + ext);
 		int i = 2;
 		while (copiedFile.exists()) {
-			copiedFile = parentFile.resolve(baseName + " - Copy (" + i++ + ")" + ext).toFile();
+			copiedFile = parentFile.resolve(baseName + " - Copy (" + i++ + ")" + ext);
 		}
 		return copiedFile;
+	}
+
+
+
+	/**
+	 * Return a PathLayer that doesn't exist in target directory using name(i++) pattern.<br>
+	 *
+	 * Example: if file.txt already exist in target directory will return 'file (1).txt',
+	 * if also 'file (1).txt' exist will return 'file (2).txt' and so on until file doesn't exist...
+	 * @param name the original name
+	 * @param targetDirectory the target directory
+	 * @return
+	 */
+	public static PathLayer getAvailablePath(String name, PathLayer targetDirectory) {
+		PathLayer targetFile = targetDirectory.resolve(name);
+		String baseName = targetFile.getBaseName();
+		String ext = targetFile.getExtension();
+		int i = 2;
+		while (targetFile.exists()) {
+			targetFile = targetDirectory.resolve(baseName + "-(" + i + ")" + (ext.isEmpty() ? "" : "." + ext));
+			i++;
+		}
+		return targetFile;
 	}
 
 	/**
@@ -279,8 +334,8 @@ public class FileHelper {
 	 * {@link FileTracker#operationUpdateAsList(List, List, ActionOperation)} with
 	 * RENAME parameter as {@link ActionOperation}
 	 *
-	 * @param source  Original file source
-	 * @param newPath Final new Path
+	 * @param oldSource  Original file source
+	 * @param NewRenamed Final new Path
 	 * @return
 	 * @throws IOException
 	 */
@@ -288,6 +343,17 @@ public class FileHelper {
 		oldSource.move(NewRenamed);
 		return NewRenamed;
 	}
+
+	/**
+	 * Call {@link #renameGUI(PathLayer, CallBackVoid, String, String)}
+	 * @param source
+	 * @param onFinishCreateAction
+	 * @return the new target file
+	 */
+	public static PathLayer renameGUI(PathLayer source, CallBackVoid<PathLayer> onFinishCreateAction) {
+		return renameGUI(source, onFinishCreateAction, null, null);
+	}
+
 
 	/**
 	 *
@@ -300,29 +366,40 @@ public class FileHelper {
 	 * {@link ActionOperation#RENAME}
 	 *
 	 * @param source
-	 * @param onFinishCreateAction do a call with the new path just before renaming
-	 *                             <br>
-	 *                             can be null
+	 * @param onFinishCreateAction
+	 *            do a call with the new path just before renaming <br>
+	 *            can be null
+	 * @param hintNewName
+	 *            the new name used as hint in input, if null original name
+	 *            will be used <br>
+	 *            can be null
+	 * @param headerMessage
+	 *            message to notify user about an error or to give a hint message <br>
+	 *            can be null
 	 * @return null for unsuccessful rename or the new path of renamed item
 	 */
-	public static PathLayer renameGUI(PathLayer source, CallBackVoid<PathLayer> onFinishCreateAction) {
+	public static PathLayer renameGUI(PathLayer source, CallBackVoid<PathLayer> onFinishCreateAction,
+			String hintNewName, String headerMessage) {
 		String newName;
-		String OriginalName = source.getName().toString();
+		String suggestedName;
+		if (hintNewName != null && !hintNewName.isEmpty()) {
+			suggestedName = hintNewName;
+		} else {
+			suggestedName = source.getName().toString();
+		}
 		if (source.isDirectory()) {
-			newName = DialogHelper.showTextInputDialog("Rename", null, "Enter New Name", source.getName().toString());
+			newName = DialogHelper.showTextInputDialog("Rename", headerMessage, "Enter New Name", suggestedName);
 		} else {
 			HashMap<String, String> PreNameExt = DialogHelper
-					.showMultiTextInputDialog("Rename", null, "Enter New Name",
+					.showMultiTextInputDialog("Rename", headerMessage, "Enter New Name",
 							new String[] { "Prefix", "Name", "Extention" }, new String[] { "",
-									FilenameUtils.getBaseName(OriginalName), FilenameUtils.getExtension(OriginalName) },
+									FilenameUtils.getBaseName(suggestedName), FilenameUtils.getExtension(suggestedName) },
 							1);
 			if (PreNameExt == null) {
 				return null;
 			} else {
 				if (PreNameExt.get("Name").isEmpty() && PreNameExt.get("Prefix").isEmpty()) {
-					DialogHelper.showAlert(AlertType.ERROR, "Rename", "Name Cannot be empty!",
-							"Please Enter a valid name");
-					return renameGUI(source, onFinishCreateAction);
+					return renameGUI(source, onFinishCreateAction, suggestedName, "Error : name cannot be empty");
 				}
 			}
 			newName = PreNameExt.get("Prefix") + PreNameExt.get("Name")
@@ -344,35 +421,21 @@ public class FileHelper {
 				}
 				renameHelper(source, target);
 				return target;
+			} catch (FileAlreadyExistsException e) {
+				e.printStackTrace();
+				return renameGUI(source, onFinishCreateAction, target.getName(),
+						"File already exist!\nChoose a different name.");
+			} catch (FileSystemException e) {
+				e.printStackTrace();
+				return renameGUI(source, onFinishCreateAction, target.getName(),
+						"File is open in another program!\nClose file and try again.");
 			} catch (Exception e) {
 				e.printStackTrace();
 				DialogHelper.showException(e);
+				return renameGUI(source, onFinishCreateAction, target.getName(),
+						"Something went wrong:\n" + e.getMessage());
 			}
 		}
 		return null;
-	}
-
-	// TODO PathLayer
-	public static void copyFiles(List<File> sourceFiles, List<File> targetFiles) {
-		Runnable runnable = () -> {
-			try {
-				Platform.runLater(() -> DialogHelper.showWaitingScreen("Please Wait.. Copying files",
-						"Copying your files...\nIn case of bunch files use your system explorer.This just on the go copy."));
-				for (int i = 0; i < sourceFiles.size(); i++) {
-					File srcFile = sourceFiles.get(i);
-					File destFile = targetFiles.get(i);
-					if (srcFile.isFile()) {
-						FileUtils.copyFile(srcFile, destFile);
-					} else {
-						FileUtils.copyDirectory(srcFile, destFile);
-					}
-				}
-			} catch (IOException e) {
-				e.printStackTrace();
-			}
-			Platform.runLater(() -> DialogHelper.closeWaitingScreen());
-		};
-		Thread th = new Thread(runnable);
-		th.start();
 	}
 }

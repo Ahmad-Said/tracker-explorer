@@ -800,8 +800,8 @@ public class FileTracker {
 	 *         Use fileTracker.getMapDetails().putAll(operationUpdateAsList(...)) to
 	 *         update instance map without reloading from file
 	 */
-	public static Map<PathLayer, FileTrackerHolder> operationUpdateAsList(List<PathLayer> sources,
-			List<PathLayer> targets, ActionOperation operation) throws IndexOutOfBoundsException {
+	public static Map<PathLayer, FileTrackerHolder> operationUpdateAsList(List<? extends PathLayer> sources,
+			List<? extends PathLayer> targets, ActionOperation operation) throws IndexOutOfBoundsException {
 		if (sources.size() != targets.size()) {
 			throw new IndexOutOfBoundsException("Sources list and Target list parameter must be same size");
 		}

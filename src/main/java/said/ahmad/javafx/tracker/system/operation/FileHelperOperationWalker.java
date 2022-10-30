@@ -2,13 +2,18 @@ package said.ahmad.javafx.tracker.system.operation;
 
 import java.io.IOException;
 import java.nio.file.FileVisitResult;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Queue;
 import java.util.Stack;
 
+import lombok.Getter;
+import org.jetbrains.annotations.Nullable;
 import said.ahmad.javafx.tracker.system.file.PathLayer;
 import said.ahmad.javafx.tracker.system.file.PathLayerVisitor;
 import said.ahmad.javafx.tracker.system.operation.FileHelper.ActionOperation;
 
+@Getter
 class FileHelperOperationWalker implements PathLayerVisitor<PathLayer> {
 
 	private Queue<PathLayer> sourceList;
@@ -16,15 +21,30 @@ class FileHelperOperationWalker implements PathLayerVisitor<PathLayer> {
 	private Stack<PathLayer> toDeleteLater; // only on move operation
 	private ActionOperation actionOperation;
 
+
+	/**
+	 * Map from source files to their new names. This will create target file in its
+	 * default location in walk tree but will use the new name instead of original
+	 * name. It is useful when a file name has changed during a copy/move operation.
+	 */
+	@Nullable
+	private Map<PathLayer, String> sourceToRename;
+
 	/** Temporary data */
 	private Stack<PathLayer> rootDirListingTarget;
-
+	
 	public FileHelperOperationWalker(PathLayer targetDirectory, Queue<PathLayer> sourceList,
 			Queue<PathLayer> targetList, Stack<PathLayer> toDeleteLater, ActionOperation action) {
+		this(targetDirectory, sourceList, targetList, toDeleteLater, action, null);
+	}
+	public FileHelperOperationWalker(PathLayer targetDirectory, Queue<PathLayer> sourceList,
+			Queue<PathLayer> targetList, Stack<PathLayer> toDeleteLater, ActionOperation action,
+			Map<PathLayer, String> sourceToRename) {
 		this.sourceList = sourceList;
 		this.targetList = targetList;
 		this.toDeleteLater = toDeleteLater;
 		actionOperation = action;
+		this.sourceToRename = sourceToRename;
 
 		/** Temporary data */
 		rootDirListingTarget = new Stack<>();
@@ -35,7 +55,7 @@ class FileHelperOperationWalker implements PathLayerVisitor<PathLayer> {
 	public FileVisitResult preVisitDirectory(PathLayer dir) throws IOException {
 		sourceList.add(dir);
 
-		PathLayer targetDir = rootDirListingTarget.peek().resolve(dir.getName());
+		PathLayer targetDir = rootDirListingTarget.peek().resolve(getName(dir));
 		targetList.add(targetDir);
 
 		rootDirListingTarget.push(targetDir);
@@ -50,7 +70,7 @@ class FileHelperOperationWalker implements PathLayerVisitor<PathLayer> {
 	@Override
 	public FileVisitResult visitFile(PathLayer file) throws IOException {
 		sourceList.add(file);
-		targetList.add(rootDirListingTarget.peek().resolve(file.getName()));
+		targetList.add(rootDirListingTarget.peek().resolve(getName(file)));
 
 		return FileVisitResult.CONTINUE;
 	}
@@ -65,6 +85,15 @@ class FileHelperOperationWalker implements PathLayerVisitor<PathLayer> {
 		rootDirListingTarget.pop();
 
 		return FileVisitResult.CONTINUE;
+	}
+
+
+	private String getName(PathLayer path) {
+		if(this.sourceToRename != null && this.sourceToRename.containsKey(path)){
+			return this.sourceToRename.get(path);
+		} else {
+			return path.getName();
+		}
 	}
 
 }

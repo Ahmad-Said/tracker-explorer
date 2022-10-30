@@ -9,6 +9,7 @@ import java.net.URISyntaxException;
 import java.net.URL;
 import java.nio.charset.Charset;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.List;
 
 import org.jetbrains.annotations.Nullable;
@@ -44,7 +45,7 @@ public class TeraCopy {
 	}
 
 	/**
-	 * Normally support local files only {@link FileFilePathLayer}
+	 * Normally support local files only {@link FilePathLayer}
 	 *
 	 * @param source
 	 * @param targetDirectory
@@ -63,16 +64,7 @@ public class TeraCopy {
 	}
 
 	private static File getTempFileList(List<FilePathLayer> source) throws IOException {
-		File tempFileList = File.createTempFile("teraList", ".txt");
-		// was using UTF 8 here but give problem with arabic letter since windows do not
-		// use it as default!
-		OutputStreamWriter p = new OutputStreamWriter(new FileOutputStream(tempFileList), Charset.defaultCharset());
-		for (FilePathLayer path : source) {
-			p.write(path.toString() + "\n");
-		}
-		p.close();
-		tempFileList.deleteOnExit();
-		return tempFileList;
+		return GenericCaller.getTempFileList(new ArrayList<>(source), "teraList", ".txt");
 	}
 
 	public static void openTeraCopyURL() {

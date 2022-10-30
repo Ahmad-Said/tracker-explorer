@@ -12,6 +12,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -24,7 +26,7 @@ import said.ahmad.javafx.tracker.system.file.util.URIHelper;
 
 public class PathLayerHelper {
 	/**
-	 * To make on drag and drop use this key and put {@link #toURI()} in string
+	 * To make on drag and drop use this key and put {@link PathLayer#toURI()} in string
 	 * format
 	 */
 	public static final String ON_DROP_URI_OPERATION_KEY = "ON_DROP_URI_OPERATION_KEY";
@@ -194,5 +196,26 @@ public class PathLayerHelper {
 		}
 
 		return start;
+	}
+
+	/**
+	 * Evaluate and replace all occurrence of <code>%envVar%</code>  using {@link System#getenv(String)}
+	 * @param path
+	 * @return
+	 */
+	public static PathLayer evaluateEnvVariableInPath(String path){
+		if (path == null) {
+			return null;
+		}
+		String envVar;
+		String evaluatedPath = path;
+		Pattern p = Pattern.compile("%(.*?)%");
+		Matcher m = p.matcher(evaluatedPath);
+		while (m.find()) {
+			envVar = System.getenv(m.group(1));
+			if (envVar != null && !envVar.isEmpty())
+				evaluatedPath = evaluatedPath.replace(m.group(), envVar);
+		}
+		return new FilePathLayer(new File(evaluatedPath));
 	}
 }

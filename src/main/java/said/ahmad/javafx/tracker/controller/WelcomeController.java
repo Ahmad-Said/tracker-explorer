@@ -106,6 +106,9 @@ public class WelcomeController implements Initializable {
 	@FXML
 	private Menu openConnectionMenu;
 
+	@FXML
+	private MenuItem reloadXMLSetting;
+
 	// Tracker SubMenus
 	@FXML
 	private Menu TrackerMenu;
@@ -605,6 +608,14 @@ public class WelcomeController implements Initializable {
 					path -> allSplitViewController.get(0).setmDirectoryThenRefresh(path)));
 			openConnectionMenu.getItems().add(mn);
 		}
+
+		/**
+		 * Set up reload XML setting
+		 */
+		reloadXMLSetting.setOnAction(e -> {
+			Setting.loadSettingPartTwo(null);
+			changeInSetting();
+		});
 
 		/**
 		 * set up Operation Stage
