@@ -79,18 +79,18 @@ The search will filter the current view in no time since all files are indexed!
 Combine this usage with recursive search.  
 Note: you can right click on 'clear' button so it roll showing these options also, and double click it to clear form.
 
-| Operation Key| Action |
-| :----: | :-----:|
-| ; | combine multiple search statement (and) |
-| ;! | exclude from search (not) |
-| ;\| | make another search ignoring previous (or) |
-| < | operator (<,>,=) to make comparison with numbers within text |
+|   Operation Key   |                            Action                            |
+|:-----------------:|:------------------------------------------------------------:|
+|         ;         |           combine multiple search statement (and)            |
+|        ;!         |                  exclude from search (not)                   |
+|        ;\         |                                                              | make another search ignoring previous (or) |
+|         <         | operator (<,>,=) to make comparison with numbers within text |
 |||
-|Reserved keywords | |
-| vlc | show all media supported by vlc |
-| audio | show all audio |
-| video |  show all video |
-| image |  show all images |
+| Reserved keywords |                                                              |
+|        vlc        |               show all media supported by vlc                |
+|       audio       |                        show all audio                        |
+|       video       |                        show all video                        |
+|       image       |                       show all images                        |
 
 ```bash
 Example showing all vlc media that contain name word and not excel:
@@ -101,38 +101,38 @@ Example showing all vlc media that contain name word and not excel:
 
 ## Keyboard Shortcuts
 
-| Shortcuts | Action |
-| --------- | ------:|
-| Navigation| |
-| Tab|Focus Table View
-|Ctrl + F | Focus on search Field|
-|Escape | Clear Search Field|
-|Ctrl + Tab or F3 | Switch Focus between Tables|
-|Alt + Up or BackSpace | Go To parent Directory|
-|Alt + Left Arrow | Go Back To Previous Folder|
-|Alt + Right Arrow | Go Next|
-|Alt + Shift + R | Reveal in Windows Explorer|
-|Shift + D | Focus On Path Field|
-|Shift + F | Mark Folder As Favorite|
-|||
-|File Operations on Focus | |
-|Space | Toggle MarkSeen|
-|Ctrl + N | New File|
-|Ctrl + Shift + N | New Directory|
-|Ctrl + C | Copy to the other Table|
-|Ctrl + X | Move to the other Table|
-|Del | Delete Selected Files|
-|F2| Rename Selected Files|
-|||
-|Within Table View| |
-|F| Focus Search Field|
-|S| Clear Search Field|
-|Up / Left| Navigate Selected with Shift support|
-|Left / Right | Dominate Other Table View|
+| Shortcuts                |                               Action |
+|--------------------------|-------------------------------------:|
+| Navigation               |                                      |
+| Tab                      |                     Focus Table View |
+| Ctrl + F                 |                Focus on search Field |
+| Escape                   |                   Clear Search Field |
+| Ctrl + Tab or F3         |          Switch Focus between Tables |
+| Alt + Up or BackSpace    |               Go To parent Directory |
+| Alt + Left Arrow         |           Go Back To Previous Folder |
+| Alt + Right Arrow        |                              Go Next |
+| Alt + Shift + R          |           Reveal in Windows Explorer |
+| Shift + D                |                  Focus On Path Field |
+| Shift + F                |              Mark Folder As Favorite |
+|||                          |     |
+| File Operations on Focus |                                      |
+| Space                    |                      Toggle MarkSeen |
+| Ctrl + N                 |                             New File |
+| Ctrl + Shift + N         |                        New Directory |
+| Ctrl + C                 |              Copy to the other Table |
+| Ctrl + X                 |              Move to the other Table |
+| Del                      |                Delete Selected Files |
+| F2                       |                Rename Selected Files |
+|||                          |     |
+| Within Table View        |                                      |
+| F                        |                   Focus Search Field |
+| S                        |                   Clear Search Field |
+| Up / Left                | Navigate Selected with Shift support |
+| Left / Right             |            Dominate Other Table View |
 
 ***
 
-## [Fight The New Drug](https://fightthenewdrug.org/)
+## Fight The New Drug
 
 ### Your Brain was Made To take Care of you, So take care of it! [Click Here](https://fightthenewdrug.org/)
 

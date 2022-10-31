@@ -25,7 +25,7 @@ import said.ahmad.javafx.tracker.system.file.local.FilePathLayer;
  */
 public class TeraCopy {
 	private static Path Path_Setup = null;
-	private static String FILE_NAME = "TeraCopy.exe";
+	private static final String FILE_NAME = "TeraCopy.exe";
 
 	public static boolean isWellSetup() {
 		return Path_Setup != null && Path_Setup.toFile().exists()

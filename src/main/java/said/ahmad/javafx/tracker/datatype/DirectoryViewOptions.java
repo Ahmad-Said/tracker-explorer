@@ -30,7 +30,7 @@ public class DirectoryViewOptions {
 
 	// -------------- Convention on column preference -----------------
 	// Format 64 bit MSB: X000 0000 0000 0000 0000 0000 0000
-	// 				 LSB: 0000 OOOO OOOO PPPP PPPP 0000 0ASV
+	// 				 LSB: 0000 OOOO OOOO PPPP PPPP 0000 0DSV
 
 	// -- X: MSB unused bit to get rid of conflict of arithmetic shift
 	// a bit at position: 31
@@ -42,7 +42,7 @@ public class DirectoryViewOptions {
 	// getValue using desiredCol.isVisible()
 	// setValue using desiredCol.setVisible(boolean);
 
-	// -- AS: boolean stand for sort Check
+	// -- DS: boolean stand for sort Check
 	// S -> 1 included in sort, 0 discarded.
 	// D -> 1 DESCENDING sortType, 0 ASCENDING sort type
 	// a bit at position: 1
@@ -86,115 +86,25 @@ public class DirectoryViewOptions {
 		return JsonIterator.deserialize(serializedObject, DirectoryViewOptions.class);
 	}
 
-	public boolean isColumnVisible(COLUMN column) {
-		// mask with first bit (1 = ..0001)
-		long mask = 0b001;
-		switch (column) {
-			case ICON :
-				return (iconColumn & mask) == mask;
-			case NAME :
-				return (nameColumn & mask) == mask;
-			case NOTE :
-				return (noteColumn & mask) == mask;
-			case SIZE :
-				return (sizeColumn & mask) == mask;
-			case DATE_MODIFIED :
-				return (dateModifiedColumn & mask) == mask;
-			case HBOX_ACTION :
-				return (hBoxActionColumn & mask) == mask;
-			default :
-				System.err.println("Column visibility check option not defined yet for this column: " + column);
-				return false;
-		}
+
+	public enum COLUMN {
+		ICON, NAME, NOTE, SIZE, DATE_MODIFIED, HBOX_ACTION
 	}
 
-	public void setColumnVisible(COLUMN column, boolean isVisible) {
-		// clear the first bit
-		// then 'OR' to copy isVisible value
-		long mask = 0b001;
-		switch (column) {
-			case ICON :
-				iconColumn = (iconColumn & ~(mask)) | (isVisible ? mask : 0);
-				break;
-			case NAME :
-				nameColumn = (nameColumn & ~(mask)) | (isVisible ? mask : 0);
-				break;
-			case NOTE :
-				noteColumn = (noteColumn & ~(mask)) | (isVisible ? mask : 0);
-				break;
-			case SIZE :
-				sizeColumn = (sizeColumn & ~(mask)) | (isVisible ? mask : 0);
-				break;
-			case DATE_MODIFIED :
-				dateModifiedColumn = (dateModifiedColumn & ~(mask)) | (isVisible ? mask : 0);
-				break;
-			case HBOX_ACTION :
-				hBoxActionColumn = (hBoxActionColumn & ~(mask)) | (isVisible ? mask : 0);
-				break;
-			default :
-				System.err.println("Column visibility set option is not defined yet for this column: " + column);
-		}
-	}
-
-	public boolean isColumnSorted(COLUMN column) {
-		// mask with second bit (1 << 1 = ..0010)
-		long mask = (1 << 1);
-		switch (column) {
-			case ICON :
-				return (iconColumn & mask) == mask;
-			case NAME :
-				return (nameColumn & mask) == mask;
-			case NOTE :
-				return (noteColumn & mask) == mask;
-			case SIZE :
-				return (sizeColumn & mask) == mask;
-			case DATE_MODIFIED :
-				return (dateModifiedColumn & mask) == mask;
-			case HBOX_ACTION :
-				return (hBoxActionColumn & mask) == mask;
-			default :
-				System.err.println("Column sorted check option is not defined yet for this column: " + column);
-				return false;
-		}
-	}
-
-	public TableColumn.SortType getColumnSortType(COLUMN column) {
-		// mask with third bit (1 << 1 = ..0100)
-		long mask = 0b100;
-		boolean isDescending = false;
-		switch (column) {
-			case ICON :
-				isDescending = (iconColumn & mask) == mask;
-				break;
-			case NAME :
-				isDescending = (nameColumn & mask) == mask;
-				break;
-			case NOTE :
-				isDescending = (noteColumn & mask) == mask;
-				break;
-			case SIZE :
-				isDescending = (sizeColumn & mask) == mask;
-				break;
-			case DATE_MODIFIED :
-				isDescending = (dateModifiedColumn & mask) == mask;
-				break;
-			case HBOX_ACTION :
-				isDescending = (hBoxActionColumn & mask) == mask;
-				break;
-			default :
-				System.err.println("Column sorted check option is not defined yet for this column: " + column);
-				return TableColumn.SortType.DESCENDING;
-		}
-		return isDescending ? TableColumn.SortType.DESCENDING : TableColumn.SortType.ASCENDING;
-	}
-
-	public void setColumnSorted(COLUMN column, boolean isSorted, TableColumn.SortType sortType) {
-		// clear the second and third bit
-		long mask = 0b110;
-		// then 'OR' to copy the byte value
-		int newBits = isSorted ? 1 << 1 : 0; // set sorted value
-		// set sort type
-		newBits = newBits | (sortType.equals(TableColumn.SortType.DESCENDING) ? 1 << 2 : 0);
+	/**
+	 * Write new bits values at mask location.
+	 * Example:
+	 * <pre>
+	 * 		mask       = 0110
+	 * 		newBits    = 0100
+	 * 		oldColVal  = xxxx
+	 * 		newColVal  = x10x
+	 * </pre>
+	 * @param column the target column to set option
+	 * @param newBits the new options values
+	 * @param mask the locations of the bits
+	 */
+	private void writeBits(COLUMN column, long mask, long newBits) {
 		switch (column) {
 			case ICON :
 				iconColumn = (iconColumn & ~(mask)) | newBits;
@@ -215,8 +125,77 @@ public class DirectoryViewOptions {
 				hBoxActionColumn = (hBoxActionColumn & ~(mask)) | newBits;
 				break;
 			default :
-				System.err.println("Column sorted set option not defined yet for this column: " + column);
+				System.err.println("Column set option not defined yet for this column: " + column);
 		}
+	}
+
+	/**
+	 * return bits at mask location.
+	 * Example :
+	 * <pre>
+	 *		mask = 0011 1100
+	 *		col  = abcd efgh
+	 *		return 00cd ef00
+	 * </pre>
+	 * @param column
+	 * @param mask
+	 * @return
+	 */
+	private long getBits(COLUMN column, long mask) {
+		switch (column) {
+			case ICON :
+				return iconColumn & mask;
+			case NAME :
+				return nameColumn & mask;
+			case NOTE :
+				return noteColumn & mask;
+			case SIZE :
+				return sizeColumn & mask;
+			case DATE_MODIFIED :
+				return dateModifiedColumn & mask;
+			case HBOX_ACTION :
+				return hBoxActionColumn & mask;
+			default :
+				System.err.println("Column get option is not defined yet for this column: " + column);
+				return 0;
+		}
+	}
+
+	public boolean isColumnVisible(COLUMN column) {
+		// mask with first bit (1 = ..0001)
+		long mask = 0b001;
+		return getBits(column, mask) == mask;
+	}
+
+	public void setColumnVisible(COLUMN column, boolean isVisible) {
+		// clear the first bit
+		// then 'OR' to copy isVisible value
+		long mask = 0b001;
+		long newBits = (isVisible ? mask : 0);
+		writeBits(column, mask, newBits);
+	}
+
+	public boolean isColumnSorted(COLUMN column) {
+		// mask with second bit (1 << 1 = ..0010)
+		long mask = (1 << 1);
+		return getBits(column, mask) == mask;
+	}
+
+	public TableColumn.SortType getColumnSortType(COLUMN column) {
+		// mask with third bit (1 << 1 = ..0100)
+		long mask = 0b100;
+		boolean isDescending = getBits(column, mask) == mask;
+		return isDescending ? TableColumn.SortType.DESCENDING : TableColumn.SortType.ASCENDING;
+	}
+
+	public void setColumnSorted(COLUMN column, boolean isSorted, TableColumn.SortType sortType) {
+		// clear the second and third bit
+		long mask = 0b110;
+		// then 'OR' to copy the byte value
+		int newBits = isSorted ? 1 << 1 : 0; // set sorted value
+		// set sort type
+		newBits = newBits | (sortType.equals(TableColumn.SortType.DESCENDING) ? 1 << 2 : 0);
+		writeBits(column, mask, newBits);
 	}
 
 	/**
@@ -224,34 +203,18 @@ public class DirectoryViewOptions {
 	 * 0 the highest priority order. <br>
 	 * .... <br>
 	 * 255 the least priority order. <br>
-	 * 
+	 *
 	 * @param column
 	 * @return Number between 0 and 255
 	 */
 	public int getColumnPrioritySort(COLUMN column) {
 		long mask = 0b1111111100000000;
-		switch (column) {
-			case ICON :
-				return (int) ((iconColumn & mask) >> 8);
-			case NAME :
-				return (int) ((nameColumn & mask) >> 8);
-			case NOTE :
-				return (int) ((noteColumn & mask) >> 8);
-			case SIZE :
-				return (int) ((sizeColumn & mask) >> 8);
-			case DATE_MODIFIED :
-				return (int) ((dateModifiedColumn & mask) >> 8);
-			case HBOX_ACTION :
-				return (int) ((hBoxActionColumn & mask) >> 8);
-			default :
-				System.err.println("Column priority get option is not defined yet for this column: " + column);
-				return 255;
-		}
+		return (int) (getBits(column, mask) >> 8);
 	}
 
 	/**
 	 * Priority to be set must be a positive number between 0 and 255
-	 * 
+	 *
 	 * @param column
 	 * @param priority
 	 *            A number between 0 and 255
@@ -261,28 +224,7 @@ public class DirectoryViewOptions {
 		long mask = 0b1111111100000000;
 		// then 'OR' to copy the byte value
 		priority = priority << 8;
-		switch (column) {
-			case ICON :
-				iconColumn = (iconColumn & ~(mask)) | priority;
-				break;
-			case NAME :
-				nameColumn = (nameColumn & ~(mask)) | priority;
-				break;
-			case NOTE :
-				noteColumn = (noteColumn & ~(mask)) | priority;
-				break;
-			case SIZE :
-				sizeColumn = (sizeColumn & ~(mask)) | priority;
-				break;
-			case DATE_MODIFIED :
-				dateModifiedColumn = (dateModifiedColumn & ~(mask)) | priority;
-				break;
-			case HBOX_ACTION :
-				hBoxActionColumn = (hBoxActionColumn & ~(mask)) | priority;
-				break;
-			default :
-				System.err.println("Column sorted set option not defined yet for this column: " + column);
-		}
+		writeBits(column, mask, priority);
 	}
 
 	/**
@@ -296,23 +238,7 @@ public class DirectoryViewOptions {
 	 */
 	public int getColumnOrder(COLUMN column) {
 		long mask = 0b11111111 << 16;
-		switch (column) {
-			case ICON :
-				return (int) ((iconColumn & mask) >> 16);
-			case NAME :
-				return (int) ((nameColumn & mask) >> 16);
-			case NOTE :
-				return (int) ((noteColumn & mask) >> 16);
-			case SIZE :
-				return (int) ((sizeColumn & mask) >> 16);
-			case DATE_MODIFIED :
-				return (int) ((dateModifiedColumn & mask) >> 16);
-			case HBOX_ACTION :
-				return (int) ((hBoxActionColumn & mask) >> 16);
-			default :
-				System.err.println("Column order get option is not defined yet for this column: " + column);
-				return 255;
-		}
+		return (int) (getBits(column, mask) >> 16);
 	}
 
 	/**
@@ -327,31 +253,6 @@ public class DirectoryViewOptions {
 		long mask = 0b11111111 << 16;
 		// then 'OR' to copy the byte value
 		order = order << 16;
-		switch (column) {
-			case ICON :
-				iconColumn = (iconColumn & ~(mask)) | order;
-				break;
-			case NAME :
-				nameColumn = (nameColumn & ~(mask)) | order;
-				break;
-			case NOTE :
-				noteColumn = (noteColumn & ~(mask)) | order;
-				break;
-			case SIZE :
-				sizeColumn = (sizeColumn & ~(mask)) | order;
-				break;
-			case DATE_MODIFIED :
-				dateModifiedColumn = (dateModifiedColumn & ~(mask)) | order;
-				break;
-			case HBOX_ACTION :
-				hBoxActionColumn = (hBoxActionColumn & ~(mask)) | order;
-				break;
-			default :
-				System.err.println("Column order set option not defined yet for this column: " + column);
-		}
-	}
-
-	public enum COLUMN {
-		ICON, NAME, NOTE, SIZE, DATE_MODIFIED, HBOX_ACTION
+		writeBits(column, mask, order);
 	}
 }

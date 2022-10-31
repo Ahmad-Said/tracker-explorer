@@ -42,13 +42,13 @@ public class FTPClientExt {
 	private final LinkedHashMap<String, HashMap<String, FTPFile>> cachedFTPFile = new LinkedHashMap<>();
 	private final LinkedHashMap<String, List<FTPFile>> cachedFTPList = new LinkedHashMap<>();
 	// every new list that beyond this number, the first listing will be removed
-	private static int maximumFTPCacheAllowed = 1000;
+	private static final int MAXIMUM_FTP_CACHE_ALLOWED = 1000;
 
 	/**
 	 *
-	 * @param host
-	 * @param port
-	 * @param user     may be null
+	 * @param server
+	 * @param serverPort
+	 * @param username     may be null
 	 * @param password
 	 * @throws Exception
 	 */
@@ -193,7 +193,7 @@ public class FTPClientExt {
 		}
 		cachedFTPFile.put(parent, fileNameToFTP);
 		cachedFTPList.put(parent, Arrays.asList(ftpFileList));
-		if (cachedFTPFile.size() > maximumFTPCacheAllowed) {
+		if (cachedFTPFile.size() > MAXIMUM_FTP_CACHE_ALLOWED) {
 			cachedFTPFile.remove(cachedFTPFile.keySet().iterator().next());
 		}
 	}

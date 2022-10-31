@@ -10,7 +10,6 @@ import com.thoughtworks.xstream.io.HierarchicalStreamWriter;
 
 public class PathLayerXMLConverter implements Converter {
 
-	@SuppressWarnings("rawtypes")
 	@Override
 	public boolean canConvert(Class type) {
 		return PathLayer.class.isAssignableFrom(type);
