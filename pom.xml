@@ -7,7 +7,7 @@
 	<groupId>said.ahmad.javafx</groupId>
 	<artifactId>TrackerExplorer</artifactId>
 	<!-- Unique POM identifiers version -->
-	<version>6.0</version>
+	<version>6.1</version>
 
 	<!-- Project name -->
 	<name>Tracker Explorer</name>

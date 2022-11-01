@@ -14,7 +14,6 @@ import java.util.*;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -76,6 +75,8 @@ import said.ahmad.javafx.tracker.controller.connection.ConnectionController.Conn
 import said.ahmad.javafx.tracker.controller.connection.ftp.FTPConnectionController;
 import said.ahmad.javafx.tracker.datatype.*;
 import said.ahmad.javafx.tracker.datatype.DirectoryViewOptions.COLUMN;
+import said.ahmad.javafx.tracker.fxGraphics.TableRowUtil;
+import said.ahmad.javafx.tracker.fxGraphics.TableRubberBandSelection;
 import said.ahmad.javafx.tracker.model.TableViewModel;
 import said.ahmad.javafx.tracker.system.RecursiveFileWalker;
 import said.ahmad.javafx.tracker.system.WatchServiceHelper;
@@ -147,7 +148,9 @@ public class SplitViewController implements Initializable {
 
 	static final String ON_DROP_CREATE_SHORTCUT_KEY = "ON_DROP_CREATE_SHORTCUT_KEY";
 	private static final String PATH_FIELD_LIST_ROOTS = "This PC";
+
 	@FXML
+	@Getter
 	private GridPane viewPane;
 
 	@FXML
@@ -289,7 +292,7 @@ public class SplitViewController implements Initializable {
 		sizeCol.setCellValueFactory(new PropertyValueFactory<TableViewModel, Double>("FileSize"));
 		dateModifiedCol.setCellValueFactory(new PropertyValueFactory<TableViewModel, String>("dateModified"));
 
-		table.getSelectionModel().setSelectionMode(SelectionMode.MULTIPLE);
+		table.getSelectionModel().setSelectionMode(SelectionMode.MULTIPLE);;
 		initializeTable();
 
 		initializePathField();
@@ -682,7 +685,7 @@ public class SplitViewController implements Initializable {
 			if (table.getSelectionModel().getSelectedItems().size() > 1) {
 				reloadColorLastRowSelected();
 			} else {
-				deColorLastRowSelected();
+				uncolorAllRowFromLastSelectedStyle();
 			}
 			double totalSelectedSize = 0;
 			double totalAllSize = 0;
@@ -701,7 +704,6 @@ public class SplitViewController implements Initializable {
 									: ""));
 		});
 		predictNavigation.textProperty().addListener((observable, oldValue, newValue) -> {
-			deColorLastRowSelected();
 			table.getSelectionModel().clearSelection();
 			if (newValue.trim().isEmpty()) {
 				newValue = "";
@@ -778,11 +780,11 @@ public class SplitViewController implements Initializable {
 				// .getCellObservableValue(toSelectList.get(toSelectList.size() -
 				// 1).getValue()).getClass());
 				// https://stackoverflow.com/questions/960431/how-to-convert-listinteger-to-int-in-java
-				int[] toSelect = toSelectList.stream().mapToInt(i -> i.getValue()).toArray();
+				int[] toSelect = toSelectList.stream().mapToInt(Pair::getValue).toArray();
 				int lastIndexToBeSelected = toSelectList.get(toSelectList.size() - 1).getValue();
 				table.scrollTo(smartScrollIndex(lastIndexToBeSelected));
 				table.getSelectionModel().selectIndices(-1, toSelect);
-				colorLastRowSelected();
+				reloadColorLastRowSelected();
 			} else {
 				predictNavigation.setText(oldValue);
 			}
@@ -868,23 +870,26 @@ public class SplitViewController implements Initializable {
 		}
 	}
 
+	public static String LAST_ROW_SELECTED_CLASS = "lastRowSelected";
 	private void reloadColorLastRowSelected() {
-		deColorLastRowSelected();
-		colorLastRowSelected();
-	}
-
-	private TableRow<TableViewModel> lastRowSelected = null;
-
-	private void deColorLastRowSelected() {
-		if (lastRowSelected != null) {
-			lastRowSelected.getStyleClass().removeAll(Collections.singletonList("lastRowSelected"));
+		for (TableRow<TableViewModel> row : rowMap.keySet()) {
+			if (row.getIndex() == table.getSelectionModel().getSelectedIndex())
+				colorRowAsLastSelectedStyle(row);
+			else
+				row.getStyleClass().remove(LAST_ROW_SELECTED_CLASS);
 		}
 	}
 
-	private void colorLastRowSelected() {
-		lastRowSelected = rowMap.get(table.getSelectionModel().getSelectedItem());
-		if (lastRowSelected != null) {
-			lastRowSelected.getStyleClass().add("lastRowSelected");
+	private void uncolorAllRowFromLastSelectedStyle() {
+		rowMap.keySet().forEach(row -> row.getStyleClass().remove(LAST_ROW_SELECTED_CLASS));
+	}
+
+	private void uncolorRowFromLastSelectedStyle(TableRow<TableViewModel> row) {
+		row.getStyleClass().remove(LAST_ROW_SELECTED_CLASS);
+	}
+	private void colorRowAsLastSelectedStyle(TableRow<TableViewModel> row) {
+		if (row != null && !row.getStyleClass().contains(LAST_ROW_SELECTED_CLASS)) {
+			row.getStyleClass().add(LAST_ROW_SELECTED_CLASS);
 		}
 	}
 
@@ -1160,16 +1165,9 @@ public class SplitViewController implements Initializable {
 						mn.getItems().add(mnCancel);
 					} else if (ToOperatePathSameDir.size() != 0) {
 
-						Optional<TableViewModel> onDroppedT = rowMap.values().stream().collect(Collectors.toSet())
-								.stream().filter(row -> {
-									if (event.getY() - row.getHeight() >= row.getLayoutY()
-											&& event.getY() - row.getHeight() <= row.getLayoutY() + row.getHeight()) {
-										return true;
-									}
-									return false;
-								}).map(row -> row.getItem()).findFirst();
-						if (onDroppedT.isPresent()) {
-							TableViewModel t = onDroppedT.get();
+						TableRow<TableViewModel> onDroppedT = getRowUnderEvent(event.getY());
+						if (onDroppedT != null) {
+							TableViewModel t = rowMap.get(onDroppedT);
 							String targetFileName = t.getFilePath().getName();
 							PathLayer targetPath = t.getFilePath();
 							if (t.getFilePath().isDirectory()) {
@@ -1252,12 +1250,12 @@ public class SplitViewController implements Initializable {
 			}
 		});
 
+		TableRubberBandSelection rect = new TableRubberBandSelection(table, viewPane, rowMap);
+
 		// on drag put selected files to drag Most PowerFull external application
 		// interaction
-		table.setOnDragDetected(new EventHandler<MouseEvent>() {
-
-			@Override
-			public void handle(MouseEvent event) {
+		table.setOnDragDetected(event -> {
+			if (!rect.activateEventHandlerTable(event, getRowUnderEvent(event.getY()))) {
 				Dragboard db = table.startDragAndDrop(TransferMode.ANY);
 				ClipboardContent cb = new ClipboardContent();
 				if (mDirectory.isLocal()) {
@@ -1379,7 +1377,24 @@ public class SplitViewController implements Initializable {
 	// TableView use handle pattern so in fact only few (13) TableRow is created
 	// and on scroll only contents is changed that's way allow smooth and fast
 	// scrolling of items row.
-	Map<TableViewModel, TableRow<TableViewModel>> rowMap = new HashMap<>();
+	private final Map<TableRow<TableViewModel>, TableViewModel> rowMap = new HashMap<>();
+
+	/**
+	 * Table row located under mouse position when event occurs
+	 * @param eventY the y position of the event example: {@link MouseEvent#getY()}
+	 * @return row if found, null otherwise
+	 */
+	public TableRow<TableViewModel> getRowUnderEvent(double eventY) {
+		if (rowMap.size() == 0) {
+			return null;
+		}
+		double headerHeight = TableRowUtil.getParentMinY(rowMap.keySet());
+		Optional<TableRow<TableViewModel>> optionalRow = rowMap.keySet().stream()
+				.filter(row -> eventY - headerHeight >= row.getLayoutY()
+						&& eventY - headerHeight <= row.getLayoutY() + row.getHeight())
+				.findFirst();
+		return optionalRow.orElse(null);
+	}
 
 	/**
 	 * this row factory only work when user do scroll to show the correspond row
@@ -1396,7 +1411,12 @@ public class SplitViewController implements Initializable {
 					setTooltip(null);
 				} else {
 					t.initializerRowFactory();
-					rowMap.put(t, this);
+					rowMap.put(this, t);
+					if (this.getIndex() == table.getSelectionModel().getSelectedIndex()) {
+						colorRowAsLastSelectedStyle(this);
+					} else {
+						uncolorRowFromLastSelectedStyle(this);
+					}
 					// on row hover
 					String rowtooltipPreText = "Name:\t " + t.getName();
 					if (!t.getFilePath().isDirectory()) {
@@ -3732,10 +3752,6 @@ public class SplitViewController implements Initializable {
 
 	public ToggleButton getAutoExpand() {
 		return autoExpand;
-	}
-
-	public GridPane getViewPane() {
-		return viewPane;
 	}
 
 	/**

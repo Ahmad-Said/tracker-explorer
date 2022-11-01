@@ -174,7 +174,7 @@ public class ImageGridItem extends ImageView {
 	boolean isInCropMode = false;
 	private Image lastBackUpCroppedImage = null;
 	private PathLayer lastBackUpCroppedFile = null;
-	private RubberBandSelection rubberBandSelection = null;
+	private ImageRubberBandSelection imageRubberBandSelection = null;
 
 	// for a faster switch we don't need to define method each time
 	// so we define private variable that change on image change
@@ -748,8 +748,8 @@ public class ImageGridItem extends ImageView {
 
 		setDisable(false, false);
 
-		if (rubberBandSelection != null) {
-			rubberBandSelection.limitRectToImageView();
+		if (imageRubberBandSelection != null) {
+			imageRubberBandSelection.limitRectToImageView();
 		}
 		resetCenterThisOnly();
 		if (MantaingPos && positionImg != null) {
@@ -1373,7 +1373,7 @@ public class ImageGridItem extends ImageView {
 						return;
 					}
 					outCropMode();
-					crop(rubberBandSelection.getBounds(), imageFile);
+					crop(imageRubberBandSelection.getBounds(), imageFile);
 				}
 			});
 			// add image to layer
@@ -1383,7 +1383,7 @@ public class ImageGridItem extends ImageView {
 			imagePane.getChildren().add(imageLayer);
 
 			// RubberBand selection
-			rubberBandSelection = new RubberBandSelection(imageLayer, this);
+			imageRubberBandSelection = new ImageRubberBandSelection(imageLayer, this);
 			EventHandler<Event> recentOnFinishLoading = onFinishLoading;
 			onFinishLoading = e -> {
 				selectAllImage();
@@ -1395,7 +1395,7 @@ public class ImageGridItem extends ImageView {
 			outCropMode();
 			// perform crop based on rubberBandSelectioin
 			// crop the image on bounds rubber
-			crop(rubberBandSelection.getBounds(), imageFile);
+			crop(imageRubberBandSelection.getBounds(), imageFile);
 		}
 	}
 
@@ -1412,13 +1412,13 @@ public class ImageGridItem extends ImageView {
 
 	// @FXML
 	private void selectAllImage() {
-		rubberBandSelection.selectFullImage();
+		imageRubberBandSelection.selectFullImage();
 	}
 
 	// @FXML
 	private void saveAsCrop() {
 		outCropMode();
-		crop(rubberBandSelection.getBounds(), null);
+		crop(imageRubberBandSelection.getBounds(), null);
 	}
 
 	// @FXML
@@ -1441,7 +1441,7 @@ public class ImageGridItem extends ImageView {
 
 	private void saveToClipBoard() {
 		outCropMode();
-		WritableImage croppedImage = cropImage(rubberBandSelection.getBounds(), null);
+		WritableImage croppedImage = cropImage(imageRubberBandSelection.getBounds(), null);
 		putClipBoardImage(croppedImage);
 	}
 

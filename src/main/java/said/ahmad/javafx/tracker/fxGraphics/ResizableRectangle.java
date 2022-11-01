@@ -5,6 +5,7 @@ import java.util.ArrayList;
 import javafx.scene.Cursor;
 import javafx.scene.Group;
 import javafx.scene.input.MouseEvent;
+import javafx.scene.layout.Pane;
 import javafx.scene.paint.Color;
 import javafx.scene.paint.Paint;
 import javafx.scene.shape.Rectangle;
@@ -14,7 +15,7 @@ import javafx.scene.shape.Rectangle;
  *
  * @author imgeself
  */
-class ResizableRectangle extends Rectangle {
+public class ResizableRectangle extends RectangleExt {
 
 	private double rectangleStartX;
 	private double rectangleStartY;
@@ -28,7 +29,7 @@ class ResizableRectangle extends Rectangle {
 
 	ArrayList<Rectangle> allMiniRec = new ArrayList<>();
 
-	ResizableRectangle(double x, double y, double width, double height) {
+	public ResizableRectangle(double x, double y, double width, double height) {
 		super(x, y, width, height);
 		super.setStroke(rectangleStrokeColor);
 		super.setStrokeWidth(1);
@@ -386,13 +387,20 @@ class ResizableRectangle extends Rectangle {
 	}
 
 	public void addToGroup(Group group) {
-		group.getChildren().add(this);
-		allMiniRec.forEach(e -> group.getChildren().add(e));
+		if (!group.getChildren().contains(this)) {
+			group.getChildren().add(this);
+			allMiniRec.forEach(e -> group.getChildren().add(e));
+		}
 	}
 
 	public void removeFromGroup(Group group) {
 		group.getChildren().remove(this);
 		allMiniRec.forEach(e -> group.getChildren().remove(e));
+	}
+
+	public void addToPane(Pane pane) {
+		pane.getChildren().add(this);
+		allMiniRec.forEach(e -> pane.getChildren().add(e));
 	}
 
 }

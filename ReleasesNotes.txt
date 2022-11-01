@@ -1,3 +1,10 @@
+V6.1:
+NEW: multi select table items with drag mouse
+
+IMPROVE: Coloration of last selected row
+
+FIX: detecting last moment in VLC filter [Translation of malformed Unicode character]
+
 V6.0:
 NEW: Dynamic used defined context menu with integration of external apps such as adobe, winrar...
 NEW: Merge PDF files

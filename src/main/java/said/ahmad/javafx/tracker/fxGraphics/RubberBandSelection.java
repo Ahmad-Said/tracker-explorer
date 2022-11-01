@@ -1,244 +1,210 @@
 package said.ahmad.javafx.tracker.fxGraphics;
 
 import javafx.event.EventHandler;
-import javafx.geometry.Bounds;
-import javafx.scene.Group;
-import javafx.scene.image.ImageView;
+import javafx.event.EventType;
+import javafx.scene.Node;
 import javafx.scene.input.MouseEvent;
 import javafx.scene.paint.Color;
 import javafx.scene.shape.StrokeLineCap;
+import lombok.Getter;
+import lombok.Setter;
 
-/**
- * Drag rectangle with mouse cursor in order to get selection bounds
- */
-public class RubberBandSelection {
-
-	final DragContext dragContext = new DragContext();
-	ResizableRectangle rect;
-
-	Group group;
-	ImageView imageView = null;
-
-	public Bounds getBounds() {
-		return rect.getBoundsInParent();
-	}
-
+@Getter
+@Setter
+abstract class RubberBandSelection {
 	/**
-	 *
-	 * ImageView is used to restrict rubberBandSelection to be limited by the
-	 * boundary of the image
-	 *
-	 * @param group     the layer where imageView is in
-	 * @param imageView can be null
+	 * Class that hold first mouse pressed location. It act as anchor point where
+	 * from it rectangle will resize.
 	 */
-	public RubberBandSelection(Group group, ImageView imageView) {
-
-		this.group = group;
-		this.imageView = imageView;
-
-		rect = new ResizableRectangle(0, 0, 0, 0);
-		rect.setStroke(Color.BLUE);
-		rect.setStrokeWidth(1);
-		rect.setStrokeLineCap(StrokeLineCap.ROUND);
-		rect.setFill(Color.LIGHTBLUE.deriveColor(0, 1.2, 1, 0.6));
-		selectFullImage();
-
-		group.addEventHandler(MouseEvent.MOUSE_PRESSED, onMousePressedEventHandler);
-		group.addEventHandler(MouseEvent.MOUSE_DRAGGED, onMouseDraggedEventHandler);
-		group.addEventHandler(MouseEvent.MOUSE_RELEASED, onMouseReleasedEventHandler);
-
-	}
-
-	public void selectFullImage() {
-		if (imageView != null) {
-			if (group.getChildren().contains(rect)) {
-				rect.removeFromGroup(group);
-			}
-			rect.setX(imageView.getBoundsInLocal().getMinX());
-			rect.setY(imageView.getBoundsInLocal().getMinY());
-			rect.setWidth(imageView.getBoundsInLocal().getWidth());
-			rect.setHeight(imageView.getBoundsInLocal().getHeight());
-			rect.addToGroup(group);
-		}
-		limitRectToImageView();
-	}
-
-	EventHandler<MouseEvent> onMousePressedEventHandler = new EventHandler<MouseEvent>() {
-
-		@Override
-		public void handle(MouseEvent event) {
-
-			if (event.isSecondaryButtonDown() || rect.isResizing()) {
-				return;
-			}
-
-			// remove old rect
-			rect.setX(0);
-			rect.setY(0);
-			rect.setWidth(0);
-			rect.setHeight(0);
-
-			rect.removeFromGroup(group);
-
-			// prepare new drag operation
-			dragContext.mouseAnchorX = event.getX();
-			dragContext.mouseAnchorY = event.getY();
-
-			rect.setX(dragContext.mouseAnchorX);
-			rect.setY(dragContext.mouseAnchorY);
-			rect.setWidth(0);
-			rect.setHeight(0);
-
-			rect.addToGroup(group);
-
-		}
-	};
-
-	EventHandler<MouseEvent> onMouseDraggedEventHandler = new EventHandler<MouseEvent>() {
-
-		@Override
-		public void handle(MouseEvent event) {
-
-			if (event.isSecondaryButtonDown() || rect.isResizing()) {
-				return;
-			}
-
-			double offsetX = event.getX() - dragContext.mouseAnchorX;
-			double offsetY = event.getY() - dragContext.mouseAnchorY;
-
-			if (offsetX > 0) {
-				rect.setWidth(offsetX);
-			} else {
-				rect.setX(event.getX());
-				rect.setWidth(dragContext.mouseAnchorX - rect.getX());
-			}
-
-			if (offsetY > 0) {
-				rect.setHeight(offsetY);
-			} else {
-				rect.setY(event.getY());
-				rect.setHeight(dragContext.mouseAnchorY - rect.getY());
-			}
-		}
-	};
-
-	EventHandler<MouseEvent> onMouseReleasedEventHandler = new EventHandler<MouseEvent>() {
-
-		@Override
-		public void handle(MouseEvent event) {
-
-			if (event.isSecondaryButtonDown() || rect.isResizing()) {
-				return;
-			}
-			limitRectToImageView();
-
-		}
-
-	};
-
-	public void limitRectToImageView() {
-
-		if (imageView != null) {
-
-			double width = rect.getWidth();
-			double height = rect.getHeight();
-			double minX = rect.getX();
-			double minY = rect.getY();
-			double maxX = rect.getX() + width;
-			double maxY = rect.getY() + height;
-			Double finalWidth = width;
-			Double finalHeight = height;
-
-			// limiting to image pane
-			if (minX < imageView.getBoundsInLocal().getMinX()) {
-				rect.setX(imageView.getBoundsInLocal().getMinX());
-				finalWidth -= rect.getX() - minX;
-			}
-			if (minY < imageView.getBoundsInLocal().getMinY()) {
-				rect.setY(imageView.getBoundsInLocal().getMinY());
-				finalHeight -= rect.getY() - minY;
-			}
-
-			if (maxX > imageView.getBoundsInLocal().getMaxX()) {
-				finalWidth -= maxX - imageView.getBoundsInLocal().getMaxX();
-			}
-			if (maxY > imageView.getBoundsInLocal().getMaxY()) {
-				finalHeight -= maxY - imageView.getBoundsInLocal().getMaxY();
-			}
-			minX = rect.getX();
-			minY = rect.getY();
-			maxX = rect.getX() + finalWidth;
-			maxY = rect.getY() + finalHeight;
-
-			//
-			double widthScale = imageView.getBoundsInLocal().getWidth() / imageView.getViewport().getWidth();
-			double heightScale = imageView.getBoundsInLocal().getHeight() / imageView.getViewport().getHeight();
-
-			// resolving left and top sides
-			if (imageView.getViewport().getMinX() < 0) {
-				double imageX = -imageView.getViewport().getMinX() * widthScale;
-				if (rect.getX() < imageX) {
-					rect.setX(imageX);
-					finalWidth -= imageX - minX;
-				}
-			}
-			if (imageView.getViewport().getMinY() < 0) {
-				double imageY = -imageView.getViewport().getMinY() * heightScale;
-				if (rect.getY() < imageY) {
-					rect.setY(imageY);
-					finalHeight -= imageY - minY;
-				}
-			}
-			if (minX < 0) {
-				rect.setX(0);
-				finalWidth -= -minX;
-			}
-			if (minY < 0) {
-				rect.setY(0);
-				finalHeight -= -minY;
-			}
-
-			// resolving right and bottom side
-			// if width of viewPort > width of image, the imageX = (imagewidth)*widthscale
-			double imageMaxX = imageView.getImage().getWidth() * widthScale;
-			double imageMaxY = imageView.getImage().getHeight() * heightScale;
-			if (imageView.getViewport().getMinX() < 0) {
-				imageMaxX += -imageView.getViewport().getMinX() * widthScale;
-			}
-			if (imageView.getViewport().getMinY() < 0) {
-				imageMaxY += -imageView.getViewport().getMinY() * heightScale;
-			}
-			if (imageView.getViewport().getWidth() > imageView.getImage().getWidth()) {
-				if (maxX > imageMaxX) {
-					finalWidth -= maxX - imageMaxX;
-				}
-			}
-			if (imageView.getViewport().getHeight() > imageView.getImage().getHeight()) {
-				if (maxY > imageMaxY) {
-					finalHeight -= maxY - imageMaxY;
-				}
-			}
-
-			if (maxX > imageView.getBoundsInLocal().getMaxX()) {
-				finalWidth -= maxX - imageView.getBoundsInLocal().getMaxX();
-			}
-			if (maxY > imageView.getBoundsInLocal().getMaxY()) {
-				finalHeight -= maxY - imageView.getBoundsInLocal().getMaxY();
-			}
-
-			rect.setWidth(finalWidth);
-			rect.setHeight(finalHeight);
-		}
-	}
-
-	private static final class DragContext {
+	public static final class DragContext {
 
 		public double mouseAnchorX;
 		public double mouseAnchorY;
 
 	}
 
-	public void setImageView(ImageView imageView2) {
-		imageView = imageView2;
+	private DragContext dragContext;
+
+	/**
+	 * rectangle used to UI show the selected area by user
+	 */
+	private ResizableRectangle rectangle;
+
+	/**
+	 * Event to add {@link #rectangle} to {@link #getParentNode()}
+	 */
+	private EventHandler<? super MouseEvent> onMousePressedEventHandler;
+
+	/**
+	 * Event to expand rectangle following mouse movement
+	 */
+	private EventHandler<? super MouseEvent> onMouseDraggedEventHandler;
+
+	/**
+	 * Event to remove {@link #rectangle} from {@link #getParentNode()}
+	 */
+	private EventHandler<? super MouseEvent> onMouseReleasedEventHandler;
+
+	/**
+	 * General usage to make a selection in node.
+	 * <ul>
+	 * <li>Create a group</li>
+	 * <li>Adding targetNode to the group is up to user before calling this
+	 * constructor</li>
+	 * <li>Replace targetNode in your application with the created group</li>
+	 * <li>Replace targetNode in your application with the created group</li>
+	 * </ul>
+	 */
+	public RubberBandSelection() {
+		this.dragContext = new DragContext();
+		setRectangle(getDefaultRectangle());
 	}
+
+	public void setOnMousePressedEventHandler(EventHandler<? super MouseEvent> onMousePressedEventHandler, Node node) {
+		replaceEventHandler(MouseEvent.MOUSE_PRESSED, this.onMousePressedEventHandler, onMousePressedEventHandler,
+				node);
+		this.onMousePressedEventHandler = onMousePressedEventHandler;
+	}
+
+	public void setOnMouseDraggedEventHandler(EventHandler<? super MouseEvent> onMouseDraggedEventHandler, Node node) {
+		replaceEventHandler(MouseEvent.MOUSE_DRAGGED, this.onMouseDraggedEventHandler, onMouseDraggedEventHandler,
+				node);
+		this.onMouseDraggedEventHandler = onMouseDraggedEventHandler;
+
+	}
+
+	public void setOnMouseReleasedEventHandler(EventHandler<? super MouseEvent> onMouseReleasedEventHandler,
+			Node node) {
+		replaceEventHandler(MouseEvent.MOUSE_RELEASED, this.onMouseReleasedEventHandler, onMouseReleasedEventHandler,
+				node);
+		this.onMouseReleasedEventHandler = onMouseReleasedEventHandler;
+	}
+
+	private void replaceEventHandler(EventType<MouseEvent> eventType, EventHandler<? super MouseEvent> oldHandler,
+			EventHandler<? super MouseEvent> newHandler, Node node) {
+		if (oldHandler != null) {
+			node.removeEventHandler(eventType, oldHandler);
+		}
+		if (newHandler != null) {
+			node.addEventHandler(eventType, newHandler);
+		}
+	}
+
+	public ResizableRectangle getDefaultRectangle() {
+		ResizableRectangle rectangle = new ResizableRectangle(0, 0, 0, 0);
+		rectangle.setStroke(Color.BLUE);
+		rectangle.setStrokeWidth(1);
+		rectangle.setStrokeLineCap(StrokeLineCap.ROUND);
+		rectangle.setFill(Color.LIGHTBLUE.deriveColor(0, 1.2, 1, 0.6));
+		return rectangle;
+	}
+
+
+	/**
+	 * Event to add rectangle in parent node. And to initialize position of
+	 * rectangle top left corner acting as anchor point
+	 * 
+	 * @return default on mouse press handler
+	 */
+	public EventHandler<MouseEvent> getDefaultOnMousePressedEventHandler() {
+		return mouseEvent -> {
+			if (mouseEvent.isSecondaryButtonDown() || rectangle.isResizing()) {
+				return;
+			}
+			// prepare new drag operation
+			getDragContext().mouseAnchorX = getEventPositionX(mouseEvent);
+			getDragContext().mouseAnchorY = getEventPositionY(mouseEvent);
+
+			addRectangleToParent(rectangle);
+			setRectanglePositionX(getDragContext().mouseAnchorX);
+			setRectanglePositionY(getDragContext().mouseAnchorY);
+			rectangle.setWidth(0);
+			rectangle.setHeight(0);
+		};
+	}
+
+	public EventHandler<MouseEvent> getDefaultOnMouseDraggedEventHandler() {
+		return mouseEvent -> {
+			if (mouseEvent.isSecondaryButtonDown() || rectangle.isResizing()) {
+				return;
+			}
+
+			double offsetX = getEventPositionX(mouseEvent) - getDragContext().mouseAnchorX;
+			double offsetY = getEventPositionY(mouseEvent) - getDragContext().mouseAnchorY;
+
+			if (offsetX > 0) {
+				rectangle.setWidth(offsetX);
+			} else {
+				setRectanglePositionX(getEventPositionX(mouseEvent));
+				rectangle.setWidth(getDragContext().mouseAnchorX - getRectanglePositionX());
+			}
+
+			if (offsetY > 0) {
+				rectangle.setHeight(offsetY);
+			} else {
+				setRectanglePositionY(getEventPositionY(mouseEvent));
+				rectangle.setHeight(getDragContext().mouseAnchorY - getRectanglePositionY());
+			}
+		};
+	}
+
+
+	public EventHandler<MouseEvent> getDefaultOnMouseReleasedEventHandler() {
+		return mouseEvent -> {
+			if (mouseEvent.isSecondaryButtonDown() || rectangle.isResizing()) {
+				return;
+			}
+			limitRectToTargetNode();
+		};
+	}
+
+	public void limitRectToTargetNode() {
+
+		if (getTargetNode() != null) {
+			Node targetNode = getTargetNode();
+			double width = getRectangle().getWidth();
+			double height = getRectangle().getHeight();
+			double minX = getRectanglePositionX();
+			double minY = getRectanglePositionY();
+			double maxX = minX + width;
+			double maxY = minY + height;
+			Double finalWidth = width;
+			Double finalHeight = height;
+
+			// limiting to target pane
+			if (minX < targetNode.getBoundsInLocal().getMinX()) {
+				setRectanglePositionX(targetNode.getBoundsInLocal().getMinX());
+				finalWidth -= getRectangle().getX() - minX;
+			}
+			if (minY < targetNode.getBoundsInLocal().getMinY()) {
+				setRectanglePositionY(targetNode.getBoundsInLocal().getMinY());
+				finalHeight -= getRectangle().getY() - minY;
+			}
+
+			if (maxX > targetNode.getBoundsInLocal().getMaxX()) {
+				finalWidth -= maxX - targetNode.getBoundsInLocal().getMaxX();
+			}
+			if (maxY > targetNode.getBoundsInLocal().getMaxY()) {
+				finalHeight -= maxY - targetNode.getBoundsInLocal().getMaxY();
+			}
+
+			getRectangle().setWidth(finalWidth);
+			getRectangle().setHeight(finalHeight);
+		}
+	}
+
+	public abstract Node getParentNode();
+
+	public abstract Node getTargetNode();
+	public abstract double getRectanglePositionX();
+	public abstract void setRectanglePositionX(double x);
+	public abstract double getRectanglePositionY();
+	public abstract void setRectanglePositionY(double y);
+	public abstract double getEventPositionX(MouseEvent mouseEvent);
+	public abstract double getEventPositionY(MouseEvent mouseEvent);
+
+	public abstract void addRectangleToParent(ResizableRectangle rectangle);
+	public abstract void removeRectangleFromParent(ResizableRectangle rectangle);
+
+
 }
