@@ -11,4 +11,6 @@ import java.util.Map;
 public interface CallBackContext {
 
     void call(List<PathLayer> selections, UserContextMenu con);
+
+    UserContextMenu createDefaultUserContextMenu();
 }

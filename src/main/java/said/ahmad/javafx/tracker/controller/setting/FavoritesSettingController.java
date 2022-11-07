@@ -129,6 +129,11 @@ public class FavoritesSettingController extends GenericSettingController {
 	}
 
 	@Override
+	public boolean isValidNewSetting(boolean showDialogAlert) {
+		return true;
+	}
+
+	@Override
 	public boolean pushDataToSetting() {
 		FavoriteViewList toBeUpdatedFavoritesList = Setting.getFavoritesViews();
 		// list of all favorites so we can add them all at once

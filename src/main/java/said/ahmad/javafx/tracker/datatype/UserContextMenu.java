@@ -3,12 +3,13 @@ package said.ahmad.javafx.tracker.datatype;
 import java.util.*;
 import java.util.stream.Collectors;
 
+import org.jetbrains.annotations.Nullable;
+
 import com.thoughtworks.xstream.annotations.XStreamOmitField;
 
 import javafx.scene.image.Image;
 import lombok.Getter;
 import lombok.Setter;
-import org.jetbrains.annotations.Nullable;
 import said.ahmad.javafx.tracker.app.StringHelper;
 import said.ahmad.javafx.tracker.app.look.IconLoader;
 import said.ahmad.javafx.tracker.app.pref.Setting;
@@ -97,6 +98,9 @@ public class UserContextMenu implements Cloneable {
 
 	/**
 	 * Optional path used for icon
+	 * // we can expand definition to support multiple icon path separated by semi colon
+	 * // saved image will be an array list of image of all parents, such implementation
+	 * // depend on its use case
 	 */
 	private String parentIconPath;
 
@@ -345,6 +349,28 @@ public class UserContextMenu implements Cloneable {
 	}
 
 	/**
+	 * A title describing menu using its {@link #getAlias()} if present, <br>
+	 * otherwise {@link #getAliasMultiple()} if present,<br>
+	 * otherwise an empty String "";<br>
+	 * 
+	 * @return title representing the menu
+	 */
+	public String getTitle() {
+		String title;
+		if (!StringHelper.isEmpty(getAlias())) {
+			title = getAlias();
+		} else if (!StringHelper.isEmpty(getAliasMultiple())) {
+			title = getAliasMultiple();
+		} else {
+			title = "";
+		}
+		if(getParentMenuNames() != null) {
+			title = getParentMenuNames() + "/" + title;
+		}
+		return  title;
+	}
+
+	/**
 	 * Evaluate String using
 	 * {@link CommandVariableAffector#getEvaluatedCommand}
 	 *
@@ -446,5 +472,11 @@ public class UserContextMenu implements Cloneable {
 			return true;
 		return selections.stream().filter(path -> !path.isDirectory())
 				.allMatch(s -> allExt.contains(s.getExtensionUPPERCASE()));
+	}
+
+	public void clearIconCache() {
+		setIconExec(null);
+		setIconImage(null);
+		setParentIconImage(null);
 	}
 }

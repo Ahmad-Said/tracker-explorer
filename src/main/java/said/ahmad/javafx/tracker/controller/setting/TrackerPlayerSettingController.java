@@ -150,6 +150,11 @@ public class TrackerPlayerSettingController extends GenericSettingController {
 	}
 
 	@Override
+	public boolean isValidNewSetting(boolean showDialogAlert) {
+		return true;
+	}
+
+	@Override
 	public boolean pushDataToSetting() {
 		return false;
 	}

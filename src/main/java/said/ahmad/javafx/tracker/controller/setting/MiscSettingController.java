@@ -16,7 +16,6 @@ import javafx.scene.control.Label;
 import javafx.scene.control.ScrollPane;
 import javafx.scene.control.TextField;
 import javafx.scene.paint.Color;
-import javafx.scene.paint.Paint;
 import org.jetbrains.annotations.Nullable;
 
 import javafx.fxml.FXML;
@@ -95,7 +94,7 @@ public class MiscSettingController extends GenericSettingController {
 
 	@Override
 	public @Nullable Image getIconImage() {
-		return IconLoader.getIconImage(ICON_TYPE.SETIING);
+		return IconLoader.getIconImage(ICON_TYPE.SETTING);
 	}
 
 	@Override
@@ -174,6 +173,11 @@ public class MiscSettingController extends GenericSettingController {
 			teraCopyPath.setText(TeraCopy.getPath_Setup().toString());
 		}
 
+	}
+
+	@Override
+	public boolean isValidNewSetting(boolean showDialogAlert) {
+		return true;
 	}
 
 	@Override

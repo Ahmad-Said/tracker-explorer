@@ -1412,7 +1412,8 @@ public class SplitViewController implements Initializable {
 				} else {
 					t.initializerRowFactory();
 					rowMap.put(this, t);
-					if (this.getIndex() == table.getSelectionModel().getSelectedIndex()) {
+					if (this.getIndex() == table.getSelectionModel().getSelectedIndex()
+							&& table.getSelectionModel().getSelectedIndices().size() > 1) {
 						colorRowAsLastSelectedStyle(this);
 					} else {
 						uncolorRowFromLastSelectedStyle(this);
@@ -3000,7 +3001,8 @@ public class SplitViewController implements Initializable {
 	private TableViewModel getViewModelOfName(String fileName) {
 		TableViewModel found = null;
 		for (TableViewModel t : DataTable) {
-			if (t.getName().equals(fileName)) {
+			// windows does not separate files lower and upper case
+			if (t.getName().equalsIgnoreCase(fileName)) {
 				found = t;
 				break;
 			}

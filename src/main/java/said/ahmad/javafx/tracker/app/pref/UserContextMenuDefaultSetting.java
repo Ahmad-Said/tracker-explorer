@@ -6,12 +6,11 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import said.ahmad.javafx.tracker.app.look.IconLoader;
 import said.ahmad.javafx.tracker.datatype.UserContextMenu;
 import said.ahmad.javafx.tracker.system.call.CallMethod;
 import said.ahmad.javafx.tracker.system.call.CommandVariable;
-import said.ahmad.javafx.tracker.system.call.inner.FunctionName;
-import said.ahmad.javafx.tracker.system.file.local.FilePathLayer;
+import said.ahmad.javafx.tracker.system.call.inner.InnerFunctionCall;
+import said.ahmad.javafx.tracker.system.call.inner.InnerFunctionName;
 
 public class UserContextMenuDefaultSetting {
 
@@ -19,7 +18,7 @@ public class UserContextMenuDefaultSetting {
 		Map<String, ArrayList<String>> extensionGroupMap = new HashMap<>();
 
 		extensionGroupMap.put("Text", new ArrayList<String>(Arrays.asList("TXT", "LOG", "HTML", "CSS", "JSP", "XML",
-				"JSON", "JAVA", "C", "CPP", "PY", "SQL", "JS", "BAT", "CMD", "SH", "")));
+				"JSON", "JAVA", "C", "CPP", "PY", "SQL", "JS", "BAT", "CMD", "SH", "CFG", "")));
 		extensionGroupMap.put("Video",
 				new ArrayList<String>(Arrays.asList("3GP", "ASF", "AVI", "DVR-MS", "FLV", "MKV", "MIDI+", "MP4", "OGG",
 						"OGM", "WAV", "MPEG-2", "MXF", "VOB", "RM", "BLU-RAY", "DVD-VIDEO", "VCD", "SVCD", "DVB",
@@ -134,15 +133,19 @@ public class UserContextMenuDefaultSetting {
 	 */
 	public static UserContextMenu getOpenWithAdobeMenu() {
 		UserContextMenu openWithAdobe = new UserContextMenu();
-		openWithAdobe.setParentMenuNames("Open With");
-		openWithAdobe.setAlias("Adobe Acrobat DC");
-		openWithAdobe.setAliasMultiple("Open all with Adobe");
-		openWithAdobe.setPathToExecutable("%ProgramFiles(x86)%\\Adobe\\Acrobat DC\\Acrobat\\Acrobat.exe");
-		openWithAdobe.getExtensions().add("pdf");
-		openWithAdobe.setCallMethod(CallMethod.SEPARATE_CALL);
-		openWithAdobe.setOnSingleSelection(true);
-		openWithAdobe.setOnMultipleSelection(true);
+
 		openWithAdobe.setMenuOrder(2);
+		openWithAdobe.setPathToExecutable("%ProgramFiles(x86)%\\Adobe\\Acrobat DC\\Acrobat\\Acrobat.exe");
+
+		openWithAdobe.getExtensions().add("pdf");
+
+		openWithAdobe.setOnSingleSelection(true);
+		openWithAdobe.setAlias("Adobe Acrobat DC");
+		openWithAdobe.setOnMultipleSelection(true);
+		openWithAdobe.setAliasMultiple("Open all %" + CommandVariable.FILES_COUNT + "% with Adobe" );
+		openWithAdobe.setParentMenuNames("Open With");
+
+		openWithAdobe.setCallMethod(CallMethod.SEPARATE_CALL);
 		return openWithAdobe;
 	}
 
@@ -152,16 +155,7 @@ public class UserContextMenuDefaultSetting {
 	 * @return
 	 */
 	public static UserContextMenu getMergePdfs() {
-		UserContextMenu mergePdf = getOpenWithAdobeMenu();
-		mergePdf.setCallMethod(CallMethod.INNER_FUNCTION);
-		mergePdf.setParentMenuNames("Open With");
-		mergePdf.setAlias("Merge PDF");
-		mergePdf.setAliasMultiple("Merge PDFs");
-		mergePdf.setPathToExecutable(FunctionName.MERGE_PDF.toString());
-		mergePdf.setOnSingleSelection(false);
-		mergePdf.setOnMultipleSelection(true);
-		mergePdf.setIconPath(UserContextMenu.INNER_ICON_CONVENTION + IconLoader.ICON_TYPE.MERGE_ARROW);
-		return mergePdf;
+		return InnerFunctionCall.FUNCTION_CALLS.get(InnerFunctionName.MERGE_PDF).createDefaultUserContextMenu();
 	}
 
 
@@ -172,8 +166,8 @@ public class UserContextMenuDefaultSetting {
 	 */
 	private static UserContextMenu getWinRARBaseMenu() {
 		UserContextMenu winRAR = new UserContextMenu();
-		winRAR.setParentMenuNames("WinRAR");
 		winRAR.setPathToExecutable("%ProgramFiles%\\WinRAR\\WinRar.exe");
+		winRAR.setParentMenuNames("WinRAR");
 		return winRAR;
 	}
 
@@ -191,13 +185,16 @@ public class UserContextMenuDefaultSetting {
 	 */
 	public static UserContextMenu getAddMultipleToWinRARMenu() {
 		UserContextMenu addMultipleToWinRAR = getWinRARBaseMenu();
-		addMultipleToWinRAR.setAlias("Add to \"%" + CommandVariable.PARENT_NAME + "%.rar\"");
-		addMultipleToWinRAR.setPrefixCommandOptions("a \"%" + CommandVariable.PARENT_NAME + "%.rar\" @");
+		addMultipleToWinRAR.setMenuOrder(-2);
+
 		addMultipleToWinRAR.getExtensions().add("*");
 		addMultipleToWinRAR.setDirectoryContext(true);
+
 		addMultipleToWinRAR.setOnMultipleSelection(true);
+		addMultipleToWinRAR.setAliasMultiple("Add to \"%" + CommandVariable.PARENT_NAME + "%.rar\"");
+
+		addMultipleToWinRAR.setPrefixCommandOptions("a \"%" + CommandVariable.PARENT_NAME + "%.rar\" @");
 		addMultipleToWinRAR.setCallMethod(CallMethod.TXT_FILE_CALL);
-		addMultipleToWinRAR.setMenuOrder(-2);
 		addMultipleToWinRAR.setDisplayUIProcessOutput(true);
 
 		return addMultipleToWinRAR;
@@ -216,13 +213,17 @@ public class UserContextMenuDefaultSetting {
 	 */
 	public static UserContextMenu getAddSingleToWinRARMenu() {
 		UserContextMenu addSingleToWinRAR = getAddMultipleToWinRARMenu();
+		addSingleToWinRAR.getExtensionsGroupNames().add("-Archive");
+
+		addSingleToWinRAR.setOnSingleSelection(true);
 		addSingleToWinRAR.setAlias("Add to %" + CommandVariable.BASENAME + "%.rar");
+		addSingleToWinRAR.setOnMultipleSelection(false);
+		addSingleToWinRAR.setAliasMultiple(null);
+
 		addSingleToWinRAR.setPrefixCommandOptions(
 				"a \"%" + CommandVariable.PARENT_PATH + "%\\%" + CommandVariable.BASENAME + "%.rar\" ");
 		addSingleToWinRAR.setCallMethod(CallMethod.SEPARATE_CALL);
-		addSingleToWinRAR.setOnSingleSelection(true);
-		addSingleToWinRAR.setOnMultipleSelection(false);
-		addSingleToWinRAR.getExtensionsGroupNames().add("-Archive");
+
 		return addSingleToWinRAR;
 	}
 
@@ -241,7 +242,7 @@ public class UserContextMenuDefaultSetting {
 	 */
 	public static UserContextMenu getMoveMultipleToWinRARMenu() {
 		UserContextMenu moveMultipleToWinRAR = getAddMultipleToWinRARMenu();
-		moveMultipleToWinRAR.setAlias("Move to %" + CommandVariable.PARENT_NAME + "%.rar ");
+		moveMultipleToWinRAR.setAliasMultiple("Move to %" + CommandVariable.PARENT_NAME + "%.rar ");
 		moveMultipleToWinRAR.setPrefixCommandOptions("m \"%" + CommandVariable.PARENT_NAME + "%.rar\" @");
 		return moveMultipleToWinRAR;
 	}
@@ -279,13 +280,16 @@ public class UserContextMenuDefaultSetting {
 	 */
 	public static UserContextMenu getExtractRARMenu() {
 		UserContextMenu winRarExtractTo = getAddSingleToWinRARMenu();
+
+		winRarExtractTo.setOnSingleSelection(true);
 		winRarExtractTo.setAlias("Extract To %" + CommandVariable.BASENAME + "%");
+		winRarExtractTo.setOnMultipleSelection(true);
 		winRarExtractTo.setAliasMultiple("Extract each to separate directory");
+
 		winRarExtractTo.clearDefinedExtensions();
 		winRarExtractTo.setDirectoryContext(false);
-		winRarExtractTo.setOnSingleSelection(true);
-		winRarExtractTo.setOnMultipleSelection(true);
 		winRarExtractTo.getExtensionsGroupNames().add("Archive");
+
 		winRarExtractTo.setPrefixCommandOptions("x ");
 		winRarExtractTo.setPostfixCommandOptions("\"%" + CommandVariable.BASENAME + "%\"\\");
 		return winRarExtractTo;
@@ -304,9 +308,11 @@ public class UserContextMenuDefaultSetting {
 	 */
 	public static UserContextMenu getExtractMultipleRARMenu() {
 		UserContextMenu winRarMultipleExtractTo = getExtractRARMenu();
+
+		winRarMultipleExtractTo.setOnSingleSelection(false);
 		winRarMultipleExtractTo.setAlias(null);
 		winRarMultipleExtractTo.setAliasMultiple("Extract to %1" + CommandVariable.BASENAME + "%");
-		winRarMultipleExtractTo.setOnSingleSelection(false);
+
 		winRarMultipleExtractTo.setPostfixCommandOptions("\"%1" + CommandVariable.BASENAME + "%\"\\");
 		return winRarMultipleExtractTo;
 	}
@@ -324,10 +330,12 @@ public class UserContextMenuDefaultSetting {
 	 */
 	public static UserContextMenu getExtractRARHereMenu() {
 		UserContextMenu winRarExtractHere = getExtractRARMenu();
-		winRarExtractHere.setAlias("Extract Here");
-		winRarExtractHere.setAliasMultiple("Extract All Here");
+
 		winRarExtractHere.setOnSingleSelection(true);
+		winRarExtractHere.setAlias("Extract Here");
 		winRarExtractHere.setOnMultipleSelection(true);
+		winRarExtractHere.setAliasMultiple("Extract All Here");
+
 		winRarExtractHere.setPostfixCommandOptions("");
 		return winRarExtractHere;
 	}

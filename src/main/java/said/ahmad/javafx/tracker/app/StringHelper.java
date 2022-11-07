@@ -11,10 +11,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.Duration;
 import java.time.Instant;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
@@ -98,6 +95,11 @@ public class StringHelper {
 	}
 
 	public static FileChooser.ExtensionFilter getExtensionFilter(String description, List<String> extensions) {
+		return new FileChooser.ExtensionFilter(description,
+				extensions.stream().map(p -> "*" + p).collect(Collectors.toList()));
+	}
+
+	public static FileChooser.ExtensionFilter getExtensionFilter(String description, Set<String> extensions) {
 		return new FileChooser.ExtensionFilter(description,
 				extensions.stream().map(p -> "*" + p).collect(Collectors.toList()));
 	}

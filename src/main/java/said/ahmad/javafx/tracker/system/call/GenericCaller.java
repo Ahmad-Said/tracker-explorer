@@ -6,12 +6,12 @@ import java.io.IOException;
 import java.io.OutputStreamWriter;
 import java.nio.charset.Charset;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.List;
 
 import said.ahmad.javafx.tracker.datatype.UserContextMenu;
-import said.ahmad.javafx.tracker.system.call.inner.CallBackContext;
-import said.ahmad.javafx.tracker.system.call.inner.FunctionName;
 import said.ahmad.javafx.tracker.system.call.inner.InnerFunctionCall;
+import said.ahmad.javafx.tracker.system.call.inner.InnerFunctionName;
 import said.ahmad.javafx.tracker.system.file.PathLayer;
 import said.ahmad.javafx.tracker.system.file.PathLayerHelper;
 
@@ -69,8 +69,9 @@ public class GenericCaller {
 	 * @return
 	 * @throws IOException
 	 */
-	public static Process call(List<PathLayer> selections, UserContextMenu con) throws IOException {
-		Process p = null;
+	public static List<CallReturnHolder> call(List<PathLayer> selections, UserContextMenu con, boolean executeProcess)
+			throws IOException {
+		List<CallReturnHolder> callReturn = new ArrayList<>();
 		
 		/**
 		 * 	optional to do later if it is worth combining all list of files in case of recursive mode and use most common root
@@ -89,8 +90,11 @@ public class GenericCaller {
 						.forEach(entry -> combinedCallCMD.append(" \"").append(entry).append("\""));
 
 				combinedCallCMD.append(" ").append(con.getPostfixCommandOptionsEvaluated(selections, null));
-				p = Runtime.getRuntime().exec(combinedCallCMD.toString(), null,
-						selections.get(0).getParentPath().toFileIfLocal());
+				Process pComb = null;
+				File workingDirComb = selections.get(0).getParentPath().toFileIfLocal();
+				if (executeProcess)
+					pComb = Runtime.getRuntime().exec(combinedCallCMD.toString(), null, workingDirComb);
+				callReturn.add(new CallReturnHolder(pComb, combinedCallCMD.toString(), workingDirComb));
 				break;
 
 			case SEPARATE_CALL :
@@ -100,14 +104,18 @@ public class GenericCaller {
 							.append(con.getPrefixCommandOptionsEvaluated(selections, selection));
 
 					singleCallCMD.append("\"")
-							.append(isUsingRelatifPath ? 
+							.append(isUsingRelatifPath ?
 									selection.getName():
 									selection.toString())
 							.append("\"");
-				
+
 					singleCallCMD.append(" ").append(con.getPostfixCommandOptionsEvaluated(selections, selection));
-					p = Runtime.getRuntime().exec(singleCallCMD.toString(), null,
-							selection.getParentPath().toFileIfLocal());
+					Process pSing = null;
+					File workingDirSing = selection.getParentPath().toFileIfLocal();
+					if (executeProcess)
+						pSing = Runtime.getRuntime().exec(singleCallCMD.toString(), null, workingDirSing);
+
+					callReturn.add(new CallReturnHolder(pSing, singleCallCMD.toString(), workingDirSing));
 				}
 				break;
 
@@ -119,15 +127,25 @@ public class GenericCaller {
 				File tempFileList = getTempFileList(selections, isUsingRelatifPath,"contextTracker", ".txt");
 				txtFileCallCMD.append("\"").append(tempFileList).append("\"");
 				txtFileCallCMD.append(" ").append(con.getPostfixCommandOptionsEvaluated(selections, null));
-				p = Runtime.getRuntime().exec(txtFileCallCMD.toString(), null,
-						selections.get(0).getParentPath().toFileIfLocal());
+				Process pTxt = null;
+				File workingDirTxt = selections.get(0).getParentPath().toFileIfLocal();
+				if (executeProcess)
+					pTxt = Runtime.getRuntime().exec(txtFileCallCMD.toString(), null, workingDirTxt);
+				callReturn.add(new CallReturnHolder(pTxt, txtFileCallCMD.toString(), workingDirTxt));
 				break;
 			case INNER_FUNCTION:
 				try {
-					FunctionName functionName = FunctionName.valueOf(con.getPathToExecutable().toUpperCase());
-					if(InnerFunctionCall.getFunctionCalls().containsKey(functionName)){
+					InnerFunctionName innerFunctionName = InnerFunctionName
+							.valueOf(con.getPathToExecutable().toUpperCase());
+					if (InnerFunctionCall.FUNCTION_CALLS.containsKey(innerFunctionName)) {
+						callReturn.add(new CallReturnHolder(null,
+								innerFunctionName + ": " + innerFunctionName.getDescription(), null));
+						if (executeProcess)
+							InnerFunctionCall.FUNCTION_CALLS.get(innerFunctionName).call(selections, con);
+					} else {
 						// function name isn't implemented
-						InnerFunctionCall.getFunctionCalls().get(functionName).call(selections, con);
+						callReturn.add(new CallReturnHolder(null, innerFunctionName + ": "
+								+ innerFunctionName.getDescription() + " --> is not implemented yet!", null));
 					}
 				} catch (IllegalArgumentException exception){
 					// function name doesn't exist
@@ -135,6 +153,6 @@ public class GenericCaller {
 				}
 				break;
 		}
-		return p;
+		return callReturn;
 	}
 }

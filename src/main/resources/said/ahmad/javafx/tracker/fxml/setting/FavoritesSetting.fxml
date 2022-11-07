@@ -6,21 +6,25 @@
 <?import javafx.scene.control.ListView?>
 <?import javafx.scene.control.ScrollPane?>
 <?import javafx.scene.control.TextField?>
-<?import javafx.scene.layout.AnchorPane?>
 <?import javafx.scene.layout.HBox?>
 <?import javafx.scene.layout.VBox?>
 <?import javafx.scene.text.Text?>
+<?import javafx.scene.text.TextFlow?>
 
-<ScrollPane fx:id="pane" fitToHeight="true" fitToWidth="true" prefHeight="500.0" prefWidth="700.0" xmlns="http://javafx.com/javafx/8.0.171" xmlns:fx="http://javafx.com/fxml/1">
+<ScrollPane fx:id="pane" fitToHeight="true" fitToWidth="true" prefHeight="500.0" prefWidth="700.0" xmlns="http://javafx.com/javafx/8" xmlns:fx="http://javafx.com/fxml/1">
    <content>
       <VBox maxWidth="1.7976931348623157E308">
          <children>
-            <AnchorPane prefHeight="52.0" prefWidth="627.0">
+            <HBox>
                <children>
-                  <Text layoutX="20.0" layoutY="28.0" strokeType="OUTSIDE" strokeWidth="0.0" text="- Favorites views are essentiel to save times, so you quick open your favorites folders where ever they are. Soon you will be addicted to use them." wrappingWidth="590.822265625" />
-                  <Label layoutX="3.0" layoutY="-10.0" text="Description" />
+                  <TextFlow>
+                     <children>
+                        <Label style="-fx-font-weight: bold;" text="Description:" />
+                        <Text strokeType="OUTSIDE" strokeWidth="0.0" text="   Favorites views are essentiel to save times, so you quick open your favorites folders where ever they are. Soon you will be addicted to use them." />
+                     </children>
+                  </TextFlow>
                </children>
-            </AnchorPane>
+            </HBox>
             <Label style="-fx-font-weight: bold;" text="Favorites Location">
                <VBox.margin>
                   <Insets top="5.0" />

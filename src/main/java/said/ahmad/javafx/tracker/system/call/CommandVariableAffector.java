@@ -82,6 +82,9 @@ public class CommandVariableAffector {
 				case PARENT_NAME :
 					evaluatedCommand.append(usedFileForEvaluation.getParentPath().getName());
 					break;
+				case FILES_COUNT:
+					evaluatedCommand.append(selections.size());
+					break;
 			}
 		}
 		if (lastIndex < command.length()) {

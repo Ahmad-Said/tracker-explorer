@@ -1,4 +1,5 @@
-V6.1:
+V6.2:
+NEW: Interface for creating user defined context menu
 NEW: multi select table items with drag mouse
 
 IMPROVE: Coloration of last selected row

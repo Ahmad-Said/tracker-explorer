@@ -32,6 +32,7 @@ import javafx.util.Duration;
 import said.ahmad.javafx.tracker.app.DialogHelper;
 import said.ahmad.javafx.tracker.app.Main;
 import said.ahmad.javafx.tracker.app.ResourcesHelper;
+import said.ahmad.javafx.tracker.app.look.IconLoader;
 import said.ahmad.javafx.tracker.app.look.ThemeManager;
 import said.ahmad.javafx.tracker.controller.splitview.SplitViewController;
 import said.ahmad.javafx.tracker.datatype.MediaCutData;
@@ -114,7 +115,7 @@ public class FilterVLCController {
 	private FileTracker mfileTracker;
 	private PathLayer mPath;
 
-	public static final Image FILTER_ICON_IMAGE = new Image(ResourcesHelper.getResourceAsStream("/img/filter_vlc.png"));
+	public static final Image FILTER_ICON_IMAGE = IconLoader.getIconImageForStage(IconLoader.ICON_TYPE.PLAY_MEDIA);
 
 	/**
 	 * this is the constructor called if controller is defined from within

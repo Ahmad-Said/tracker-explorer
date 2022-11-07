@@ -121,6 +121,11 @@ public class UserSettingController extends GenericSettingController {
 	}
 
 	@Override
+	public boolean isValidNewSetting(boolean showDialogAlert) {
+		return true;
+	}
+
+	@Override
 	public boolean pushDataToSetting() {
 		boolean isUsersChanged = !Setting.getUserNames()
 				.equals(userData.stream().map(e -> e).collect(Collectors.toList()));

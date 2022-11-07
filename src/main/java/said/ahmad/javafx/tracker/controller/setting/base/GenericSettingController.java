@@ -92,11 +92,23 @@ public abstract class GenericSettingController {
 	public abstract void pullDataFromSetting();
 
 	/**
-	 * Used to save form data setting to {@link Setting}
+	 * Check if current setting are valid and ready to be saved<br>
+	 * This function will be called before {@link #pushDataToSetting()} and before
+	 * moving to other generic controller.<br>
+	 * Showing detail of possible error and dialog alert is up to the generic
+	 * controller implementation
 	 *
+	 * @param showDialogAlert show dialog alert if set to true, silent otherwise
+	 * @return true if setting are valid, false otherwise
+	 */
+	public abstract boolean isValidNewSetting(boolean showDialogAlert);
+
+	/**
+	 * Used to save form data setting to {@link Setting} <br>
+	 * if {@link #isValidNewSetting()} returned false, nothing is saved
 	 * @return <code>true</code>If changes occurs and require refresh of view<br>
 	 *         <code>false</code> otherwise.<br>
-	 *         Example when changing active user in setting this require loading
+	 *         Example when changing active user in setting this requires loading
 	 *         other tracker data in view thus require a refresh
 	 */
 	public abstract boolean pushDataToSetting();

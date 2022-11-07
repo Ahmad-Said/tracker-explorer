@@ -6,6 +6,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Optional;
 
+import javafx.stage.Window;
 import org.jetbrains.annotations.Nullable;
 
 import javafx.application.Platform;
@@ -46,7 +47,7 @@ public class DialogHelper {
 		return showAlert(alertType, title, header, content, defaultStage);
 	}
 
-	public static boolean showAlert(AlertType alertType, String title, String header, String content, Stage owner) {
+	public static boolean showAlert(AlertType alertType, String title, String header, String content, Window owner) {
 		Alert alert = new Alert(alertType);
 		alert.setTitle(title);
 		alert.setHeaderText(header);

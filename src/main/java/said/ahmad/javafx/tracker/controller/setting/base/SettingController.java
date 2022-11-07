@@ -3,38 +3,30 @@ package said.ahmad.javafx.tracker.controller.setting.base;
 import java.io.IOException;
 import java.util.LinkedHashMap;
 
+import javafx.application.Platform;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
+import javafx.scene.control.*;
 import javafx.scene.control.Alert.AlertType;
-import javafx.scene.control.Button;
-import javafx.scene.control.SplitPane;
-import javafx.scene.control.TextField;
-import javafx.scene.control.TreeItem;
-import javafx.scene.control.TreeView;
 import javafx.scene.image.Image;
 import javafx.scene.layout.VBox;
-import javafx.stage.Modality;
 import javafx.stage.Stage;
 import said.ahmad.javafx.tracker.app.DialogHelper;
-import said.ahmad.javafx.tracker.app.Main;
 import said.ahmad.javafx.tracker.app.ResourcesHelper;
 import said.ahmad.javafx.tracker.app.look.IconLoader;
 import said.ahmad.javafx.tracker.app.look.IconLoader.ICON_TYPE;
 import said.ahmad.javafx.tracker.app.look.ThemeManager;
 import said.ahmad.javafx.tracker.app.pref.Setting;
 import said.ahmad.javafx.tracker.controller.WelcomeController;
-import said.ahmad.javafx.tracker.controller.setting.FavoritesSettingController;
-import said.ahmad.javafx.tracker.controller.setting.MiscSettingController;
-import said.ahmad.javafx.tracker.controller.setting.TrackerPlayerSettingController;
-import said.ahmad.javafx.tracker.controller.setting.UserSettingController;
+import said.ahmad.javafx.tracker.controller.setting.*;
 
 public class SettingController {
 
 	public static enum Setting_TYPE {
-		MISC, USERS, FAVORITE, TRACKER_PLAYER,
+		MISC, USERS, FAVORITE, TRACKER_PLAYER, CONTEXT_MENU,
 	}
 
 	private LinkedHashMap<Setting_TYPE, GenericSettingController> allSettingControllers = new LinkedHashMap<Setting_TYPE, GenericSettingController>() {
@@ -48,6 +40,7 @@ public class SettingController {
 			put(Setting_TYPE.USERS, new UserSettingController());
 			put(Setting_TYPE.FAVORITE, new FavoritesSettingController());
 			put(Setting_TYPE.TRACKER_PLAYER, new TrackerPlayerSettingController());
+			put(Setting_TYPE.CONTEXT_MENU, new ContextMenuSettingController());
 		}
 	};
 
@@ -75,7 +68,7 @@ public class SettingController {
 	private GenericSettingController currentShownSetting;
 	private Stage settingStage; // defined to close it later
 	private WelcomeController welcomeController;
-	public static final Image SETTING_ICON_IMAGE = IconLoader.getIconImage(ICON_TYPE.SETIING);
+	public static final Image SETTING_ICON_IMAGE = IconLoader.getIconImageForStage(ICON_TYPE.SETTING);
 
 	/**
 	 *
@@ -87,8 +80,8 @@ public class SettingController {
 		welcomeController = mWelcomeController;
 		settingStage = new Stage();
 		settingStage.sizeToScene();
-		settingStage.initOwner(Main.getPrimaryStage());
-		settingStage.initModality(Modality.WINDOW_MODAL);
+		// settingStage.initOwner(Main.getPrimaryStage());
+		// settingStage.initModality(Modality.WINDOW_MODAL);
 		Parent root;
 		Scene scene;
 		try {
@@ -159,8 +152,12 @@ public class SettingController {
 		treeViewSetting.setShowRoot(false);
 		treeViewSetting.getSelectionModel().selectedItemProperty()
 				.addListener((observable, oldController, newController) -> {
-					if (newController != null && newController != oldController) {
+					if (newController == null) return;
+					boolean canSwitchAsValid = currentShownSetting.isValidNewSetting(newController.getValue() != currentShownSetting);
+					if (newController != oldController && canSwitchAsValid) {
 						showSettingView(newController.getValue());
+					} else if (!canSwitchAsValid && newController.getValue() != currentShownSetting) {
+						Platform.runLater(() -> treeViewSetting.getSelectionModel().select(oldController));
 					}
 				});
 		reloadTreeView();
@@ -233,7 +230,12 @@ public class SettingController {
 
 	@FXML
 	private void saveSetting(ActionEvent event) {
+		// check validity of current setting
+		if (!currentShownSetting.isValidNewSetting(true))
+			return;
+
 		boolean isChanged = false;
+
 		for (GenericSettingController controller : allSettingControllers.values()) {
 			if (controller.isLoadedView()) {
 				isChanged |= controller.pushDataToSetting();

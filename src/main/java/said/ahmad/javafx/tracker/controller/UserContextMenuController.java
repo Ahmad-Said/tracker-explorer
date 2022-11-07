@@ -49,7 +49,7 @@ public class UserContextMenuController {
 			menuItem.setOnAction(e -> {
 				new Thread(() -> {
 					try {
-						GenericCaller.call(selections, userContextMenu);
+						GenericCaller.call(selections, userContextMenu, true);
 					} catch (Exception ex) {
 						ex.printStackTrace();
 						DialogHelper.showException(ex);

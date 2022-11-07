@@ -39,7 +39,7 @@ public class Setting {
 	public static final File SETTING_DIRECTORY = new File(System.getenv("APPDATA") + "\\Tracker Explorer");
 
 	// ---------------- Setting To be loaded as Part One TXT File ----------------
-	private static final String Version = "6.1";
+	private static final String Version = "6.2";
 	/** @since v5.1 */
 	private static long ApplicationTimesLunched = 1;
 	/** @since v5.1 */

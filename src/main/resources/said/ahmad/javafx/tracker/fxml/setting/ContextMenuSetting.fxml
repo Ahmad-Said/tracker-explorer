@@ -1,57 +1,61 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
 <?import javafx.geometry.Insets?>
+<?import javafx.scene.Cursor?>
 <?import javafx.scene.control.Button?>
+<?import javafx.scene.control.CheckBox?>
 <?import javafx.scene.control.Label?>
 <?import javafx.scene.control.ListView?>
+<?import javafx.scene.control.Menu?>
+<?import javafx.scene.control.MenuButton?>
+<?import javafx.scene.control.MenuItem?>
+<?import javafx.scene.control.RadioButton?>
 <?import javafx.scene.control.ScrollPane?>
+<?import javafx.scene.control.SplitMenuButton?>
+<?import javafx.scene.control.SplitPane?>
+<?import javafx.scene.control.TextArea?>
 <?import javafx.scene.control.TextField?>
-<?import javafx.scene.layout.AnchorPane?>
+<?import javafx.scene.control.TitledPane?>
+<?import javafx.scene.control.Tooltip?>
+<?import javafx.scene.image.ImageView?>
 <?import javafx.scene.layout.HBox?>
 <?import javafx.scene.layout.VBox?>
-<?import javafx.scene.text.Text?>
+<?import javafx.scene.text.TextFlow?>
+<?import said.ahmad.javafx.fxGraphics.IntField?>
 
-<ScrollPane fx:id="pane" fitToHeight="true" fitToWidth="true" prefHeight="500.0" prefWidth="700.0" xmlns="http://javafx.com/javafx/8.0.171" xmlns:fx="http://javafx.com/fxml/1">
+<ScrollPane fx:id="pane" fitToHeight="true" fitToWidth="true" prefWidth="700.0" xmlns="http://javafx.com/javafx/8" xmlns:fx="http://javafx.com/fxml/1">
    <content>
-      <VBox maxWidth="1.7976931348623157E308">
-         <children>
-            <AnchorPane prefHeight="52.0" prefWidth="627.0">
+      <SplitPane fx:id="splitPane" dividerPositions="0.5" orientation="VERTICAL">
+        <items>
+            <HBox fx:id="menuSelectionPane" alignment="CENTER" prefHeight="150.0" spacing="10.0">
                <children>
-                  <Text layoutX="20.0" layoutY="28.0" strokeType="OUTSIDE" strokeWidth="0.0" text="- Favorites views are essentiel to save times, so you quick open your favorites folders where ever they are. Soon you will be addicted to use them." wrappingWidth="590.822265625" />
-                  <Label layoutX="3.0" layoutY="-10.0" text="Description" />
-               </children>
-            </AnchorPane>
-            <Label style="-fx-font-weight: bold;" text="Favorites Location">
-               <VBox.margin>
-                  <Insets top="5.0" />
-               </VBox.margin>
-            </Label>
-            <Label text="(Make a selection then sort Favorites as you like)" />
-            <HBox prefHeight="50.0" prefWidth="611.0" VBox.vgrow="ALWAYS">
-               <children>
-                  <ListView fx:id="favoritesListView" prefHeight="194.0" prefWidth="443.0" HBox.hgrow="ALWAYS">
-                     <HBox.margin>
-                        <Insets right="20.0" />
-                     </HBox.margin>
-                  </ListView>
-                  <VBox prefHeight="233.0" prefWidth="197.0" spacing="5.0">
+                  <VBox alignment="CENTER_RIGHT" fillWidth="false" spacing="5.0">
                      <children>
-                        <Label text="Actions">
-                           <VBox.margin>
-                              <Insets top="10.0" />
-                           </VBox.margin>
-                        </Label>
-                        <Button fx:id="upButton" mnemonicParsing="false" onAction="#upSelectedFavorites" style="-fx-font-weight: bold;" text="Move Up">
-                           <VBox.margin>
-                              <Insets right="10.0" />
-                           </VBox.margin>
-                        </Button>
-                        <Button fx:id="downButton" mnemonicParsing="false" onAction="#downSelectedFavorites" style="-fx-font-weight: bold;" text="Move Down">
-                           <VBox.margin>
-                              <Insets right="10.0" />
-                           </VBox.margin>
-                        </Button>
-                        <Button fx:id="removeButton" mnemonicParsing="false" onAction="#removeSelectedFavorites" style="-fx-font-weight: bold;" text="Remove Selected" />
+                        <SplitMenuButton mnemonicParsing="false" onAction="#defineNewMenu" style="-fx-font-weight: bold;" text="Define new Menu">
+                           <items>
+                              <MenuItem fx:id="defineEmptyMenu" mnemonicParsing="false" onAction="#defineNewMenu" text="Empty Menu" />
+                              <MenuItem fx:id="defineDuplicateMenu" mnemonicParsing="false" onAction="#duplicateSelectedMenu" text="Duplicate selected" />
+                              <Menu mnemonicParsing="false" text="Menu From Template">
+                                <items>
+                                  <MenuItem fx:id="defineFromTemplateMenu" mnemonicParsing="false" onAction="#defineMenuFromSelectedTemplate" text="Use selected template">
+                                       <graphic>
+                                          <ListView fx:id="templateListView" />
+                                       </graphic>
+                                    </MenuItem>
+                                </items>
+                              </Menu>
+                              <Menu mnemonicParsing="false" text="From Programmed Functions">
+                                 <items>
+                                    <MenuItem fx:id="defineFromInnerFunctionMenu" mnemonicParsing="false" onAction="#defineFromSelectedInnerFunction" text="Use Selected Function">
+                                       <graphic>
+                                          <ListView fx:id="innerFunctionListView" />
+                                       </graphic>
+                                    </MenuItem>
+                                 </items>
+                              </Menu>
+                           </items>
+                        </SplitMenuButton>
+                        <Button fx:id="removeSelectedMenu" mnemonicParsing="false" onAction="#removeSelectedMenu" style="-fx-font-weight: bold;" text="Remove Selected" />
                      </children>
                      <HBox.margin>
                         <Insets />
@@ -60,49 +64,391 @@
                         <Insets bottom="5.0" />
                      </padding>
                   </VBox>
-               </children>
-            </HBox>
-            <HBox prefHeight="44.0" prefWidth="634.0">
-               <children>
-                  <Label layoutX="20.0" layoutY="20.0" text="Target:">
-                     <padding>
-                        <Insets right="20.0" top="5.0" />
-                     </padding>
-                  </Label>
-                  <Label fx:id="targetFavoriteName" layoutX="20.0" layoutY="20.0" style="-fx-font-weight: bold;" text="oldName">
-                     <padding>
-                        <Insets right="20.0" top="5.0" />
-                     </padding>
-                  </Label>
-               </children>
-               <padding>
-                  <Insets bottom="10.0" left="10.0" right="10.0" top="10.0" />
-               </padding>
-            </HBox>
-            <HBox layoutX="20.0" layoutY="303.0" prefHeight="48.0" prefWidth="634.0">
-               <padding>
-                  <Insets bottom="10.0" left="10.0" right="10.0" top="10.0" />
-               </padding>
-               <children>
-                  <Label text="New Name">
-                     <padding>
-                        <Insets right="20.0" top="5.0" />
-                     </padding>
-                  </Label>
-                  <TextField fx:id="inputFavoriteName" />
-                  <Button mnemonicParsing="false" onAction="#renameFavorite" style="-fx-font-weight: bold;" styleClass="last" text="Apply ✓" />
-                  <Label fx:id="inputFavoriteNameError" style="-fx-font-weight: bold;" text="Error Text" textFill="RED">
+                  <ListView fx:id="definedMenusListView" HBox.hgrow="SOMETIMES">
                      <HBox.margin>
-                        <Insets left="10.0" top="5.0" />
+                        <Insets />
                      </HBox.margin>
-                  </Label>
+                  </ListView>
+                  <VBox alignment="CENTER_LEFT" fillWidth="false" spacing="5.0">
+                     <children>
+                        <CheckBox fx:id="activateMenuCheckBox" mnemonicParsing="false" style="-fx-text-fill: black;" text="Activate Menu" />
+                        <HBox alignment="CENTER_LEFT" spacing="10.0">
+                           <children>
+                              <Label text="Menu Order" />
+                              <IntField fx:id="menuOrderInput" maxValue="2147483647" minValue="-2147483646" prefHeight="26.0" prefWidth="100.0" value="0" />
+                           </children>
+                        </HBox>
+                     </children>
+                  </VBox>
                </children>
             </HBox>
-         </children>
-         <padding>
-            <Insets bottom="10.0" left="10.0" right="10.0" top="10.0" />
-         </padding>
-      </VBox>
+            <VBox>
+               <children>
+                  <VBox fx:id="executablePane" spacing="5.0">
+                     <children>
+                        <HBox alignment="CENTER_LEFT" spacing="10.0">
+                           <children>
+                              <Label style="-fx-font-weight: bold;" text="Executable Path" />
+                              <TextField fx:id="executablePathInput" prefHeight="26.0" prefWidth="357.0" HBox.hgrow="ALWAYS">
+                                 <tooltip>
+                                    <Tooltip text="Example : %ProgramFiles%\Company\app.exe" />
+                                 </tooltip>
+                              </TextField>
+                              <MenuButton fx:id="browseMenuButton" mnemonicParsing="false" text="Browse">
+                                 <items>
+                                    <MenuItem mnemonicParsing="false" onAction="#clearExecutablePath" text="Clear" />
+                                    <MenuItem fx:id="browseFromSystem" mnemonicParsing="false" onAction="#browseExecutableFromSystem" text="From System" />
+                                 </items>
+                              </MenuButton>
+                           </children>
+                        </HBox>
+                        <HBox alignment="CENTER_LEFT" spacing="10.0">
+                           <children>
+                              <Label text="On Run Location:" />
+                              <Label fx:id="evaluatedExecutablePreview" style="-fx-font-weight: bold;" text="Evaluated executable path will be shown here" textFill="#3115e4" underline="true" wrapText="true">
+                                 <cursor>
+                                    <Cursor fx:constant="HAND" />
+                                 </cursor>
+                              </Label>
+                              <Label fx:id="executablePathError" style="-fx-font-weight: bold;" text="Executable path doesn't exist" textFill="RED" />
+                           </children>
+                        </HBox>
+                        <HBox alignment="CENTER_LEFT" layoutX="10.0" layoutY="41.0" spacing="10.0">
+                           <children>
+                              <Button mnemonicParsing="false" onAction="#expandAllTitledPane" text="Expand All" />
+                              <Button mnemonicParsing="false" onAction="#CollapseAllTitledPane" text="Collapse All" />
+                           </children>
+                           <VBox.margin>
+                              <Insets left="10.0" />
+                           </VBox.margin>
+                        </HBox>
+                     </children>
+                     <padding>
+                        <Insets bottom="10.0" left="10.0" right="10.0" top="10.0" />
+                     </padding>
+                  </VBox>
+                  <TitledPane fx:id="extensionTitledPane" text="Associated Extensions" VBox.vgrow="ALWAYS">
+                     <content>
+                        <VBox fx:id="extensionPane" spacing="5.0">
+                           <children>
+                              <HBox alignment="CENTER_LEFT" spacing="10.0">
+                                 <children>
+                                    <Label style="-fx-font-weight: bold;" text="Associated Extensions (separated with semi colon ;  Asterisk * for all files)" />
+                                    <Label fx:id="extensionHeaderError" style="-fx-font-weight: bold;" text="Error Text" textFill="RED" />
+                                 </children>
+                                 <VBox.margin>
+                                    <Insets />
+                                 </VBox.margin>
+                              </HBox>
+                              <HBox alignment="CENTER_LEFT" prefHeight="58.0" spacing="10.0">
+                                 <children>
+                                    <TextArea fx:id="extensionsListInputText" wrapText="true" HBox.hgrow="ALWAYS">
+                                       <HBox.margin>
+                                          <Insets />
+                                       </HBox.margin>
+                                       <tooltip>
+                                          <Tooltip text="Example : txt; doc; xml; *;" />
+                                       </tooltip>
+                                    </TextArea>
+                                 </children>
+                              </HBox>
+                              <HBox>
+                                 <children>
+                                    <Label text="Support directory context">
+                                       <HBox.margin>
+                                          <Insets right="10.0" />
+                                       </HBox.margin>
+                                    </Label>
+                                    <CheckBox fx:id="isDirectoryContextCheckBox" mnemonicParsing="false" />
+                                 </children>
+                              </HBox>
+                              <Label text="Associated Extensions Groups ( minus - at start to exclude group)" />
+                              <HBox spacing="5.0" VBox.vgrow="ALWAYS">
+                                 <children>
+                                    <VBox alignment="CENTER_RIGHT" fillWidth="false" prefWidth="250.0" spacing="5.0">
+                                       <children>
+                                          <Button fx:id="defineExtensionGroup" mnemonicParsing="false" onAction="#defineExtensionGroup" style="-fx-font-weight: bold;" text="Define new Group" />
+                                          <Button fx:id="removeExtensionGroup" layoutX="16.0" layoutY="73.0" mnemonicParsing="false" onAction="#removeExtensionGroup" style="-fx-font-weight: bold;" text="Remove Selected" />
+                                       </children>
+                                       <HBox.margin>
+                                          <Insets />
+                                       </HBox.margin>
+                                       <padding>
+                                          <Insets bottom="5.0" />
+                                       </padding>
+                                    </VBox>
+                                    <ListView fx:id="extensionGroupsListView" prefHeight="150.0">
+                                       <HBox.margin>
+                                          <Insets />
+                                       </HBox.margin>
+                                    </ListView>
+                                    <TextArea fx:id="extensionsListGroupInputText" wrapText="true">
+                                       <HBox.margin>
+                                          <Insets />
+                                       </HBox.margin>
+                                    </TextArea>
+                                 </children>
+                              </HBox>
+                              <HBox alignment="CENTER">
+                                 <children>
+                                    <Label text="Target:">
+                                       <padding>
+                                          <Insets right="3.0" top="5.0" />
+                                       </padding>
+                                    </Label>
+                                    <Label fx:id="targetGroupName" layoutX="20.0" layoutY="20.0" style="-fx-font-weight: bold;" text="oldName" HBox.hgrow="ALWAYS">
+                                       <padding>
+                                          <Insets right="20.0" top="5.0" />
+                                       </padding>
+                                    </Label>
+                                    <Label text="Rename">
+                                       <padding>
+                                          <Insets right="3.0" top="5.0" />
+                                       </padding>
+                                    </Label>
+                                    <TextField fx:id="groupNameInput" />
+                                    <Label fx:id="extensionsNameGroupError" style="-fx-font-weight: bold;" text="Error Text" textFill="RED">
+                                       <HBox.margin>
+                                          <Insets left="10.0" top="5.0" />
+                                       </HBox.margin>
+                                    </Label>
+                                 </children>
+                              </HBox>
+                           </children>
+                        </VBox>
+                     </content>
+                  </TitledPane>
+                  <TitledPane fx:id="menuNameTitledPane" text="Menu Name">
+                     <content>
+                        <VBox fx:id="menuNamePane" spacing="5.0">
+                           <children>
+                              <HBox alignment="CENTER_LEFT" prefHeight="26.0" prefWidth="659.0" spacing="10.0">
+                                 <children>
+                                    <Label style="-fx-font-weight: bold;" text="Menu Name" />
+                                    <Label fx:id="menuNameHeaderError" style="-fx-font-weight: bold;" text="Error Text" textFill="RED" />
+                                 </children>
+                                 <VBox.margin>
+                                    <Insets />
+                                 </VBox.margin>
+                              </HBox>
+                              <HBox alignment="CENTER_LEFT" prefHeight="26.0" prefWidth="659.0" spacing="10.0">
+                                 <children>
+                                    <CheckBox fx:id="isOnSingleFileCheckBox" mnemonicParsing="false" text="On Single file   " />
+                                    <TextField fx:id="aliasInput" HBox.hgrow="ALWAYS">
+                                       <tooltip>
+                                          <Tooltip text="Example: Open %NAME% with app" />
+                                       </tooltip>
+                                    </TextField>
+                                    <MenuButton fx:id="insertAliasCommand" mnemonicParsing="false" text="Insert" />
+                                 </children>
+                              </HBox>
+                              <HBox prefHeight="100.0" prefWidth="200.0">
+                                 <children>
+                                    <Label text="Preview Name: " />
+                                    <Label fx:id="aliasNamePreview" style="-fx-font-weight: bold;" text="Preview Single File Name" textFill="#3115e4" />
+                                 </children>
+                              </HBox>
+                              <HBox alignment="CENTER_LEFT" prefHeight="26.0" prefWidth="659.0" spacing="10.0">
+                                 <children>
+                                    <CheckBox fx:id="isOnMultipleFileCheckBox" mnemonicParsing="false" text="On Multiple file" />
+                                    <TextField fx:id="aliasMultipleInput" HBox.hgrow="ALWAYS">
+                                       <tooltip>
+                                          <Tooltip text="Example: Open all %COUNT% files with app" />
+                                       </tooltip>
+                                    </TextField>
+                                    <MenuButton fx:id="insertAliasMultipleCommand" mnemonicParsing="false" text="Insert" />
+                                 </children>
+                              </HBox>
+                              <HBox layoutX="10.0" layoutY="63.0" prefHeight="100.0" prefWidth="200.0">
+                                 <children>
+                                    <Label text="Preview Name: " />
+                                    <Label fx:id="aliasMultipleNamePreview" style="-fx-font-weight: bold;" text="Preview Multiple File Name" textFill="#3115e4" />
+                                 </children>
+                              </HBox>
+                              <HBox alignment="CENTER_LEFT" prefHeight="26.0" prefWidth="659.0" spacing="10.0">
+                                 <children>
+                                    <Label text="Parents Menus Names (separated with slash / )" />
+                                    <TextField fx:id="parentMenuNamesInput">
+                                       <tooltip>
+                                          <Tooltip text="Example: Open With" />
+                                       </tooltip>
+                                    </TextField>
+                                    <MenuButton fx:id="insertParentMenuName" mnemonicParsing="false" text="Insert" />
+                                    <MenuButton fx:id="parentMenuNamesPreview" mnemonicParsing="false" text="preview" />
+                                    <Label fx:id="parentMenuNamesError" style="-fx-font-weight: bold;" text="Error Text" textFill="RED" />
+                                 </children>
+                              </HBox>
+                           </children>
+                        </VBox>
+                     </content>
+                  </TitledPane>
+                  <TitledPane fx:id="iconTitledPane" text="Icon">
+                     <content>
+                        <VBox fx:id="iconPane" spacing="5.0">
+                           <children>
+                              <HBox alignment="CENTER_LEFT" spacing="10.0">
+                                 <children>
+                                    <Label style="-fx-font-weight: bold;" text="Icon" />
+                                    <Label fx:id="iconHeaderError" style="-fx-font-weight: bold;" text="Error Text" textFill="RED" />
+                                 </children>
+                                 <VBox.margin>
+                                    <Insets />
+                                 </VBox.margin>
+                              </HBox>
+                              <HBox alignment="CENTER_LEFT" spacing="10.0">
+                                 <children>
+                                    <Label text="Menu icon" />
+                                    <CheckBox fx:id="isIconUsingExecutable" mnemonicParsing="false" text="Use executable icon" />
+                                    <TextField fx:id="iconPathInput" HBox.hgrow="ALWAYS">
+                                       <HBox.margin>
+                                          <Insets left="10.0" right="10.0" />
+                                       </HBox.margin>
+                                       <tooltip>
+                                          <Tooltip text="Example: ...\app.exe  or .png or .jpg or..." />
+                                       </tooltip>
+                                    </TextField>
+                                    <MenuButton fx:id="browseIconPath" focusTraversable="false" mnemonicParsing="false" text="Browse">
+                                       <items>
+                                          <MenuItem mnemonicParsing="false" onAction="#browseIconFromSystem" text="From System" />
+                                          <MenuItem fx:id="InnerIconMenu" mnemonicParsing="false" text="Choose Icon" />
+                                       </items>
+                                       <HBox.margin>
+                                          <Insets />
+                                       </HBox.margin>
+                                    </MenuButton>
+                                    <Label text="Preview" />
+                                    <ImageView fx:id="iconImagePreview" fitHeight="30.0" fitWidth="30.0" pickOnBounds="true" preserveRatio="true">
+                                       <HBox.margin>
+                                          <Insets right="10.0" />
+                                       </HBox.margin>
+                                    </ImageView>
+                                 </children>
+                              </HBox>
+                              <HBox alignment="CENTER_LEFT" spacing="10.0">
+                                 <children>
+                                    <Label text="Parent icon" />
+                                    <CheckBox fx:id="isParentIconUsingExecutable" mnemonicParsing="false" text="Use Menu icon">
+                                       <HBox.margin>
+                                          <Insets left="-3.0" />
+                                       </HBox.margin>
+                                    </CheckBox>
+                                    <TextArea fx:id="parentIconPathInput" prefWidth="250.0" HBox.hgrow="ALWAYS">
+                                       <HBox.margin>
+                                          <Insets />
+                                       </HBox.margin>
+                                       <tooltip>
+                                          <Tooltip text="paths separated with semi colon" />
+                                       </tooltip>
+                                    </TextArea>
+                                    <MenuButton fx:id="browseParentIconPath" focusTraversable="false" mnemonicParsing="false" text="Browse">
+                                       <items>
+                                          <MenuItem mnemonicParsing="false" onAction="#browseParentIconFromSystem" text="From System" />
+                                          <MenuItem fx:id="InnerParentIconMenu" mnemonicParsing="false" text="Inner Icon">
+                                             <graphic>
+                                                <TextFlow accessibleRole="IMAGE_VIEW" maxWidth="200.0">
+                                                   <children>
+                                                      <ImageView fitHeight="30.0" fitWidth="30.0" pickOnBounds="true" preserveRatio="true" style="-fx-focus-traversable: true;" />
+                                                   </children>
+                                                </TextFlow>
+                                             </graphic>
+                                          </MenuItem>
+                                       </items>
+                                    </MenuButton>
+                                    <Button fx:id="parentIconImagePreview" mnemonicParsing="false" text="Preview" />
+                                 </children>
+                              </HBox>
+                           </children>
+                        </VBox>
+                     </content>
+                  </TitledPane>
+                  <TitledPane fx:id="callMethodTitledPane" text="Advanced Call Method">
+                     <VBox.margin>
+                        <Insets />
+                     </VBox.margin>
+                     <content>
+                        <VBox fx:id="callMethodPane" spacing="5.0">
+                           <children>
+                              <HBox alignment="CENTER_LEFT" spacing="10.0">
+                                 <children>
+                                    <Label style="-fx-font-weight: bold;" text="Advanced Call Method" />
+                                    <Label fx:id="callMethodHeaderError" style="-fx-font-weight: bold;" text="Error Text" textFill="RED" />
+                                    <Label fx:id="callMethodHeaderWarning" style="-fx-font-weight: bold;" text="Warning Text" textFill="#ff9966" />
+                                 </children>
+                                 <VBox.margin>
+                                    <Insets />
+                                 </VBox.margin>
+                              </HBox>
+                              <HBox alignment="CENTER_LEFT" spacing="10.0">
+                                 <children>
+                                    <Label text="Prefix argument">
+                                       <HBox.margin>
+                                          <Insets right="5.0" />
+                                       </HBox.margin>
+                                    </Label>
+                                    <TextField fx:id="prefixCommandInput" HBox.hgrow="ALWAYS">
+                                       <tooltip>
+                                          <Tooltip text="Example: Open %NAME% with app" />
+                                       </tooltip>
+                                    </TextField>
+                                    <MenuButton fx:id="insertPrefixCommand" mnemonicParsing="false" text="Insert" />
+                                    <Label fx:id="prefixCommandError" style="-fx-font-weight: bold;" text="Error Text" textFill="RED" />
+                                 </children>
+                              </HBox>
+                              <HBox alignment="CENTER_LEFT" spacing="10.0">
+                                 <children>
+                                    <Label text="Postfix argument" />
+                                    <TextField fx:id="postfixCommandInput" HBox.hgrow="ALWAYS">
+                                       <tooltip>
+                                          <Tooltip text="Example: Open all %COUNT% files with app" />
+                                       </tooltip>
+                                    </TextField>
+                                    <MenuButton fx:id="insertPostfixCommand" mnemonicParsing="false" text="Insert">
+                                       <items>
+                                          <MenuItem mnemonicParsing="false" text="Action 1" />
+                                          <MenuItem mnemonicParsing="false" text="Action 2" />
+                                       </items>
+                                    </MenuButton>
+                                    <Label fx:id="postfixCommandError" style="-fx-font-weight: bold;" text="Error Text" textFill="RED" />
+                                 </children>
+                              </HBox>
+                              <HBox alignment="CENTER" spacing="10.0">
+                                 <children>
+                                    <Label text="Call Method">
+                                       <HBox.margin>
+                                          <Insets right="30.0" />
+                                       </HBox.margin>
+                                    </Label>
+                                    <RadioButton fx:id="isSeparateCallMethod" mnemonicParsing="false" text="One Call per file" />
+                                    <RadioButton fx:id="isCombinedCallMethod" mnemonicParsing="false" text="One Call for all files" />
+                                    <RadioButton fx:id="isTextFileCallMethod" mnemonicParsing="false" text="One Call using text file" />
+                                    <CheckBox fx:id="isCallUsingRelatifPath" mnemonicParsing="false" text="Use Relative Path" />
+                                 </children>
+                                 <VBox.margin>
+                                    <Insets />
+                                 </VBox.margin>
+                                 <padding>
+                                    <Insets bottom="10.0" top="10.0" />
+                                 </padding>
+                              </HBox>
+                              <HBox alignment="CENTER_LEFT" layoutX="10.0" layoutY="89.0" spacing="10.0" VBox.vgrow="ALWAYS">
+                                 <children>
+                                    <Label minWidth="70.0" text="Preview Call" />
+                                    <TextArea fx:id="callCommandPreview" prefWidth="250.0" HBox.hgrow="ALWAYS" />
+                                    <Button mnemonicParsing="false" onAction="#chooseSamplePathList" text="Choose Files">
+                                       <HBox.margin>
+                                          <Insets />
+                                       </HBox.margin>
+                                    </Button>
+                                 </children>
+                              </HBox>
+                           </children>
+                        </VBox>
+                     </content>
+                  </TitledPane>
+               </children>
+            </VBox>
+        </items>
+      </SplitPane>
    </content>
    <padding>
       <Insets bottom="10.0" left="10.0" right="10.0" top="10.0" />

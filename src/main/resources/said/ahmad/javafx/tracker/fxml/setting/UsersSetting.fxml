@@ -11,16 +11,22 @@
 <?import javafx.scene.layout.VBox?>
 <?import javafx.scene.text.Text?>
 
+<?import javafx.scene.text.TextFlow?>
 <ScrollPane fx:id="pane" fitToHeight="true" fitToWidth="true" prefHeight="500.0" prefWidth="700.0" xmlns="http://javafx.com/javafx/8.0.171" xmlns:fx="http://javafx.com/fxml/1">
    <content>
       <VBox maxWidth="1.7976931348623157E308">
          <children>
-            <AnchorPane prefHeight="52.0" prefWidth="627.0">
+
+            <HBox>
                <children>
-                  <Text layoutX="20.0" layoutY="28.0" strokeType="OUTSIDE" strokeWidth="0.0" text="- Creating a new user will allow to use program in multiuser Mode so each User have it's own tracker Data!" wrappingWidth="590.822265625" />
-                  <Label layoutX="3.0" layoutY="-10.0" text="Description" />
+                  <TextFlow>
+                     <children>
+                        <Label style="-fx-font-weight: bold;" text="Description:" />
+                        <Text strokeType="OUTSIDE" strokeWidth="0.0" text="   Creating a new user will allow to use program in multiuser Mode so each User have it's own tracker Data!" />
+                     </children>
+                  </TextFlow>
                </children>
-            </AnchorPane>
+            </HBox>
             <Label style="-fx-font-weight: bold;" text="Users">
                <VBox.margin>
                   <Insets top="5.0" />
