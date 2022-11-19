@@ -537,7 +537,7 @@ public class FilterVLCController {
 			String inputEndText = inputEnd.getText();
 			resume.value = studyFormat(inputEndText, where.toString(), false);
 		}
-		if (resume.value.toSeconds() == 0) {
+		if (resume.value != null && resume.value.toSeconds() == 0) {
 			resume.value = null;
 		}
 

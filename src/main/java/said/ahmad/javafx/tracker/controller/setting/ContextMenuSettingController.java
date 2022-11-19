@@ -315,6 +315,9 @@ public class ContextMenuSettingController extends GenericSettingController {
 	private RadioButton isTextFileCallMethod;
 
 	@FXML
+	private CheckBox isShowProcessOutput;
+
+	@FXML
 	private CheckBox isCallUsingRelatifPath;
 
 	@FXML
@@ -1001,6 +1004,13 @@ public class ContextMenuSettingController extends GenericSettingController {
 			generateCallPreview();
 		});
 
+		isShowProcessOutput.selectedProperty().addListener((observable, oldValue, newValue) -> {
+			if (currentContextMenu == null)
+				return;
+			currentContextMenu.setShowProcessOutput(newValue);
+			generateCallPreview();
+		});
+
 		isCallUsingRelatifPath.selectedProperty().addListener((observable, oldValue, newValue) -> {
 			if (currentContextMenu == null)
 				return;
@@ -1530,6 +1540,7 @@ public class ContextMenuSettingController extends GenericSettingController {
 				activeCommandMethodToggle.selectToggle(null);
 		}
 		isCallUsingRelatifPath.setSelected(currentContextMenu.isCallUsingRelatifPath());
+		isShowProcessOutput.setSelected(currentContextMenu.isShowProcessOutput());
 		generateMenuPreview();
 	}
 
@@ -1574,6 +1585,6 @@ public class ContextMenuSettingController extends GenericSettingController {
 		postfixCommandInput.clear();
 		activeCommandMethodToggle.selectToggle(null);
 		isCallUsingRelatifPath.setSelected(false);
-
+		isShowProcessOutput.setSelected(false);
 	}
 }

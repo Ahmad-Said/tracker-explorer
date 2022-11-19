@@ -6,7 +6,11 @@ public enum InnerFunctionName {
     /**
      * Command to merge multiple files together
      */
-    MERGE_PDF("Combine multiple pdf files into one file");
+    MERGE_PDF("Combine multiple pdf files into one file"),
+
+    COPY_FULL_PATH("Copy full path to clipbaord"),
+
+    COPY_FILE_NAME("Copy file name to clipboard");
 
     @Getter
     private String description;

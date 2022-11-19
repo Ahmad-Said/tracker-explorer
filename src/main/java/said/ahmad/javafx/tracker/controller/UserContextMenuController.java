@@ -5,6 +5,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import javafx.application.Platform;
+import javafx.scene.control.Alert;
 import org.jetbrains.annotations.Nullable;
 
 import javafx.scene.control.Menu;
@@ -18,9 +20,9 @@ import said.ahmad.javafx.tracker.app.StringHelper;
 import said.ahmad.javafx.tracker.app.look.IconLoader;
 import said.ahmad.javafx.tracker.app.pref.Setting;
 import said.ahmad.javafx.tracker.datatype.UserContextMenu;
+import said.ahmad.javafx.tracker.system.call.CallReturnHolder;
 import said.ahmad.javafx.tracker.system.call.GenericCaller;
 import said.ahmad.javafx.tracker.system.file.PathLayer;
-import said.ahmad.javafx.util.ArrayListHelper;
 import said.ahmad.javafx.util.CallBackVoid;
 
 public class UserContextMenuController {
@@ -49,10 +51,12 @@ public class UserContextMenuController {
 			menuItem.setOnAction(e -> {
 				new Thread(() -> {
 					try {
-						GenericCaller.call(selections, userContextMenu, true);
+						List<CallReturnHolder> callReturnHolderList = GenericCaller.call(selections, userContextMenu,
+								true);
+						Platform.runLater(() -> showProcessOutputInDialogAlert(callReturnHolderList, userContextMenu));
 					} catch (Exception ex) {
 						ex.printStackTrace();
-						DialogHelper.showException(ex);
+						Platform.runLater(() -> DialogHelper.showException(ex));
 					}
 				}).start();
 			});
@@ -62,6 +66,38 @@ public class UserContextMenuController {
 			menuItem.setGraphic(imgView);
 		}
 		return menuItem;
+	}
+
+	/**
+	 * show process output in dialog alert if UserContextMenu have show process
+	 * enabled
+	 *
+	 * @param callReturnHolderList
+	 *            the list of return call made by context menu on the files
+	 * @param userContextMenu
+	 *            the context menu used in call
+	 */
+	private static void showProcessOutputInDialogAlert(List<CallReturnHolder> callReturnHolderList,
+			UserContextMenu userContextMenu) {
+		if (userContextMenu.isShowProcessOutput()) {
+			long numberOfErrors = CallReturnHolder.getNumberOfErrors(callReturnHolderList);
+			long numberOfSuccess = callReturnHolderList.size() - numberOfErrors;
+			Alert.AlertType alertType;
+			String title = "Tracker Explorer";
+			String header = "";
+			String content = "";
+			String expandableContent = CallReturnHolder.getPrettyProcessOutputs(callReturnHolderList);
+			if (numberOfErrors > 0) {
+				alertType = Alert.AlertType.ERROR;
+				header = "--- " + numberOfErrors + " --- calls went wrong";
+			} else {
+				alertType = Alert.AlertType.INFORMATION;
+			}
+			if (numberOfSuccess > 0) {
+				header = header + "--- " + numberOfSuccess + " --- calls went well";
+			}
+			DialogHelper.showExpandableAlert(alertType, title, header, content, expandableContent);
+		}
 	}
 
 	/**

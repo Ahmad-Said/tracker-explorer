@@ -132,6 +132,11 @@ public class UserContextMenu implements Cloneable {
 	private CallMethod callMethod;
 
 	/**
+	 * if set to true will show process standard and error output to user
+	 */
+	private boolean showProcessOutput;
+
+	/**
 	 * Call will use relatif path of files when files are in same directory. When
 	 * calling a file using executable file command will be like in case of: <br>
 	 * <ul>

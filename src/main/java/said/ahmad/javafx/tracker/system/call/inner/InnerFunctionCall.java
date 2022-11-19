@@ -9,6 +9,8 @@ public class InnerFunctionCall {
             new HashMap<InnerFunctionName, CallBackContext>() {
                 {
                     put(InnerFunctionName.MERGE_PDF, new PdfMergerFunction());
+                    put(InnerFunctionName.COPY_FULL_PATH, new CopyPathFunction(true));
+                    put(InnerFunctionName.COPY_FILE_NAME, new CopyPathFunction(false));
                 }
             }
     );

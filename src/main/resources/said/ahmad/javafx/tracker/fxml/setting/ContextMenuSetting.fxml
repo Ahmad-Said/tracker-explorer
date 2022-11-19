@@ -371,6 +371,7 @@
                               <HBox alignment="CENTER_LEFT" spacing="10.0">
                                  <children>
                                     <Label style="-fx-font-weight: bold;" text="Advanced Call Method" />
+                                    <CheckBox fx:id="isShowProcessOutput" mnemonicParsing="false" text="Show Output After Call" />
                                     <Label fx:id="callMethodHeaderError" style="-fx-font-weight: bold;" text="Error Text" textFill="RED" />
                                     <Label fx:id="callMethodHeaderWarning" style="-fx-font-weight: bold;" text="Warning Text" textFill="#ff9966" />
                                  </children>

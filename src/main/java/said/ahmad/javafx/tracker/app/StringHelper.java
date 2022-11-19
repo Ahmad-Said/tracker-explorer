@@ -16,6 +16,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 import org.apache.commons.io.FilenameUtils;
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import javafx.scene.Node;
@@ -161,26 +162,37 @@ public class StringHelper {
 	}
 
 	public static void PrintProcessOutput(Process proc) {
+		// read the output from the command
+		System.out.println("Here is the standard output of the command:\n");
+		System.out.println(getProcessStandardOutput(proc));
+		// read any errors from the attempted command
+		System.out.println("Here is the standard error of the command (if any):\n");
+		System.out.println(getProcessErrorOutput(proc));
+	}
+
+	public static String getProcessStandardOutput(Process proc) {
 		BufferedReader stdInput = new BufferedReader(new InputStreamReader(proc.getInputStream()));
+		return getStringFromBufferedReader(stdInput);
+	}
 
-		BufferedReader stdError = new BufferedReader(new InputStreamReader(proc.getErrorStream()));
+	public static String getProcessErrorOutput(Process proc) {
+		BufferedReader stdInput = new BufferedReader(new InputStreamReader(proc.getErrorStream()));
+		return getStringFromBufferedReader(stdInput);
+	}
 
+	@NotNull
+	private static String getStringFromBufferedReader(BufferedReader stdInput) {
+		StringBuilder builder = new StringBuilder();
 		try {
 			// read the output from the command
-			System.out.println("Here is the standard output of the command:\n");
 			String s = null;
 			while ((s = stdInput.readLine()) != null) {
-				System.out.println(s);
-			}
-			// read any errors from the attempted command
-			System.out.println("Here is the standard error of the command (if any):\n");
-			while ((s = stdError.readLine()) != null) {
-				System.out.println(s);
+				builder.append(s).append("\n");
 			}
 		} catch (IOException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
+		return builder.toString();
 	}
 
 	public static Process RunRuntimeProcess(String[] cmd) {

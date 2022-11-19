@@ -9,6 +9,7 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 
+import said.ahmad.javafx.tracker.app.StringHelper;
 import said.ahmad.javafx.tracker.datatype.UserContextMenu;
 import said.ahmad.javafx.tracker.system.call.inner.InnerFunctionCall;
 import said.ahmad.javafx.tracker.system.call.inner.InnerFunctionName;
@@ -62,7 +63,10 @@ public class GenericCaller {
 	/**
 	 * Execute Command contained in UserContextMenu on the provided list.<br>
 	 * This fucntion does not check if context menu is compatible with the list.<br>
-	 * User {@link UserContextMenu#isCompatibleWithList(List)} to do so.
+	 * User {@link UserContextMenu#isCompatibleWithList(List)} to do so. <br>
+	 * 
+	 * Showing context command output is up to the caller, but will generate process
+	 * output in return holder.
 	 * 
 	 * @param selections
 	 * @param con
@@ -153,6 +157,12 @@ public class GenericCaller {
 				}
 				break;
 		}
+		if (con.isShowProcessOutput()) {
+			for (CallReturnHolder callReturnHolder : callReturn) {
+				callReturnHolder.generateProcessOutput();
+			}
+		}
+
 		return callReturn;
 	}
 }
