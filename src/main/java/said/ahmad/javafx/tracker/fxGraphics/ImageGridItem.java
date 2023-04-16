@@ -27,7 +27,6 @@ import java.util.stream.Collectors;
 import javax.imageio.ImageIO;
 import javax.imageio.ImageReader;
 import javax.imageio.stream.ImageInputStream;
-import javax.xml.ws.Holder;
 
 import org.jetbrains.annotations.Nullable;
 
@@ -93,6 +92,7 @@ import said.ahmad.javafx.tracker.system.file.local.FilePathLayer;
 import said.ahmad.javafx.tracker.system.operation.FileHelper;
 import said.ahmad.javafx.util.CallBackToDo;
 import said.ahmad.javafx.util.CallBackVoid;
+import said.ahmad.javafx.util.Holder;
 
 /**
  * To Add this imageView to a parent node use {@link #getImageAllPane()}

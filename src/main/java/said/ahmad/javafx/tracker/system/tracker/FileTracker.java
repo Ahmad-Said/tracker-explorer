@@ -7,7 +7,6 @@ import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import javax.xml.ws.Holder;
 
 import org.jetbrains.annotations.Nullable;
 
@@ -21,6 +20,7 @@ import said.ahmad.javafx.tracker.system.file.PathLayerHelper;
 import said.ahmad.javafx.tracker.system.file.ProviderType;
 import said.ahmad.javafx.tracker.system.file.local.FilePathLayer;
 import said.ahmad.javafx.tracker.system.operation.FileHelper.ActionOperation;
+import said.ahmad.javafx.util.Holder;
 
 /**
  *
@@ -514,7 +514,7 @@ public class FileTracker {
 	 */
 	@Nullable
 	private static HashMap<PathLayer, FileTrackerHolder> writeNewDefaultMap(PathLayer DirtoTrack,
-			OnWriteMapFinishCallBack<PathLayer> onFinishAction) throws IOException {
+																			OnWriteMapFinishCallBack<PathLayer> onFinishAction) throws IOException {
 		PathLayer file = DirtoTrack.resolve(UserFileName);
 		if (file.exists()) {
 			return null;
@@ -562,7 +562,7 @@ public class FileTracker {
 	 */
 	@Nullable
 	public HashMap<PathLayer, FileTrackerHolder> trackNewFolder(boolean loadIfSuccessIntoCurrentMap,
-			boolean clearPerviousMap) throws IOException {
+																boolean clearPerviousMap) throws IOException {
 		// prevent wipe is checked in write
 		@Nullable
 		HashMap<PathLayer, FileTrackerHolder> writtenMap = writeNewDefaultMap(workingDirPath, onWriteMapAction);
@@ -591,7 +591,7 @@ public class FileTracker {
 	 */
 	@Nullable
 	public HashMap<PathLayer, FileTrackerHolder> trackNewOutFolder(PathLayer DirtoTrack,
-			boolean loadIfSuccessIntoCurrentMap, boolean clearPerviousMap) throws IOException {
+																   boolean loadIfSuccessIntoCurrentMap, boolean clearPerviousMap) throws IOException {
 		// write prevent wipe old data is done in the call
 		@Nullable
 		HashMap<PathLayer, FileTrackerHolder> writtenMap = writeNewDefaultMap(DirtoTrack, null);
@@ -801,7 +801,7 @@ public class FileTracker {
 	 *         update instance map without reloading from file
 	 */
 	public static Map<PathLayer, FileTrackerHolder> operationUpdateAsList(List<? extends PathLayer> sources,
-			List<? extends PathLayer> targets, ActionOperation operation) throws IndexOutOfBoundsException {
+																		  List<? extends PathLayer> targets, ActionOperation operation) throws IndexOutOfBoundsException {
 		if (sources.size() != targets.size()) {
 			throw new IndexOutOfBoundsException("Sources list and Target list parameter must be same size");
 		}
@@ -824,69 +824,69 @@ public class FileTracker {
 			targetDirToSources.get(targetParent).add(sources.get(i));
 		}
 		switch (operation) {
-		case COPY:
-		case MOVE:
-		case DELETE:
-			// to create function in format of operationUpdate(source,targetDir,operation)
-			targetDirToSources.forEach(
-					(target, miniSources) -> allUpdatedSources.putAll(operationUpdate(miniSources, target, operation)));
-			break;
-		case RENAME:
-			// to create function in format of operationUpdate(source,targetDir,operation)
-			// Get all source Tracker Data Holders
-			Set<PathLayer> allSrcParent = PathLayerHelper.getParentsPaths(sources);
-			FileTracker miniFileTracker = new FileTracker(null, null);
-			allSrcParent.forEach(parentSrc -> {
-				miniFileTracker.loadMap(parentSrc, false, null);
-			});
-			if (miniFileTracker.mapDetailsRevolved.size() == 0) {
-				// no data to bring
+			case COPY:
+			case MOVE:
+			case DELETE:
+				// to create function in format of operationUpdate(source,targetDir,operation)
+				targetDirToSources.forEach(
+						(target, miniSources) -> allUpdatedSources.putAll(operationUpdate(miniSources, target, operation)));
 				break;
-			}
-			// append MAXIMUM time to live option in target directory files of targets list
-			// Path
-			HashMap<PathLayer, PathLayer> srcToTarget = new HashMap<>();
-			for (int i = 0; i < sources.size(); i++) {
-				if (sources.get(i) == null || targets.get(i) == null) {
-					continue;
+			case RENAME:
+				// to create function in format of operationUpdate(source,targetDir,operation)
+				// Get all source Tracker Data Holders
+				Set<PathLayer> allSrcParent = PathLayerHelper.getParentsPaths(sources);
+				FileTracker miniFileTracker = new FileTracker(null, null);
+				allSrcParent.forEach(parentSrc -> {
+					miniFileTracker.loadMap(parentSrc, false, null);
+				});
+				if (miniFileTracker.mapDetailsRevolved.size() == 0) {
+					// no data to bring
+					break;
 				}
-				srcToTarget.put(sources.get(i), targets.get(i));
-			}
-			targetDirToSources.forEach((target, miniSources) -> {
-				Holder<OutputStreamWriter> writer = new Holder<>();
-				try {
-					PathLayer trackerFile = FileTracker.getTrackerFileIn(target);
-					OutputStream outputAppendPathLayer = trackerFile.getOutputAppendFileStream();
-					if (outputAppendPathLayer == null) {
-						// Using return; will not prevent the full loop from
-						// completing. It will only stop executing the current iteration of the forEach
-						// loop.
-						return;
+				// append MAXIMUM time to live option in target directory files of targets list
+				// Path
+				HashMap<PathLayer, PathLayer> srcToTarget = new HashMap<>();
+				for (int i = 0; i < sources.size(); i++) {
+					if (sources.get(i) == null || targets.get(i) == null) {
+						continue;
 					}
-					// appending data to end with time to live
-					writer.value = new OutputStreamWriter(outputAppendPathLayer, StandardCharsets.UTF_8);
-					for (PathLayer src : miniSources) {
-						if (miniFileTracker.getMapDetails().containsKey(src)) {
-							writer.value
-									.write(miniFileTracker.getTrackerData(src).setName(srcToTarget.get(src).getName())
-											.setTimeToLive(TIME_TO_LIVE_MAX).toString());
-							allUpdatedSources.put(srcToTarget.get(src), miniFileTracker.getTrackerData(src));
-						}
-					}
-				} catch (IOException e) {
-					e.printStackTrace();
+					srcToTarget.put(sources.get(i), targets.get(i));
 				}
-				if (writer.value != null) {
+				targetDirToSources.forEach((target, miniSources) -> {
+					Holder<OutputStreamWriter> writer = new Holder<>();
 					try {
-						writer.value.close();
+						PathLayer trackerFile = FileTracker.getTrackerFileIn(target);
+						OutputStream outputAppendPathLayer = trackerFile.getOutputAppendFileStream();
+						if (outputAppendPathLayer == null) {
+							// Using return; will not prevent the full loop from
+							// completing. It will only stop executing the current iteration of the forEach
+							// loop.
+							return;
+						}
+						// appending data to end with time to live
+						writer.value = new OutputStreamWriter(outputAppendPathLayer, StandardCharsets.UTF_8);
+						for (PathLayer src : miniSources) {
+							if (miniFileTracker.getMapDetails().containsKey(src)) {
+								writer.value
+										.write(miniFileTracker.getTrackerData(src).setName(srcToTarget.get(src).getName())
+												.setTimeToLive(TIME_TO_LIVE_MAX).toString());
+								allUpdatedSources.put(srcToTarget.get(src), miniFileTracker.getTrackerData(src));
+							}
+						}
 					} catch (IOException e) {
 						e.printStackTrace();
 					}
-				}
-			});
+					if (writer.value != null) {
+						try {
+							writer.value.close();
+						} catch (IOException e) {
+							e.printStackTrace();
+						}
+					}
+				});
 
-		default:
-			break;
+			default:
+				break;
 		}
 		return allUpdatedSources;
 	}
@@ -910,7 +910,7 @@ public class FileTracker {
 	 *         delete
 	 */
 	public static Map<PathLayer, FileTrackerHolder> operationUpdate(List<? extends PathLayer> source,
-			PathLayer targetDir, ActionOperation operation) {
+																	PathLayer targetDir, ActionOperation operation) {
 		// get parent to son map to deal with each list of son brother together
 		HashMap<PathLayer, List<PathLayer>> parentToFiles = PathLayerHelper.getParentTochildren(source);
 		// All key changed map
@@ -933,7 +933,7 @@ public class FileTracker {
 		FileTracker senderFileTracker = new FileTracker(null, null);
 		tryBlock: try {
 			PathLayer trackerFile = null;
-			Holder<OutputStreamWriter> writer = new Holder<OutputStreamWriter>(null);
+			Holder<OutputStreamWriter> writer = new Holder<>(null);
 			if (operation.equals(ActionOperation.DELETE)) {
 				// will open stream file for each list of son
 				targetDir = null;// to prevent further access

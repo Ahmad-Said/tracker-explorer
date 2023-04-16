@@ -18,13 +18,12 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
-import javax.xml.ws.Holder;
 
+import javafx.scene.control.skin.TableColumnHeader;
 import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.lang3.SystemUtils;
 import org.jetbrains.annotations.Nullable;
 
-import com.sun.javafx.scene.control.skin.TableColumnHeader;
 
 import javafx.application.Platform;
 import javafx.collections.FXCollections;
@@ -98,6 +97,7 @@ import said.ahmad.javafx.tracker.system.tracker.FileTrackerDirectoryOptions;
 import said.ahmad.javafx.tracker.system.tracker.FileTrackerHolder;
 import said.ahmad.javafx.util.ArrayListHelper;
 import said.ahmad.javafx.util.ControlListHelper;
+import said.ahmad.javafx.util.Holder;
 
 /**
  * For a structure view read {@link #SplitViewController}

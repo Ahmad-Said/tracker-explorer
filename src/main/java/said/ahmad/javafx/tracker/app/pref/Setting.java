@@ -121,7 +121,9 @@ public class Setting {
 			p.println("isMaximized=" + isMaximized);
 			p.println("VLCHttpPass=" + getVLCHttpPass());
 			// saved as URI
-			p.println("VLCPath=" + VLC.getPath_Setup().toUri().toString());
+			if (VLC.getPath_Setup() != null) {
+				p.println("VLCPath=" + VLC.getPath_Setup().toUri().toString());
+			}
 			if (TeraCopy.getPath_Setup() != null) {
 				p.println("TeraCopyPath=" + TeraCopy.getPath_Setup().toUri().toString());
 			}

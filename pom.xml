@@ -7,7 +7,7 @@
 	<groupId>said.ahmad.javafx</groupId>
 	<artifactId>TrackerExplorer</artifactId>
 	<!-- Unique POM identifiers version -->
-	<version>6.2</version>
+	<version>6.3</version>
 
 	<!-- Project name -->
 	<name>Tracker Explorer</name>
@@ -20,8 +20,8 @@
 
 	<properties>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-		<maven.compiler.source>1.8</maven.compiler.source>
-		<maven.compiler.target>1.8</maven.compiler.target>
+		<maven.compiler.source>17</maven.compiler.source>
+		<maven.compiler.target>17</maven.compiler.target>
 
 		<!-- Deploy package variables -->
 		<exec.mainClass>said.ahmad.javafx.tracker.app.Main</exec.mainClass>
@@ -43,6 +43,26 @@
 	</properties>
 
 	<dependencies>
+
+		<dependency>
+			<groupId>org.openjfx</groupId>
+			<artifactId>javafx-controls</artifactId>
+			<version>17.0.2</version>
+		</dependency>
+		<dependency>
+			<groupId>org.openjfx</groupId>
+			<artifactId>javafx-fxml</artifactId>
+			<version>17.0.2</version>
+		</dependency>
+
+		<!-- https://mvnrepository.com/artifact/org.openjfx/javafx-swing -->
+		<dependency>
+			<groupId>org.openjfx</groupId>
+			<artifactId>javafx-swing</artifactId>
+			<version>17.0.2</version>
+		</dependency>
+
+
 
 		<!-- https://mvnrepository.com/artifact/org.apache.commons/commons-text -->
 		<dependency>
@@ -146,6 +166,27 @@
 					<source>${maven.compiler.source}</source>
 					<target>${maven.compiler.target}</target>
 				</configuration>
+			</plugin>
+
+			<plugin>
+				<groupId>org.openjfx</groupId>
+				<artifactId>javafx-maven-plugin</artifactId>
+				<version>0.0.8</version>
+				<executions>
+					<execution>
+						<!-- Default configuration for running with: mvn clean javafx:run -->
+						<id>default-cli</id>
+						<configuration>
+							<mainClass>${exec.mainClass}</mainClass>
+							<launcher>app</launcher>
+							<jlinkZipName>app</jlinkZipName>
+							<jlinkImageName>app</jlinkImageName>
+							<noManPages>true</noManPages>
+							<stripDebug>true</stripDebug>
+							<noHeaderFiles>true</noHeaderFiles>
+						</configuration>
+					</execution>
+				</executions>
 			</plugin>
 
 			<plugin>

@@ -5,7 +5,6 @@ import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
 
-import javax.xml.ws.Holder;
 
 import org.jetbrains.annotations.Nullable;
 
@@ -14,6 +13,7 @@ import javafx.collections.MapChangeListener;
 import javafx.collections.ObservableMap;
 import said.ahmad.javafx.tracker.system.file.PathLayer;
 import said.ahmad.javafx.tracker.system.file.PathLayerHelper;
+import said.ahmad.javafx.util.Holder;
 
 /**
  * {@link FavoriteView#getTitle()} are considered as keys of favorites locations

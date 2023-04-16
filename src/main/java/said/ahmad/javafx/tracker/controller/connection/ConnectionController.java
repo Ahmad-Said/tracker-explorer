@@ -3,7 +3,6 @@ package said.ahmad.javafx.tracker.controller.connection;
 import java.io.IOException;
 import java.util.HashMap;
 
-import javax.xml.ws.Holder;
 
 import javafx.application.Platform;
 import javafx.collections.FXCollections;
@@ -30,6 +29,7 @@ import said.ahmad.javafx.tracker.controller.connection.ftp.FTPConnectionControll
 import said.ahmad.javafx.tracker.controller.connection.local.LocalConnectionController;
 import said.ahmad.javafx.tracker.system.file.PathLayer;
 import said.ahmad.javafx.util.CallBackVoid;
+import said.ahmad.javafx.util.Holder;
 
 public class ConnectionController {
 

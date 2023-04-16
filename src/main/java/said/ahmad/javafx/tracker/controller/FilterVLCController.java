@@ -6,7 +6,6 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
-import javax.xml.ws.Holder;
 
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
@@ -529,20 +528,20 @@ public class FilterVLCController {
 							+ "\n- Exit VLC"
 							+ "\n- Press thr right sign after you exit VLC");
 		}
-		Holder<Duration> resume = new Holder<>(null);
+		Duration resume = null;
 		if (where.equals(TimeMoment.START)) {
 			String inputStartText = inputStart.getText();
-			resume.value = studyFormat(inputStartText, where.toString(), false);
+			resume = studyFormat(inputStartText, where.toString(), false);
 		} else {
 			String inputEndText = inputEnd.getText();
-			resume.value = studyFormat(inputEndText, where.toString(), false);
+			resume = studyFormat(inputEndText, where.toString(), false);
 		}
-		if (resume.value != null && resume.value.toSeconds() == 0) {
-			resume.value = null;
+		if (resume != null && resume.toSeconds() == 0) {
+			resume = null;
 		}
 
 		try {
-			VLC.startVLCAtSpecificMoment(mPath.toURI(), resume.value);
+			VLC.startVLCAtSpecificMoment(mPath.toURI(), resume);
 		} catch (VLCException e) {
 			DialogHelper.showException(e);
 		} catch (IOException e) {
