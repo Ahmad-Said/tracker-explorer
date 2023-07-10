@@ -6,19 +6,27 @@ import javafx.scene.image.ImageView;
 import javafx.scene.text.Font;
 import javafx.scene.text.Text;
 import javafx.scene.text.TextFlow;
+import lombok.Getter;
+import lombok.Setter;
+import org.apache.commons.io.FilenameUtils;
 import said.ahmad.javafx.tracker.app.StringHelper;
 import said.ahmad.javafx.tracker.system.SystemIconsHelper;
 import said.ahmad.javafx.tracker.system.file.PathLayer;
 
-public class RenameUtilityViewModel {
-	private CheckBox ConsiderCheckBox;
-	private ImageView imgIcon;
-	private TextFlow OldName;
-	// https://docs.oracle.com/javase/8/javafx/api/javafx/scene/text/TextFlow.html
-	private TextFlow NewName;
+import javax.annotation.Nullable;
 
-	private PathLayer PathFile;
-	private static int TextFlowHeigh = 35;
+@Getter
+@Setter
+public class RenameUtilityViewModel {
+	private CheckBox considerCheckBox;
+	private ImageView imgIcon;
+	private TextFlow oldName;
+	// https://docs.oracle.com/javase/8/javafx/api/javafx/scene/text/TextFlow.html
+	private TextFlow newName;
+
+	@Nullable
+	private PathLayer pathFile;
+	private static final int TEXT_FLOW_HEIGH = 35;
 
 	public RenameUtilityViewModel(PathLayer path) {
 		String name = path.getName();
@@ -26,9 +34,9 @@ public class RenameUtilityViewModel {
 		setOldName(name);
 		setNewName(name);
 		setPathFile(path);
-		ConsiderCheckBox = new CheckBox();
-		ConsiderCheckBox.setSelected(true);
-		Image fxImage = SystemIconsHelper.getFileIcon(PathFile);
+		considerCheckBox = new CheckBox();
+		considerCheckBox.setSelected(true);
+		Image fxImage = SystemIconsHelper.getFileIcon(pathFile);
 		imgIcon = new ImageView(fxImage);
 	}
 
@@ -37,67 +45,34 @@ public class RenameUtilityViewModel {
 		setOldName(name);
 		setNewName(name);
 		setPathFile(null);
-		ConsiderCheckBox = new CheckBox();
-		ConsiderCheckBox.setSelected(true);
+		considerCheckBox = new CheckBox();
+		considerCheckBox.setSelected(true);
 		Image fxImage = SystemIconsHelper.getFileIcon("TXT");
 		imgIcon = new ImageView(fxImage);
 	}
 
 	public void resetNewName() {
-		NewName.getChildren().clear();
-		Text temp = new Text(getOldName());
+		newName.getChildren().clear();
+		Text temp = new Text(getOldNameAsString());
 		temp.setFont(Font.font(15));
-		NewName.getChildren().add(temp);
+		newName.getChildren().add(temp);
 	}
 
-	public String getOldName() {
-		return StringHelper.textFlowToString(OldName);
-	}
-
-	public CheckBox getConsiderCheckBox() {
-		return ConsiderCheckBox;
-	}
-
-	public void setConsiderCheckBox(CheckBox considerCheckBox) {
-		ConsiderCheckBox = considerCheckBox;
-	}
-
-	/**
-	 * @return the pathFile
-	 */
-	public PathLayer getPathFile() {
-		return PathFile;
-	}
-
-	/**
-	 * @param pathFile the pathFile to set
-	 */
-	public void setPathFile(PathLayer pathFile) {
-		PathFile = pathFile;
-	}
-
-	public TableViewModel toTableViewModel() {
-		return new TableViewModel(getOldName(), PathFile);
-	}
-
-	/**
-	 * @return the newName
-	 */
-	public TextFlow getNewName() {
-		return NewName;
+	public String getOldNameAsString() {
+		return StringHelper.textFlowToString(oldName);
 	}
 
 	public String getNewNameAsString() {
-		return StringHelper.textFlowToString(NewName);
+		return StringHelper.textFlowToString(newName);
 	}
 
 	public void setOldName(String oldName) {
 		Text temp = new Text(oldName);
 		temp.setFont(Font.font(15));
-		OldName = new TextFlow(temp);
-		OldName.setMaxHeight(TextFlowHeigh);
-		OldName.setMinHeight(TextFlowHeigh);
-		OldName.setPrefHeight(TextFlowHeigh);
+		this.oldName = new TextFlow(temp);
+		this.oldName.setMaxHeight(TEXT_FLOW_HEIGH);
+		this.oldName.setMinHeight(TEXT_FLOW_HEIGH);
+		this.oldName.setPrefHeight(TEXT_FLOW_HEIGH);
 	}
 
 	/**
@@ -106,31 +81,36 @@ public class RenameUtilityViewModel {
 	public void setNewName(String newName) {
 		Text temp = new Text(newName);
 		temp.setFont(Font.font(15));
-		NewName = new TextFlow(temp);
-		NewName.setMaxHeight(TextFlowHeigh);
-		NewName.setMinHeight(TextFlowHeigh);
-		NewName.setPrefHeight(TextFlowHeigh);
+		this.newName = new TextFlow(temp);
+		this.newName.setMaxHeight(TEXT_FLOW_HEIGH);
+		this.newName.setMinHeight(TEXT_FLOW_HEIGH);
+		this.newName.setPrefHeight(TEXT_FLOW_HEIGH);
 	}
 
 	/**
-	 * @param newName the newName to set
+	 * Return the name of file without extension if it is normal file.
+	 * full name otherwise (directory)
+	 * @return Name of file without extension for normal file, full name otherwise (for directory)
 	 */
-	public void setNewName(TextFlow newName) {
-		NewName = newName;
+	public String getOldBaseName() {
+		if (pathFile == null || !pathFile.isDirectory()) {
+			return FilenameUtils.getBaseName(getOldNameAsString());
+		} else {
+			return this.getOldNameAsString();
+		}
 	}
 
 	/**
-	 * @return the imgIcon
+	 * Return the extension of file if it is normal file.
+	 * empty string otherwise (directory)
+	 * @return Name of file without extension for normal file, full name otherwise (for directory)
 	 */
-	public ImageView getImgIcon() {
-		return imgIcon;
-	}
-
-	/**
-	 * @param imgIcon the imgIcon to set
-	 */
-	public void setImgIcon(ImageView imgIcon) {
-		this.imgIcon = imgIcon;
+	public String getOldExtension() {
+		if (pathFile == null || !pathFile.isDirectory()) {
+			return FilenameUtils.getExtension(getOldNameAsString());
+		} else {
+			return "";
+		}
 	}
 
 }

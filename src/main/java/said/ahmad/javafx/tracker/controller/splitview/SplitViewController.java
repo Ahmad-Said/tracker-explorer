@@ -2219,12 +2219,13 @@ public class SplitViewController implements Initializable {
 		private static final long serialVersionUID = 6421021611798519588L;
 
 		{
+			add(";video");
+			add(";audio");
+			add(";image");
 			add(";vlc");
 			add(";andThis");
 			add(";|orThis");
 			add(";!notThis");
-			add(";video");
-			add(";audio");
 		}
 	};
 

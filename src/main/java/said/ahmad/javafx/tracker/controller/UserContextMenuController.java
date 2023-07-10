@@ -53,7 +53,10 @@ public class UserContextMenuController {
 					try {
 						List<CallReturnHolder> callReturnHolderList = GenericCaller.call(selections, userContextMenu,
 								true);
-						Platform.runLater(() -> showProcessOutputInDialogAlert(callReturnHolderList, userContextMenu));
+						Platform.runLater(() -> {
+							showProcessOutputInDialogAlert(callReturnHolderList, userContextMenu);
+							System.gc();
+						});
 					} catch (Exception ex) {
 						ex.printStackTrace();
 						Platform.runLater(() -> DialogHelper.showException(ex));
