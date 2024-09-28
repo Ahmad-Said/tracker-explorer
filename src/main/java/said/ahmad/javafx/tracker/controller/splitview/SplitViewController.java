@@ -18,12 +18,14 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
+import said.ahmad.javafx.util.Holder;
 
 import javafx.scene.control.skin.TableColumnHeader;
 import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.lang3.SystemUtils;
 import org.jetbrains.annotations.Nullable;
 
+//import com.sun.javafx.scene.control.skin.TableColumnHeader;
 
 import javafx.application.Platform;
 import javafx.collections.FXCollections;
@@ -97,7 +99,6 @@ import said.ahmad.javafx.tracker.system.tracker.FileTrackerDirectoryOptions;
 import said.ahmad.javafx.tracker.system.tracker.FileTrackerHolder;
 import said.ahmad.javafx.util.ArrayListHelper;
 import said.ahmad.javafx.util.ControlListHelper;
-import said.ahmad.javafx.util.Holder;
 
 /**
  * For a structure view read {@link #SplitViewController}
@@ -346,7 +347,7 @@ public class SplitViewController implements Initializable {
 			return;
 		}
 		if (change.wasAdded()) {
-			if (isReloadingAllOperation.value) {
+			if (isReloadingAllOperation.getValue()) {
 				onAddingFavorite(change.getValueAdded(), false);
 			} else {
 				onAddingFavorite(change.getValueAdded(), true);
@@ -898,7 +899,6 @@ public class SplitViewController implements Initializable {
 	 *
 	 */
 	// SuppressWarnings Discouraged access: The type 'TableColumnHeader' is not API
-	@SuppressWarnings("restriction")
 	public void initializeTable() {
 		VBox.setVgrow(fileNotFoundImageView, Priority.ALWAYS);
 		fileNotFoundPlaceHolder.setAlignment(Pos.CENTER);
@@ -1083,9 +1083,9 @@ public class SplitViewController implements Initializable {
 					Holder<File> originalFile = new Holder<File>(db.getFiles().get(0));
 					createShortcutHere.setOnAction(e -> {
 						File shortcutFile = getmDirectoryPath()
-								.resolve(originalFile.value.getName() + " - Shortcut.lnk").toFileIfLocal();
+								.resolve(originalFile.getValue().getName() + " - Shortcut.lnk").toFileIfLocal();
 						try {
-							ShellLink.createLink(originalFile.value.toString()).saveTo(shortcutFile.toString());
+							ShellLink.createLink(originalFile.getValue().toString()).saveTo(shortcutFile.toString());
 						} catch (IOException e1) {
 							e1.printStackTrace();
 						}
@@ -2605,9 +2605,9 @@ public class SplitViewController implements Initializable {
 		}
 		Holder<Integer> depth = new Holder<Integer>(1);
 		try {
-			depth.value = Integer.parseInt(answer);
+			depth.setValue(Integer.parseInt(answer));
 		} catch (NumberFormatException e1) {
-			depth.value = 1;
+			depth.setValue(1);
 			// e1.printStackTrace();
 		}
 		PathLayer dir = getmDirectoryPath();
@@ -2615,7 +2615,7 @@ public class SplitViewController implements Initializable {
 			try {
 				RecursiveFileWalker r = new RecursiveFileWalker();
 				// to include depth so subDirectory got involved
-				PathLayerHelper.walkFileTree(dir, depth.value, false, r);
+				PathLayerHelper.walkFileTree(dir, depth.getValue(), false, r);
 				r.getDirectories().forEach(p -> {
 					Platform.runLater(() -> Main.ProcessTitle("Tracking " + p.getName()));
 					try {
@@ -2714,11 +2714,11 @@ public class SplitViewController implements Initializable {
 		Holder<Integer> depth = new Holder<>(0);
 		Holder<Integer> startFrom = new Holder<Integer>(1);
 		try {
-			depth.value = Integer.parseInt(answer.get(labels[0]));
-			startFrom.value = Integer.parseInt(answer.get(labels[1]));
+			depth.setValue(Integer.parseInt(answer.get(labels[0])));
+			startFrom.setValue(Integer.parseInt(answer.get(labels[1])));
 		} catch (NumberFormatException e1) {
-			depth.value = 0;
-			startFrom.value = 1;
+			depth.setValue(0);
+			startFrom.setValue(1);
 		}
 		ThreadExecutors.recursiveExecutor.execute(() -> {
 			try {
@@ -2732,7 +2732,7 @@ public class SplitViewController implements Initializable {
 				maxOrder = selection.size();
 				HashMap<PathLayer, String> selectionToNotes = new HashMap<>();
 				Map<String, PathLayer> cachedPathsForKeysInMap = new HashMap<>();
-				int order = startFrom.value;
+				int order = startFrom.getValue();
 				for (PathLayer entry : selection) {
 					String note = String.format("%0" + pad + "d", order++);
 					selectionToNotes.put(entry, note);
@@ -2762,7 +2762,7 @@ public class SplitViewController implements Initializable {
 					if (!selected.isDirectory()) {
 						continue;
 					}
-					PathLayerHelper.walkFileTree(selected, depth.value, false, r);
+					PathLayerHelper.walkFileTree(selected, depth.getValue(), false, r);
 					r.getDirectories().forEach(dir -> {
 						if (miniFileTracker.loadMap(dir, true, r.getDirectoriesToFiles().get(dir).stream()
 								.collect(Collectors.toMap(p -> p.getAbsolutePath(), p -> p))) == null) {
@@ -3496,7 +3496,7 @@ public class SplitViewController implements Initializable {
 
 	public void saveStateToSplitState(SplitViewState state) {
 		// Save current state view to state
-		state.setmDirectory(getmDirectoryPath());
+		state.setMDirectory(getmDirectoryPath());
 		state.setDirectoryViewOptions(getDirectoryViewOptions());
 		state.setAutoExpandRight(isAutoExpand());
 
@@ -3515,8 +3515,8 @@ public class SplitViewController implements Initializable {
 	}
 
 	public void restoreSplitViewStateWithoutQueue(SplitViewState state) {
-		if (mDirectory.compareTo(state.getmDirectory()) != 0) {
-			setmDirectoryThenRefresh(state.getmDirectory());
+		if (mDirectory.compareTo(state.getMDirectory()) != 0) {
+			setmDirectoryThenRefresh(state.getMDirectory());
 			// clear false change between tabs
 			if (BackQueue == state.getBackQueue()) {
 				RemoveLastFalseQueue();

@@ -82,6 +82,7 @@
 
 .text-field{
 	/* Here class assignment does work */
+    -fx-skin: "impl.jfxtras.styles.jmetro.TextFieldSkin";
 }
 
 

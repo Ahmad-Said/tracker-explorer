@@ -1,10 +1,15 @@
 package said.ahmad.javafx.tracker.datatype;
 
+import lombok.Getter;
+import lombok.Setter;
+
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
 
+@Getter
+@Setter
 public class FavoriteView {
 	private String title;
 	private List<SplitViewState> splitStates;
@@ -26,20 +31,6 @@ public class FavoriteView {
 	}
 
 	/**
-	 * @return the title
-	 */
-	public String getTitle() {
-		return title;
-	}
-
-	/**
-	 * @param title the title to set
-	 */
-	public void setTitle(String title) {
-		this.title = title;
-	}
-
-	/**
 	 * Do not use these split states in your view as it has Omitted fields and
 	 * changing its internal fields is restricted
 	 *
@@ -57,13 +48,6 @@ public class FavoriteView {
 	 */
 	public List<SplitViewState> getSplitStatessInitializedCopy() {
 		return splitStates.stream().map(ss -> new SplitViewState(ss)).collect(Collectors.toList());
-	}
-
-	/**
-	 * @param splitStates the splitStates to set
-	 */
-	public void setSplitStates(List<SplitViewState> splitStates) {
-		this.splitStates = splitStates;
 	}
 
 	@Override

@@ -12,6 +12,8 @@ import java.util.List;
 
 import org.apache.commons.io.FileUtils;
 
+import org.apache.commons.lang3.SystemUtils;
+import said.ahmad.javafx.tracker.app.pref.Setting;
 import said.ahmad.javafx.tracker.system.file.PathLayer;
 import said.ahmad.javafx.tracker.system.file.ProviderType;
 
@@ -131,9 +133,11 @@ public class FilePathLayer extends PathLayer {
 
 	@Override
 	public boolean setHidden(boolean isHidden) throws IOException {
-		Files.setAttribute(file.toPath(), "dos:hidden", true);
+		if (SystemUtils.IS_OS_WINDOWS) {
+			Files.setAttribute(file.toPath(), "dos:hidden", true);
+		}
 		return true;
-	};
+	}
 
 	@Override
 	public boolean delete() throws IOException {

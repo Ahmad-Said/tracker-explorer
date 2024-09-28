@@ -11,11 +11,13 @@ public class SystemExplorer {
 		if (filePath == null) {
 			return null;
 		}
-		// Microsoft windows
+		// Microsoft Windows
 		if (SystemUtils.IS_OS_WINDOWS) {
-			// String cmd = "explorer.exe /select," + DataTable.get(0).getFilePath();
-			// Runtime.getRuntime().exec(cmd);
 			return runRuntimeProcess(new String[] { "explorer.exe", "/select,", filePath.toString() });
+		}
+		// macOS
+		if (SystemUtils.IS_OS_MAC) {
+			return runRuntimeProcess(new String[] { "open", "-R", filePath.toString() });
 		}
 		return null;
 	}
@@ -32,7 +34,10 @@ public class SystemExplorer {
 
 	public static Process startCMDInDir(File dir) {
 		if (SystemUtils.IS_OS_WINDOWS) {
-			return runRuntimeProcess(new String[] { "cmd.exe", " /c start cd /d", dir.toString() });
+			return runRuntimeProcess(new String[] { "cmd.exe", "/c", "start", "cd", "/d", dir.toString() });
+		}
+		if (SystemUtils.IS_OS_MAC) {
+			return runRuntimeProcess(new String[] { "open", "-a", "Terminal", dir.toString() });
 		}
 		return null;
 	}

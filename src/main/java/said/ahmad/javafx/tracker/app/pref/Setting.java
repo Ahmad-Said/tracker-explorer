@@ -11,10 +11,10 @@ import java.util.*;
 import java.util.List;
 
 import lombok.Getter;
+import org.apache.commons.lang3.SystemUtils;
 import org.jetbrains.annotations.Nullable;
 
 import javafx.scene.control.Alert.AlertType;
-import lombok.Getter;
 import lombok.Setter;
 import said.ahmad.javafx.tracker.app.DialogHelper;
 import said.ahmad.javafx.tracker.app.StringHelper;
@@ -23,7 +23,6 @@ import said.ahmad.javafx.tracker.app.look.THEME_COLOR;
 import said.ahmad.javafx.tracker.datatype.FavoriteView;
 import said.ahmad.javafx.tracker.datatype.FavoriteViewList;
 import said.ahmad.javafx.tracker.datatype.UserContextMenu;
-import said.ahmad.javafx.tracker.system.call.CommandVariable;
 import said.ahmad.javafx.tracker.system.call.RunMenu;
 import said.ahmad.javafx.tracker.system.call.TeraCopy;
 import said.ahmad.javafx.tracker.system.file.PathLayer;
@@ -34,12 +33,25 @@ import said.ahmad.javafx.util.CallBackToDo;
 public class Setting {
 	// --------- Definitions ---------
 	private static final String PATH_SPLITTER = ";";
-	private static final File SETTING_FILE = new File(
-			System.getenv("APPDATA") + "\\Tracker Explorer\\TrackerExplorerSetting.txt");
-	public static final File SETTING_DIRECTORY = new File(System.getenv("APPDATA") + "\\Tracker Explorer");
+	private static final File SETTING_FILE;
+	public static final File SETTING_DIRECTORY;
+	public static final String SETTING_DIRECTORY_PATH;
 
+
+	static {
+		if (SystemUtils.IS_OS_WINDOWS) {
+			SETTING_FILE = new File(System.getenv("APPDATA") + "\\Tracker Explorer\\TrackerExplorerSetting.txt");
+			SETTING_DIRECTORY_PATH = System.getenv("APPDATA") + "\\Tracker Explorer";
+			SETTING_DIRECTORY = new File(System.getenv("APPDATA") + "\\Tracker Explorer");
+		} else {
+			// we add . to make it hidden
+			SETTING_DIRECTORY_PATH = System.getProperty("user.home") + "/.Tracker-Explorer";
+			SETTING_FILE = new File(SETTING_DIRECTORY_PATH + "/TrackerExplorerSetting.txt");
+			SETTING_DIRECTORY = new File(SETTING_DIRECTORY_PATH);
+		}
+	}
 	// ---------------- Setting To be loaded as Part One TXT File ----------------
-	private static final String Version = "6.2";
+	private static final String Version = "7.0";
 	/** @since v5.1 */
 	private static long ApplicationTimesLunched = 1;
 	/** @since v5.1 */
@@ -107,7 +119,7 @@ public class Setting {
 	public static void saveSetting() {
 		PrintStream p = null;
 		try {
-			File dirsetting = new File(System.getenv("APPDATA") + "\\Tracker Explorer");
+			File dirsetting = new File(SETTING_DIRECTORY.toString());
 			if (!dirsetting.exists()) {
 				Files.createDirectory(dirsetting.toPath());
 			}
@@ -121,9 +133,8 @@ public class Setting {
 			p.println("isMaximized=" + isMaximized);
 			p.println("VLCHttpPass=" + getVLCHttpPass());
 			// saved as URI
-			if (VLC.getPath_Setup() != null) {
+			if (VLC.getPath_Setup() != null)
 				p.println("VLCPath=" + VLC.getPath_Setup().toUri().toString());
-			}
 			if (TeraCopy.getPath_Setup() != null) {
 				p.println("TeraCopyPath=" + TeraCopy.getPath_Setup().toUri().toString());
 			}
@@ -302,7 +313,8 @@ public class Setting {
 	}
 
 	private static void migrateOldSetting() throws IOException {
-		File oldSettingfile = new File(System.getenv("APPDATA") + "\\FileTrackerSetting.txt");
+		String oldSettingName = "FileTrackerSetting.txt";
+		File oldSettingfile = new File(SETTING_DIRECTORY, oldSettingName);
 		if (oldSettingfile.exists()) {
 			oldSettingfile.renameTo(SETTING_FILE);
 			oldSettingfile.delete(); // if cannot move it delete it

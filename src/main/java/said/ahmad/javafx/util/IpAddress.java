@@ -6,11 +6,9 @@ import java.net.SocketException;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
 
-import org.jetbrains.annotations.Nullable;
 
 public class IpAddress {
 
-	@Nullable
 	public static String getLocalAddress() {
 		try (final DatagramSocket socket = new DatagramSocket()) {
 			socket.connect(InetAddress.getByName("8.8.8.8"), 10002);

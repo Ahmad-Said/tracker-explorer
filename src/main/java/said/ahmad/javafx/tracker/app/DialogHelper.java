@@ -7,7 +7,6 @@ import java.util.HashMap;
 import java.util.Optional;
 
 import javafx.stage.Window;
-import org.jetbrains.annotations.Nullable;
 
 import javafx.application.Platform;
 import javafx.geometry.Insets;
@@ -143,7 +142,6 @@ public class DialogHelper {
 		return result.get() == ButtonType.OK;
 	}
 
-	@Nullable
 	public static String showTextInputDialog(String title, String header, String content, String hint) {
 		TextInputDialog dialog = new TextInputDialog(hint);
 		dialog.setTitle(title);
@@ -159,7 +157,6 @@ public class DialogHelper {
 		return result.isPresent() ? result.get() : null;
 	}
 
-	@Nullable
 	public static Pair<String, String> showTextInputDoubledDialog(String title, String header, String content,
 			String hint1, String hint2) {
 		// https://stackoverflow.com/questions/31556373/javafx-dialog-with-2-input-fields
@@ -206,7 +203,6 @@ public class DialogHelper {
 		return result.isPresent() ? result.get() : null;
 	}
 
-	@Nullable
 	public static Integer showIntegerInputDialog(String title, String header, String askedValueName, int minValue,
 			int maxValue, int initialValue) {
 		// https://stackoverflow.com/questions/31556373/javafx-dialog-with-2-input-fields
@@ -261,7 +257,6 @@ public class DialogHelper {
 	 * @return a hash map from with key as label to response from the user hint is
 	 *         used in prompt text
 	 */
-	@Nullable
 	public static HashMap<String, String> showMultiTextInputDialog(String title, String header, String content,
 			String[] labels, String[] hints, int focusIndex) {
 		// https://stackoverflow.com/questions/31556373/javafx-dialog-with-2-input-fields

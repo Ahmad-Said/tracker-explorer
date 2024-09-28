@@ -1,0 +1,149 @@
+plugins {
+    id 'java'
+    id 'application'
+    id 'org.javamodularity.moduleplugin' version '1.8.12'
+    id 'org.openjfx.javafxplugin' version '0.1.0'
+    id 'org.beryx.jlink' version '3.0.1'
+}
+
+group 'said.ahmad.javafx'
+version '7.0'
+
+repositories {
+    mavenCentral()
+}
+
+ext {
+    junitVersion = '5.10.2'
+}
+
+sourceCompatibility = '17'
+targetCompatibility = '17'
+
+tasks.withType(JavaCompile) {
+    options.encoding = 'UTF-8'
+}
+
+application {
+    mainModule = 'said.ahmad.javafx'
+    mainClass = 'said.ahmad.javafx.tracker.app.Main'
+}
+
+def osName = System.getProperty('os.name').toLowerCase()
+def osArch = System.getProperty('os.arch').toLowerCase()
+
+def myPlatform
+
+if (osName.contains('mac')) {
+    myPlatform = osArch.contains('aarch64') ? 'mac-aarch64' : 'mac'
+} else if (osName.contains('win')) {
+    myPlatform = osArch.contains('amd64') ? 'windows-x64' : 'windows-x86'
+} else if (osName.contains('nux') || osName.contains('nix') || osName.contains('aix')) {
+    myPlatform = osArch.contains('aarch64') ? 'linux-aarch64' : 'linux-x64'
+} else {
+    myPlatform = 'unsupported'
+}
+
+println "Detected platform: $myPlatform"
+
+javafx {
+    version = "22.0.1"
+    modules = [ 'javafx.controls', 'javafx.fxml', 'javafx.graphics' ]
+    platform = "${myPlatform}"
+}
+
+
+
+dependencies {
+    implementation "org.openjfx:javafx-base:22.0.1:${myPlatform}"
+    implementation "org.openjfx:javafx-controls:22.0.1:${myPlatform}"
+    implementation "org.openjfx:javafx-fxml:22.0.1:${myPlatform}"
+    implementation "org.openjfx:javafx-swing:22.0.1:${myPlatform}"
+
+    compileOnly 'org.projectlombok:lombok:1.18.34'
+    annotationProcessor 'org.projectlombok:lombok:1.18.34'
+
+    testCompileOnly 'org.projectlombok:lombok:1.18.34'
+    testAnnotationProcessor 'org.projectlombok:lombok:1.18.34'
+
+    implementation group: 'commons-io', name: 'commons-io', version: '2.17.0'
+    implementation group: 'commons-net', name: 'commons-net', version: '3.11.1'
+    implementation group: 'org.apache.commons', name: 'commons-lang3', version: '3.17.0'
+    implementation group: 'com.jsoniter', name: 'jsoniter', version: '0.9.23'
+    implementation group: 'org.jetbrains', name: 'annotations', version: '20.0.0'
+    implementation group: 'com.github.vatbub', name: 'mslinks', version: '1.0.6'
+    implementation group: 'org.jfxtras', name: 'jmetro', version: '11.6.16'
+    implementation group: 'com.google.guava', name: 'guava', version: '32.0.0-android'
+    implementation group: 'org.apache.pdfbox', name: 'pdfbox-io', version: '3.0.3'
+    implementation group: 'org.apache.pdfbox', name: 'pdfbox', version: '3.0.3'
+    implementation group: 'org.apache.commons', name: 'commons-text', version: '1.12.0'
+    implementation group: 'org.jclarion', name: 'image4j', version: '0.7'
+    implementation group: 'com.fasterxml.jackson.core', name: 'jackson-annotations', version: '2.17.2'
+    implementation group: 'com.fasterxml.jackson.core', name: 'jackson-core', version: '2.17.2'
+    implementation group: 'com.fasterxml.jackson.core', name: 'jackson-databind', version: '2.17.2'
+
+    testImplementation("org.junit.jupiter:junit-jupiter-api:${junitVersion}")
+    testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:${junitVersion}")
+}
+
+test {
+    useJUnitPlatform()
+}
+
+task docFilesJar(type: Jar, description: 'Package up files used for generating documentation.') {
+    archiveVersion = null
+    archiveFileName = "grails-doc-files.jar"
+    from "src/main/template"
+    doLast {
+        println "docFilesJar task completed!"
+    }
+}
+
+prepareModulesDir {
+    doLast {
+        println "prepareModulesDir task completed!"
+//        Two versions of module javafx.graphics found in /build/jlinkbase/jlinkjars (javafx-graphics-22.0.1-mac-aarch64.jar and javafx-graphics-22.0.1-win.ja
+        // we have to delete the win version
+        println "myPlatform: ${myPlatform}"
+        if (myPlatform == 'mac-aarch64') {
+            println "Deleting files with pattern *-win.jar"
+            def buildDir = project.layout.buildDirectory.dir("jlinkbase/jlinkjars").get().asFile
+            def pattern = ~/.*-win\.jar/  // Regex pattern to match files ending with -win.jar
+            // List all files in the directory that match the pattern
+            def filesToDelete = buildDir.listFiles().findAll { it.name =~ pattern }
+
+            // Delete each file
+            filesToDelete.each { file ->
+                if (file.exists()) {
+                    if (file.delete()) {
+                        println "File deleted: ${file}"
+                    } else {
+                        println "Failed to delete file: ${file}"
+                    }
+                } else {
+                    println "File not found: ${file}"
+                }
+            }
+        }
+    }
+}
+jlink {
+    imageZip = project.file("${layout.buildDirectory}/distributions/app-${javafx.platform.classifier}.zip")
+    options = ['--strip-debug', '--no-header-files', '--no-man-pages']
+    addExtraDependencies('jackson-annotations')
+    launcher {
+        name = 'app'
+    }
+    jpackage {
+        imageOptions = [
+                "--name", "Tracker Explorer-${project.version}",
+                "--app-version", "${project.version}",
+                "--icon", 'src/main/resources/said/ahmad/javafx/tracker/img/app/Tracker Explorer.icns'
+        ]
+    }
+}
+
+jlinkZip {
+    group = 'distribution'
+}
+

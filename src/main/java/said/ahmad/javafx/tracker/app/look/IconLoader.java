@@ -145,7 +145,7 @@ public class IconLoader {
 		if (enumToImage.containsKey(key)) {
 			return enumToImage.get(key);
 		}
-		Image image = new Image(ResourcesHelper.getResourceAsString(ENUM_TO_NAME.get(ICON_TYPE)), requestedWidth,
+		Image image = new Image(ResourcesHelper.getResourceAsURL(ENUM_TO_NAME.get(ICON_TYPE)).toString(), requestedWidth,
 				requestedHeight, preserveRatio, true, backgroundLoading);
 		enumToImage.put(key, image);
 		return image;

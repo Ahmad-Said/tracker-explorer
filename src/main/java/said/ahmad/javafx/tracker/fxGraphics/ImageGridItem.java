@@ -27,6 +27,7 @@ import java.util.stream.Collectors;
 import javax.imageio.ImageIO;
 import javax.imageio.ImageReader;
 import javax.imageio.stream.ImageInputStream;
+import said.ahmad.javafx.util.Holder;
 
 import org.jetbrains.annotations.Nullable;
 
@@ -92,7 +93,6 @@ import said.ahmad.javafx.tracker.system.file.local.FilePathLayer;
 import said.ahmad.javafx.tracker.system.operation.FileHelper;
 import said.ahmad.javafx.util.CallBackToDo;
 import said.ahmad.javafx.util.CallBackVoid;
-import said.ahmad.javafx.util.Holder;
 
 /**
  * To Add this imageView to a parent node use {@link #getImageAllPane()}
@@ -1282,7 +1282,7 @@ public class ImageGridItem extends ImageView {
 				HashSet<ImageGridItem> affected = getAffectedImageWithPartner();
 				Holder<Integer> i = new Holder<>(1);
 				for (ImageGridItem gridItem : affected) {
-					String whichOne = i.value++ + " / " + affected.size();
+					String whichOne = i.setValue(i.getValue() + 1) + " / " + affected.size();
 					if (gridItem.getImageFile() != null) {
 						Platform.runLater(() -> DialogHelper.showWaitingScreen("Please Wait.. Processing " + whichOne,
 								"Rotating Image.." + whichOne + "\n" + gridItem.getImageFile().getName()));

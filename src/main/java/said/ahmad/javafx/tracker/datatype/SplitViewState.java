@@ -3,8 +3,7 @@ package said.ahmad.javafx.tracker.datatype;
 import java.util.LinkedList;
 import java.util.List;
 
-import com.thoughtworks.xstream.annotations.XStreamOmitField;
-
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import lombok.Data;
 import said.ahmad.javafx.tracker.app.pref.Setting;
 import said.ahmad.javafx.tracker.controller.splitview.SplitViewController;
@@ -20,8 +19,8 @@ import said.ahmad.javafx.tracker.system.file.PathLayer;
  * Then we have 2 cases:<br>
  * a. Omitted field i.e. just a variable used at runtime and don't need to be
  * saved <br>
- * a.1 add @XStreamOmitField on top of the attribute to prevent XStream from
- * saving it <br>
+ * a.1 add @JsonIgnore on top of the attribute to ignore attribute from
+ * being saved <br>
  * a.2 define its default value in
  * {@link SplitViewState#initializeOmittedFields()} (called after any instance
  * creation) <br>
@@ -32,6 +31,7 @@ import said.ahmad.javafx.tracker.system.file.PathLayer;
  * {@link SplitViewState#SplitViewState(SplitViewState)}<br>
  * otherwise, for primitive types it takes for the first time the default value
  * defined in java. (int->0, boolean->false...)
+ * b.2 was note on old way of saving setting with xstream, TODO see json handling way
  *
  */
 @Data
@@ -40,14 +40,15 @@ public class SplitViewState {
 	private DirectoryViewOptions directoryViewOptions;
 	private boolean autoExpandRight;
 
-	@XStreamOmitField
+
+	@JsonIgnore
 	private LinkedList<PathLayer> backQueue;
-	@XStreamOmitField
+	@JsonIgnore
 	private LinkedList<PathLayer> nextQueue;
 
-	@XStreamOmitField
+	@JsonIgnore
 	private int[] selectedIndices;
-	@XStreamOmitField
+	@JsonIgnore
 	private int scrollTo;
 
 	private String searchKeyword;
@@ -85,21 +86,6 @@ public class SplitViewState {
 		scrollTo = 0;
 	}
 
-	public PathLayer getmDirectory() {
-		return mDirectory;
-	}
-
-	public void setmDirectory(PathLayer mDirectory) {
-		this.mDirectory = mDirectory;
-	}
-
-	/**
-	 * @return the selectedIndices
-	 */
-	public int[] getSelectedIndices() {
-		return selectedIndices;
-	}
-
 	/**
 	 * @param selections the selectedIndices to set
 	 */
@@ -108,49 +94,6 @@ public class SplitViewState {
 		for (int i = 0; i < selections.size(); i++) {
 			selectedIndices[i] = selections.get(i);
 		}
-	}
-
-	/**
-	 * @return the scrollTo
-	 */
-	public int getScrollTo() {
-		return scrollTo;
-	}
-
-	/**
-	 * @param scrollTo the scrollTo to set
-	 */
-	public void setScrollTo(int scrollTo) {
-		this.scrollTo = scrollTo;
-	}
-
-	/**
-	 * @return the searchKeyword
-	 */
-	public String getSearchKeyword() {
-		return searchKeyword;
-	}
-
-	/**
-	 * @param searchKeyword the searchKeyword to set
-	 */
-	public void setSearchKeyword(String searchKeyword) {
-		this.searchKeyword = searchKeyword;
-	}
-
-	/**
-	 * @return the autoExpandRight
-	 */
-	public boolean isAutoExpandRight() {
-		return autoExpandRight;
-	}
-
-	/**
-	 * @param autoExpandRight the autoExpandRight to set
-	 */
-	public SplitViewState setAutoExpandRight(boolean autoExpandRight) {
-		this.autoExpandRight = autoExpandRight;
-		return this;
 	}
 
 	@Override

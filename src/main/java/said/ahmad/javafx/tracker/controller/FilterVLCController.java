@@ -41,6 +41,7 @@ import said.ahmad.javafx.tracker.system.services.VLC;
 import said.ahmad.javafx.tracker.system.services.VLCException;
 import said.ahmad.javafx.tracker.system.tracker.FileTracker;
 import said.ahmad.javafx.tracker.system.tracker.FileTrackerHolder;
+import said.ahmad.javafx.util.Holder;
 
 public class FilterVLCController {
 
@@ -528,20 +529,20 @@ public class FilterVLCController {
 							+ "\n- Exit VLC"
 							+ "\n- Press thr right sign after you exit VLC");
 		}
-		Duration resume = null;
+		Holder<Duration> resume = new Holder<>(null);
 		if (where.equals(TimeMoment.START)) {
 			String inputStartText = inputStart.getText();
-			resume = studyFormat(inputStartText, where.toString(), false);
+			resume.setValue(studyFormat(inputStartText, where.toString(), false));
 		} else {
 			String inputEndText = inputEnd.getText();
-			resume = studyFormat(inputEndText, where.toString(), false);
+			resume.setValue(studyFormat(inputEndText, where.toString(), false));
 		}
-		if (resume != null && resume.toSeconds() == 0) {
-			resume = null;
+		if (resume.getValue() != null && resume.getValue().toSeconds() == 0) {
+			resume.setValue(null);
 		}
 
 		try {
-			VLC.startVLCAtSpecificMoment(mPath.toURI(), resume);
+			VLC.startVLCAtSpecificMoment(mPath.toURI(), resume.getValue());
 		} catch (VLCException e) {
 			DialogHelper.showException(e);
 		} catch (IOException e) {

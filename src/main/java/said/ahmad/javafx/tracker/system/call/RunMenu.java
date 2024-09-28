@@ -16,6 +16,9 @@ public class RunMenu {
 	private static File runmenuFile = new File(System.getenv("APPDATA") + "\\Tracker Explorer\\runmenu.exe");
 
 	public static void initialize() throws IOException {
+		if (!SystemUtils.IS_OS_WINDOWS) {
+			return;
+		}
 		if (!runmenuFile.exists()) {
 
 			// ensure directory is present
