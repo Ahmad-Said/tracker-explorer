@@ -5,7 +5,7 @@ import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
 
-import javax.xml.ws.Holder;
+import said.ahmad.javafx.util.Holder;
 
 import org.jetbrains.annotations.Nullable;
 
@@ -86,7 +86,7 @@ public class FavoriteViewList implements Iterable<FavoriteView> {
 	public FavoriteView getByFirstLoc(PathLayer firstLoc) {
 		for (FavoriteView favorite : map.values()) {
 			if (favorite.getSplitStates().size() != 0
-					&& favorite.getSplitStates().get(0).getmDirectory().equals(firstLoc)) {
+					&& favorite.getSplitStates().get(0).getMDirectory().equals(firstLoc)) {
 				return favorite;
 			}
 		}
@@ -142,10 +142,10 @@ public class FavoriteViewList implements Iterable<FavoriteView> {
 	 * @see #isReloadingMapOperation()
 	 */
 	public void clearThenAddAll(List<FavoriteView> otherList) {
-		reloadingMapOperation.value = true;
+		reloadingMapOperation.setValue(true);
 		map.clear();
 		addAll(otherList);
-		reloadingMapOperation.value = false;
+		reloadingMapOperation.setValue(false);
 	}
 
 	public void addAtEnd(FavoriteView favo) {
@@ -161,12 +161,12 @@ public class FavoriteViewList implements Iterable<FavoriteView> {
 	 * @param favo
 	 */
 	public void addAtFirst(FavoriteView favo) {
-		reloadingMapOperation.value = true;
+		reloadingMapOperation.setValue(true);
 		LinkedHashMap<String, FavoriteView> newmap = new LinkedHashMap<>(map);
 		map.clear();
 		map.put(favo.getTitle(), favo);
 		map.putAll(newmap);
-		reloadingMapOperation.value = false;
+		reloadingMapOperation.setValue(false);
 	}
 
 	public int size() {

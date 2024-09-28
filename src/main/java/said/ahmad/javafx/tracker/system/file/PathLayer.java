@@ -15,6 +15,8 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 
+import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.net.io.Util;
@@ -32,6 +34,8 @@ import said.ahmad.javafx.tracker.system.file.local.FilePathLayer;
  * @author user
  *
  */
+@JsonSerialize(using = PathLayerSerializer.class)
+@JsonDeserialize(using = PathLayerDeserializer.class)
 public abstract class PathLayer {
 	public static enum FileType {
 		NONE, DIRECTORY, FILE;
@@ -73,16 +77,17 @@ public abstract class PathLayer {
 	/**
 	 *
 	 * @param absolutePath  must be unique in same or different provider
-	 * @param PROVIDER_TYPE
-	 * @param isDirectory
-	 * @param dateModified
-	 * @param size
+	 * @param name          of file
+	 * @param providerType  of file
+	 * @param fileType      of file
+	 * @param dateModified    in milliseconds
+	 * @param size 		in bytes
 	 */
-	public PathLayer(String absolutePath, String name, ProviderType ProviderType, FileType fileType, long dateModified,
+	public PathLayer(String absolutePath, String name, ProviderType providerType, FileType fileType, long dateModified,
 			long size) {
 		this.absolutePath = absolutePath;
 		this.name = name.isEmpty() ? absolutePath : name;
-		providerType = ProviderType;
+		this.providerType = providerType;
 		pathType = fileType;
 		this.dateModified = dateModified;
 		this.size = size; // 0 is valid, so use -1

@@ -27,7 +27,7 @@ import java.util.stream.Collectors;
 import javax.imageio.ImageIO;
 import javax.imageio.ImageReader;
 import javax.imageio.stream.ImageInputStream;
-import javax.xml.ws.Holder;
+import said.ahmad.javafx.util.Holder;
 
 import org.jetbrains.annotations.Nullable;
 
@@ -1282,7 +1282,7 @@ public class ImageGridItem extends ImageView {
 				HashSet<ImageGridItem> affected = getAffectedImageWithPartner();
 				Holder<Integer> i = new Holder<>(1);
 				for (ImageGridItem gridItem : affected) {
-					String whichOne = i.value++ + " / " + affected.size();
+					String whichOne = i.setValue(i.getValue() + 1) + " / " + affected.size();
 					if (gridItem.getImageFile() != null) {
 						Platform.runLater(() -> DialogHelper.showWaitingScreen("Please Wait.. Processing " + whichOne,
 								"Rotating Image.." + whichOne + "\n" + gridItem.getImageFile().getName()));

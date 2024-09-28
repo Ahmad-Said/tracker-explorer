@@ -6,7 +6,6 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
-import javax.xml.ws.Holder;
 
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
@@ -42,6 +41,7 @@ import said.ahmad.javafx.tracker.system.services.VLC;
 import said.ahmad.javafx.tracker.system.services.VLCException;
 import said.ahmad.javafx.tracker.system.tracker.FileTracker;
 import said.ahmad.javafx.tracker.system.tracker.FileTrackerHolder;
+import said.ahmad.javafx.util.Holder;
 
 public class FilterVLCController {
 
@@ -532,17 +532,17 @@ public class FilterVLCController {
 		Holder<Duration> resume = new Holder<>(null);
 		if (where.equals(TimeMoment.START)) {
 			String inputStartText = inputStart.getText();
-			resume.value = studyFormat(inputStartText, where.toString(), false);
+			resume.setValue(studyFormat(inputStartText, where.toString(), false));
 		} else {
 			String inputEndText = inputEnd.getText();
-			resume.value = studyFormat(inputEndText, where.toString(), false);
+			resume.setValue(studyFormat(inputEndText, where.toString(), false));
 		}
-		if (resume.value != null && resume.value.toSeconds() == 0) {
-			resume.value = null;
+		if (resume.getValue() != null && resume.getValue().toSeconds() == 0) {
+			resume.setValue(null);
 		}
 
 		try {
-			VLC.startVLCAtSpecificMoment(mPath.toURI(), resume.value);
+			VLC.startVLCAtSpecificMoment(mPath.toURI(), resume.getValue());
 		} catch (VLCException e) {
 			DialogHelper.showException(e);
 		} catch (IOException e) {

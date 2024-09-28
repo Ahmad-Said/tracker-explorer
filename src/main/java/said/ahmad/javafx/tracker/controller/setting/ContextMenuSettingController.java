@@ -5,6 +5,7 @@ import java.io.IOException;
 import java.util.*;
 import java.util.stream.Collectors;
 
+import org.apache.commons.lang3.SystemUtils;
 import org.jetbrains.annotations.Nullable;
 
 import com.google.common.collect.BiMap;
@@ -780,9 +781,12 @@ public class ContextMenuSettingController extends GenericSettingController {
 	 * @return current menu error, null otherwise
 	 */
 	private String CurrentMenuError() {
-		String error = validateExecutablePath();
-		if (StringHelper.isEmpty(error))
-			error = validateAliasInput();
+		String error = "";
+		if (this.currentContextMenu.isActive()) {
+			error = validateExecutablePath();
+			if (StringHelper.isEmpty(error))
+				error = validateAliasInput();
+		}
 		return error;
 	}
 

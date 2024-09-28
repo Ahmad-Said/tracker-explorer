@@ -6,6 +6,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.apache.commons.lang3.SystemUtils;
 import said.ahmad.javafx.tracker.datatype.UserContextMenu;
 import said.ahmad.javafx.tracker.system.call.CallMethod;
 import said.ahmad.javafx.tracker.system.call.CommandVariable;
@@ -107,6 +108,7 @@ public class UserContextMenuDefaultSetting {
 	 */
 	public static UserContextMenu getOpenWithCodeMenu() {
 		UserContextMenu openWithCode = new UserContextMenu();
+		openWithCode.setActive(false);
 		openWithCode.setParentMenuNames("Open With");
 		openWithCode.setAlias("Code");
 		openWithCode.setAliasMultiple("Open all with code");
@@ -121,6 +123,17 @@ public class UserContextMenuDefaultSetting {
 		return openWithCode;
 	}
 
+	public static void adaptAdobeMenuByPlatform(UserContextMenu adobeMenu) {
+		if (SystemUtils.IS_OS_WINDOWS) {
+			adobeMenu.setPathToExecutable("%ProgramFiles(x86)%\\Adobe\\Acrobat DC\\Acrobat\\Acrobat.exe");
+		} else if (SystemUtils.IS_OS_MAC) {
+			adobeMenu.setPathToExecutable("/usr/bin/open");
+			adobeMenu.setPrefixCommandOptions("-a \"/Applications/Adobe Acrobat DC/Adobe Acrobat.app\"");
+		} else {
+			adobeMenu.setPathToExecutable("/path/to/acrobat");
+		}
+	}
+
 	/**
 	 * Context menu to open pdf files with adobe acrobat DC.
 	 *
@@ -133,9 +146,10 @@ public class UserContextMenuDefaultSetting {
 	 */
 	public static UserContextMenu getOpenWithAdobeMenu() {
 		UserContextMenu openWithAdobe = new UserContextMenu();
+		openWithAdobe.setActive(false);
 
 		openWithAdobe.setMenuOrder(2);
-		openWithAdobe.setPathToExecutable("%ProgramFiles(x86)%\\Adobe\\Acrobat DC\\Acrobat\\Acrobat.exe");
+		adaptAdobeMenuByPlatform(openWithAdobe);
 
 		openWithAdobe.getExtensions().add("pdf");
 
@@ -166,7 +180,15 @@ public class UserContextMenuDefaultSetting {
 	 */
 	private static UserContextMenu getWinRARBaseMenu() {
 		UserContextMenu winRAR = new UserContextMenu();
-		winRAR.setPathToExecutable("%ProgramFiles%\\WinRAR\\WinRar.exe");
+		winRAR.setActive(false);
+		if (SystemUtils.IS_OS_WINDOWS) {
+			winRAR.setPathToExecutable("%ProgramFiles%\\WinRAR\\WinRar.exe");
+		} else if (SystemUtils.IS_OS_MAC) {
+			// download command line version of winrar for mac
+			winRAR.setPathToExecutable("/Applications/WinRAR/rar");
+		} else {
+			winRAR.setPathToExecutable("/path/to/winrar");
+		}
 		winRAR.setParentMenuNames("WinRAR");
 		return winRAR;
 	}

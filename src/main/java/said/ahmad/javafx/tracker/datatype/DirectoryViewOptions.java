@@ -2,8 +2,9 @@ package said.ahmad.javafx.tracker.datatype;
 
 import com.jsoniter.JsonIterator;
 import com.jsoniter.output.JsonStream;
-import com.thoughtworks.xstream.io.json.JsonWriter;
 import javafx.scene.control.TableColumn;
+import lombok.Getter;
+import lombok.Setter;
 import said.ahmad.javafx.tracker.controller.splitview.SplitViewController;
 
 /**
@@ -17,6 +18,8 @@ import said.ahmad.javafx.tracker.controller.splitview.SplitViewController;
  * 4- Add how to restore view in {@link SplitViewController#restoreDirectoryViewOptions} <br>
  * 5- Enjoy! the rest is handled automatically on favoriteViews and per directory options.
  */
+@Getter
+@Setter
 public class DirectoryViewOptions {
 	// Remember bit operators:
 	// ~ used for not.

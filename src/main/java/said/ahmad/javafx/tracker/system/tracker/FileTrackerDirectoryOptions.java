@@ -7,7 +7,7 @@ import said.ahmad.javafx.tracker.system.tracker.FileTracker.CommandOption;
 
 @Getter @Setter
 public class FileTrackerDirectoryOptions extends FileTrackerHolder {
-	public static String OPTION_NAME = "DirectoryOptions.tracker";
+	public static final String OPTION_NAME = "DirectoryOptions.tracker";
 	DirectoryViewOptions directoryViewOptions;
 
 	public FileTrackerDirectoryOptions() {

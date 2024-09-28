@@ -3,7 +3,7 @@ package said.ahmad.javafx.tracker.controller.connection;
 import java.io.IOException;
 import java.util.HashMap;
 
-import javax.xml.ws.Holder;
+import said.ahmad.javafx.util.Holder;
 
 import javafx.application.Platform;
 import javafx.collections.FXCollections;
@@ -153,15 +153,15 @@ public class ConnectionController {
 			Holder<PathLayer> pathLayer = new Holder<>();
 			Holder<Boolean> doCloseView = new Holder<>(false);
 			try {
-				pathLayer.value = currentConnection.connect();
+				pathLayer.setValue(currentConnection.connect());
 				Platform.runLater(() -> {
-					if (pathLayer.value != null) {
+					if (pathLayer.getValue() != null) {
 						if (onSuccessFullConnectionDo != null) {
-							onSuccessFullConnectionDo.call(pathLayer.value);
-							doCloseView.value = true;
+							onSuccessFullConnectionDo.call(pathLayer.getValue());
+							doCloseView.setValue(true);
 						} else {
 							DialogHelper.showAlert(AlertType.INFORMATION, "Success", "Connection successfull",
-									"Connection has been successfully established\n" + pathLayer.value, stage);
+									"Connection has been successfully established\n" + pathLayer.getValue(), stage);
 						}
 					} else {
 						DialogHelper.showAlert(AlertType.WARNING, "Fail", "Connection fail", "Connection unsuccessful",
@@ -174,7 +174,7 @@ public class ConnectionController {
 			}
 			Platform.runLater(() -> {
 				exitConnectingBehavior();
-				if (doCloseView.value) {
+				if (doCloseView.getValue()) {
 					stage.close();
 				}
 			});

@@ -84,3 +84,7 @@ build.fxbuild
 
 # Google drive
 .tmp.drive*
+
+.gradle/
+.DS_Store
+sdk/

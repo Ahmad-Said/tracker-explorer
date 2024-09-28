@@ -7,7 +7,7 @@ import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import javax.xml.ws.Holder;
+import said.ahmad.javafx.util.Holder;
 
 import org.jetbrains.annotations.Nullable;
 
@@ -864,10 +864,10 @@ public class FileTracker {
 						return;
 					}
 					// appending data to end with time to live
-					writer.value = new OutputStreamWriter(outputAppendPathLayer, StandardCharsets.UTF_8);
+					writer.setValue(new OutputStreamWriter(outputAppendPathLayer, StandardCharsets.UTF_8));
 					for (PathLayer src : miniSources) {
 						if (miniFileTracker.getMapDetails().containsKey(src)) {
-							writer.value
+							writer.getValue()
 									.write(miniFileTracker.getTrackerData(src).setName(srcToTarget.get(src).getName())
 											.setTimeToLive(TIME_TO_LIVE_MAX).toString());
 							allUpdatedSources.put(srcToTarget.get(src), miniFileTracker.getTrackerData(src));
@@ -876,9 +876,9 @@ public class FileTracker {
 				} catch (IOException e) {
 					e.printStackTrace();
 				}
-				if (writer.value != null) {
+				if (writer.getValue() != null) {
 					try {
-						writer.value.close();
+						writer.getValue().close();
 					} catch (IOException e) {
 						e.printStackTrace();
 					}
@@ -946,7 +946,7 @@ public class FileTracker {
 				if (outputAppendPathLayer == null) {
 					break tryBlock;
 				}
-				writer.value = new OutputStreamWriter(outputAppendPathLayer, StandardCharsets.UTF_8);
+				writer.setValue(new OutputStreamWriter(outputAppendPathLayer, StandardCharsets.UTF_8));
 			}
 			trackedParents.forEach(parent -> {
 				List<PathLayer> brotherList = parentToFiles.get(parent);
@@ -957,8 +957,8 @@ public class FileTracker {
 				try {
 					// Append Data to parent Tracker file with some time to live
 					if (operation.equals(ActionOperation.DELETE)) {
-						if (writer.value != null) {
-							writer.value.close();
+						if (writer.getValue() != null) {
+							writer.getValue().close();
 						}
 						// data source output stream
 						OutputStream outputSrcToClearConflict = senderFileTracker.getTrackerFileInWorkingDir()
@@ -966,17 +966,17 @@ public class FileTracker {
 						if (outputSrcToClearConflict == null) {
 							return;
 						}
-						writer.value = new OutputStreamWriter(outputSrcToClearConflict, StandardCharsets.UTF_8);
+						writer.setValue(new OutputStreamWriter(outputSrcToClearConflict, StandardCharsets.UTF_8));
 					}
 
 					brotherList.forEach(son -> {
 						try {
 							if (operation.equals(ActionOperation.DELETE)) {
-								writer.value.write(senderFileTracker.getTrackerData(son).setTimeToLive(5).toString());
+								writer.getValue().write(senderFileTracker.getTrackerData(son).setTimeToLive(5).toString());
 							} else {
 								// it is possible that sender tracker hasn't resolved conflict
 								if (senderFileTracker.getTrackerData(son) != null) {
-									writer.value.write(senderFileTracker.getTrackerData(son)
+									writer.getValue().write(senderFileTracker.getTrackerData(son)
 											.setTimeToLive(TIME_TO_LIVE_MAX).toString());
 									allUpdatedSources.put(son, senderFileTracker.getTrackerData(son));
 								}
@@ -991,8 +991,8 @@ public class FileTracker {
 					e.printStackTrace();
 				}
 			});
-			if (writer.value != null) {
-				writer.value.close();
+			if (writer.getValue() != null) {
+				writer.getValue().close();
 			}
 		} catch (IOException e) {
 			// all function try catch
