@@ -19,6 +19,7 @@ module said.ahmad.javafx {
     requires com.fasterxml.jackson.databind;
     exports said.ahmad.javafx.tracker.app;
     exports said.ahmad.javafx.tracker.controller;
+    exports said.ahmad.javafx.tracker.controller.splitview;
     exports said.ahmad.javafx.tracker.datatype;
     exports said.ahmad.javafx.tracker.fxGraphics;
     exports said.ahmad.javafx.tracker.model;

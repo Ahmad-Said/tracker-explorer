@@ -1,19 +1,10 @@
 package said.ahmad.javafx.tracker.controller;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
-
-import org.apache.commons.io.FilenameUtils;
 
 import javafx.collections.FXCollections;
 import javafx.collections.ListChangeListener;
@@ -24,27 +15,12 @@ import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
+import javafx.scene.control.*;
 import javafx.scene.control.Alert.AlertType;
-import javafx.scene.control.Button;
-import javafx.scene.control.CheckBox;
-import javafx.scene.control.ComboBox;
-import javafx.scene.control.Label;
-import javafx.scene.control.SelectionMode;
-import javafx.scene.control.Slider;
-import javafx.scene.control.SplitMenuButton;
-import javafx.scene.control.TableColumn;
-import javafx.scene.control.TableView;
-import javafx.scene.control.TextField;
 import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
-import javafx.scene.input.Clipboard;
-import javafx.scene.input.ClipboardContent;
-import javafx.scene.input.DataFormat;
-import javafx.scene.input.DragEvent;
-import javafx.scene.input.Dragboard;
-import javafx.scene.input.KeyCode;
-import javafx.scene.input.TransferMode;
+import javafx.scene.input.*;
 import javafx.scene.paint.Color;
 import javafx.scene.text.Text;
 import javafx.scene.text.TextFlow;
@@ -154,11 +130,11 @@ public class RenameUtilityController {
 	// used as boolean to trigger or not text listener
 	private boolean isTurnOnGenerateNewNames = true;
 	private Stage renameStage;
-	private static Color PREFIX_COLOR = Color.rgb(255, 0, 0);
-	private static Color SUFFIX_COLOR = Color.rgb(0, 127, 255);
-	private static Color INSERT_COLOR = Color.rgb(127, 0, 127);
-	private static Color REPLACE_COLOR = Color.rgb(255, 0, 255);
-	private static Color EXTENSION_COLOR = Color.rgb(0, 0, 255);
+	private static final Color PREFIX_COLOR = Color.rgb(255, 0, 0);
+	private static final Color SUFFIX_COLOR = Color.rgb(0, 127, 255);
+	private static final Color INSERT_COLOR = Color.rgb(127, 0, 127);
+	private static final Color REPLACE_COLOR = Color.rgb(255, 0, 255);
+	private static final Color EXTENSION_COLOR = Color.rgb(0, 0, 255);
 
 	public static final Image RENAME_ICON_IMAGE = new Image(ResourcesHelper.getResourceAsStream("/img/rename-512.png"));
 
@@ -239,7 +215,7 @@ public class RenameUtilityController {
 				if (searchField.getText().isEmpty()) {
 					return true;
 				}
-				if (model.getOldName().toLowerCase().contains(searchField.getText().toLowerCase())) {
+				if (model.getOldNameAsString().toLowerCase().contains(searchField.getText().toLowerCase())) {
 					return true;
 				} else {
 					return false;
@@ -257,7 +233,7 @@ public class RenameUtilityController {
 	/**
 	 * Used to limit length of removal process
 	 *
-	 * @see #forceLimitLength()
+	 * @see #forceLimitLength(IntField)
 	 */
 	private int MinLimitLength = Integer.MAX_VALUE;
 
@@ -285,7 +261,7 @@ public class RenameUtilityController {
 	}
 
 	String getAfterRemovalName(RenameUtilityViewModel t) {
-		String temp = FilenameUtils.getBaseName(t.getOldName());
+		String temp = t.getOldBaseName();
 		if (!ReplacedText.getText().isEmpty()) {
 			temp.replaceAll(ReplacedText.getText(), ReplacedWith.getText());
 		}
@@ -553,7 +529,7 @@ public class RenameUtilityController {
 			if (t.getConsiderCheckBox().isSelected()) {
 				ArrayList<Text> allText = new ArrayList<>();
 				String removedString = "";
-				String restOld = FilenameUtils.getBaseName(t.getOldName());
+				String restOld = t.getOldBaseName();
 				if (RemoveFirst.getValue() > 0) {
 					int firstN = RemoveFirst.getValue();
 					removedString += restOld.substring(0, firstN);
@@ -692,18 +668,14 @@ public class RenameUtilityController {
 					}
 				}
 
-				String requestedExtention = AddForceExtension.getText();
-				if (!requestedExtention.trim().isEmpty()) {
-					Text addExt = new Text("." + AddForceExtension.getText().trim());
+				String requestedExtention = AddForceExtension.getText().trim();
+				if (!requestedExtention.isEmpty()) {
+					Text addExt = new Text("." + requestedExtention);
 					addExt.setFill(EXTENSION_COLOR);
 					allText.add(addExt);
 				} else {
-					String extension = "";
-					if (requestedExtention.length() > 0 && requestedExtention.trim().isEmpty()) {
-						extension = "";
-					} else {
-						extension = FilenameUtils.getExtension(t.getOldName());
-					}
+					String extension;
+					extension = t.getOldExtension();
 					if (!extension.isEmpty()) {
 						allText.add(new Text("." + extension));
 					}

@@ -174,7 +174,7 @@ public class WelcomeController implements Initializable {
 		if (doRefresh)
 			refreshAllSplitViews();
 		// the rest don't need to refresh since addSplitView have its own refresh
-		Setting.getFavoritesViews().addListener((MapChangeListener<String, FavoriteView>) change -> {
+		Setting.getFavoritesViews().addListener(change -> {
 			allSplitViewController
 					.forEach(sp -> sp.onFavoriteChanges(change, Setting.getFavoritesViews().isReloadingMapOperation()));
 		});
@@ -215,11 +215,8 @@ public class WelcomeController implements Initializable {
 	}
 
 	private SplitViewController addSplitView() {
-		boolean doAddLeft = false;
-		if (allSplitViewController.size() % 2 == 0) {
-			doAddLeft = true;
-		}
-		SplitViewController newSplitView = null;
+		boolean doAddLeft = allSplitViewController.size() % 2 == 0;
+        SplitViewController newSplitView = null;
 		try {
 			newSplitView = addSplitView(allSplitViewController.peek().getmDirectoryPath(), doAddLeft);
 		} catch (IOException e1) {
@@ -230,8 +227,9 @@ public class WelcomeController implements Initializable {
 
 	/**
 	 *
-	 * @param initialePath   only used if new split view is created, otherwise reuse
-	 *                       last removed/cached one
+	 * @param initialePath
+	 *            only used if new split view is created, otherwise reuse last
+	 *            removed/cached one
 	 * @param isLeftTemplate
 	 * @return
 	 * @throws IOException
@@ -240,7 +238,7 @@ public class WelcomeController implements Initializable {
 		SplitViewController newSplit = null;
 		if (allSplitViewControllerRemoved.size() != 0) {
 			newSplit = allSplitViewControllerRemoved.pop();
-//			newSplit.setmDirectoryThenRefresh(initialePath);
+			// newSplit.setmDirectoryThenRefresh(initialePath);
 		} else {
 			newSplit = new SplitViewController(initialePath, isLeftTemplate, this);
 			if (isLeftTemplate) {
@@ -346,7 +344,7 @@ public class WelcomeController implements Initializable {
 		}
 	}
 
-	private static String DEFAULT_TAB_TITLE = "Default";
+	private static final String DEFAULT_TAB_TITLE = "Default";
 
 	private void initializeTabs() {
 		// initialize tabs
@@ -436,7 +434,8 @@ public class WelcomeController implements Initializable {
 			if (e.getButton().equals(MouseButton.SECONDARY)) {
 				ContextMenu mn = new ContextMenu();
 				MenuItem mnRenameTitle = new MenuItem("Rename");
-				mn.getItems().addAll(mnRenameTitle);
+				MenuItem mnResetDirectory = new MenuItem("Reset");
+				mn.getItems().addAll(mnRenameTitle, mnResetDirectory);
 				mn.show(Main.getPrimaryStage(), e.getScreenX(), e.getScreenY());
 				mnRenameTitle.setOnAction(eR -> {
 					String title = DialogHelper.showTextInputDialog("Rename Tab", "Enter New Name", "",
@@ -446,6 +445,23 @@ public class WelcomeController implements Initializable {
 					}
 					title = title.replaceAll(";", "_");
 					dragTab.setLabelText(title);
+				});
+
+				mnResetDirectory.setOnAction(act -> {
+					for (int i = 0; i < dragTab.getSplitViewStates().size(); i++) {
+						SplitViewState state = dragTab.getSplitViewStates().get(i);
+						while (!state.getBackQueue().isEmpty()) {
+							state.getNextQueue().add(state.getMDirectory());
+							state.setMDirectory(state.getBackQueue().removeLast());
+						}
+						if (i >= allSplitViewController.size()) {
+							addSplitView();
+						}
+						allSplitViewController.get(i).restoreSplitViewState(state);
+					}
+					while (dragTab.getShownSplitViewSize() < allSplitViewController.size()) {
+						removeSplitView(allSplitViewController.size() - 1);
+					}
 				});
 			}
 		});
@@ -538,8 +554,8 @@ public class WelcomeController implements Initializable {
 	}
 
 	/**
-	 * Method can be used to initialize UI setting related for xml,
-	 * or for normal setting with delay in part 3 initialization
+	 * Method can be used to initialize UI setting related for xml, or for normal
+	 * setting with delay in part 3 initialization
 	 */
 	private void initializeSettingXmlRelated() {
 		initializeMenuBar();
@@ -614,7 +630,7 @@ public class WelcomeController implements Initializable {
 		 * Set up reload XML setting
 		 */
 		reloadXMLSetting.setOnAction(e -> {
-			Setting.loadSettingPartTwo();
+			Setting.loadSettingPartTwo(null);
 			changeInSetting();
 		});
 
@@ -783,7 +799,7 @@ public class WelcomeController implements Initializable {
 		 * Set up helpMenu
 		 */
 		aboutMenuItem.setOnAction(e -> DialogHelper.showAlert(Alert.AlertType.INFORMATION, "About", null,
-				"Tracker Explorer v" + Setting.getVersion() + "\n\n" + "Copyright C 2024 by Ahmad Said"));
+				"Tracker Explorer v" + Setting.getVersion() + "\n\n" + "Copyright C 2020 by Ahmad Said"));
 	}
 
 	@FXML
@@ -795,7 +811,7 @@ public class WelcomeController implements Initializable {
 		String error = "";
 		for (SplitViewState path : favoriteView.getSplitStates()) {
 			if (!path.getMDirectory().exists()) {
-				error += path.toString() + "\n\n";
+				error += path + "\n\n";
 			}
 		}
 		if (!error.isEmpty()) {
@@ -823,13 +839,9 @@ public class WelcomeController implements Initializable {
 
 	private void AddActiveUser(String user) {
 		RadioMenuItem mn = new RadioMenuItem(user);
-		mn.setOnAction(new EventHandler<ActionEvent>() {
-
-			@Override
-			public void handle(ActionEvent event) {
-				FileTracker.updateUserFileName(user);
-				refreshAllSplitViews();
-			}
+		mn.setOnAction(event -> {
+			FileTracker.updateUserFileName(user);
+			refreshAllSplitViews();
 		});
 		toogleActiveUserGroup.getToggles().add(mn);
 		allActiveUser.add(mn);
@@ -863,7 +875,7 @@ public class WelcomeController implements Initializable {
 				DialogHelper.showAlert(AlertType.CONFIRMATION, "Remove User", "Account User Removed Successfully",
 						"User with name " + mn.getText()
 								+ " was removed.\nNotes: - it's data will remain for specified purpose :)"
-								+ "\n - Other wise you can use menu 'Clean Recursivly' with this name:\'" + mn.getText()
+								+ "\n - Other wise you can use menu 'Clean Recursivly' with this name:'" + mn.getText()
 								+ "' for a full clean.");
 			}
 		});
@@ -1020,8 +1032,9 @@ public class WelcomeController implements Initializable {
 	 * Refresh Split view only current directory match provided File parameter
 	 *
 	 * @param directoryView
-	 * @param exception     Do not refresh given splitView <br>
-	 *                      can be null
+	 * @param exception
+	 *            Do not refresh given splitView <br>
+	 *            can be null
 	 */
 	public void refreshAllSplitViewsIfMatch(PathLayer directoryView, SplitViewController exception) {
 		allSplitViewController.stream()
@@ -1033,13 +1046,14 @@ public class WelcomeController implements Initializable {
 	 * Check if directory is opened in other views
 	 *
 	 * @param directoryView
-	 * @param exception     Do not refresh given splitView <br>
-	 *                      can be null
+	 * @param exception
+	 *            Do not refresh given splitView <br>
+	 *            can be null
 	 */
 	public boolean isDirOpenedInOtherView(PathLayer directoryView, SplitViewController exception) {
 		return allSplitViewController.stream()
-				.filter(spCon -> spCon != exception && spCon.getmDirectoryPath().equals(directoryView))
-				.findAny().isPresent();
+				.filter(spCon -> spCon != exception && spCon.getmDirectoryPath().equals(directoryView)).findAny()
+				.isPresent();
 	}
 
 	public void refreshUnExistingViewsDir() {
