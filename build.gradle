@@ -7,7 +7,7 @@ plugins {
 }
 
 group 'said.ahmad.javafx'
-version '7.0'
+version '7.0.0'
 
 repositories {
     mavenCentral()
@@ -37,7 +37,7 @@ def myPlatform
 if (osName.contains('mac')) {
     myPlatform = osArch.contains('aarch64') ? 'mac-aarch64' : 'mac'
 } else if (osName.contains('win')) {
-    myPlatform = osArch.contains('amd64') ? 'windows-x64' : 'windows-x86'
+    myPlatform = 'win'
 } else if (osName.contains('nux') || osName.contains('nix') || osName.contains('aix')) {
     myPlatform = osArch.contains('aarch64') ? 'linux-aarch64' : 'linux-x64'
 } else {
@@ -135,11 +135,24 @@ jlink {
         name = 'app'
     }
     jpackage {
-        imageOptions = [
-                "--name", "Tracker Explorer-${project.version}",
-                "--app-version", "${project.version}",
-                "--icon", 'src/main/resources/said/ahmad/javafx/tracker/img/app/Tracker Explorer.icns'
-        ]
+        imageName = 'Tracker Explorer'
+        appVersion = project.version
+        vendor = 'Ahmad Said'
+        if (myPlatform == 'mac-aarch64') {
+            icon = 'src/main/resources/said/ahmad/javafx/tracker/img/app/Tracker Explorer.icns'
+        } else if (myPlatform == 'win') {
+            icon = 'src/main/resources/said/ahmad/javafx/tracker/img/app/Tracker Explorer.ico'
+            imageOptions = [
+                    "--type", "exe",
+                    "--win-menu",
+                    "--win-menu-group", "Ahmad Said",
+                    "--win-shortcut-prompt",
+                    "--win-per-user-install",
+                    "--win-help-url", "https://github.com/Ahmad-Said/tracker-explorer",
+                    "--win-update-url", "https://github.com/Ahmad-Said/tracker-explorer/releases",
+                    "--win-upgrade-uuid", "28f3e923-23a1-4f95-aef4-2d184f7da4d7",
+            ]
+        }
     }
 }
 

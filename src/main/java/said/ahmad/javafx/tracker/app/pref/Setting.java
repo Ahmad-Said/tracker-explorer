@@ -51,7 +51,7 @@ public class Setting {
 		}
 	}
 	// ---------------- Setting To be loaded as Part One TXT File ----------------
-	private static final String Version = "7.0";
+	private static final String Version = "7.0.0";
 	/** @since v5.1 */
 	private static long ApplicationTimesLunched = 1;
 	/** @since v5.1 */

@@ -87,3 +87,4 @@ build.fxbuild
 
 .gradle/
 .DS_Store
+sdk/
