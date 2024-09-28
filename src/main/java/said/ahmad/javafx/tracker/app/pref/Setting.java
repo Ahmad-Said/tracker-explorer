@@ -77,7 +77,7 @@ public class Setting {
 	private static boolean restoreLastOpenedFavorite = true;
 	private static ArrayList<String> lastOpenedFavoriteTitle = new ArrayList<>();
 	private static FavoriteView lastOpenedView;
-	private static boolean notifyFilesChanges = true;
+	private static boolean notifyFilesChanges = false;
 	private static boolean showWindowOnTopWhenNotify = false;
 	/**@since v5.3*/
 	private static String dateFormatPattern = "dd-MM-yyyy HH:mm:ss";

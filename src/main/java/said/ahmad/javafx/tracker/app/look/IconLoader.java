@@ -53,6 +53,9 @@ public class IconLoader {
 		DRAG, ZOOM, GRID,
 
 		STAR, BLUE_CIRCLE,  USER,
+
+		// File Extension Stuff
+		PDF, DOC, DOCX, XLS, XLSX, PPT, PPTX, TXT, WINRAR, IMAGE, VIDEO, AUDIO
 	}
 
 	public static final Map<ICON_TYPE, String> ENUM_TO_NAME = Collections.unmodifiableMap(new HashMap<IconLoader.ICON_TYPE, String>() {
@@ -129,6 +132,20 @@ public class IconLoader {
 			put(ICON_TYPE.STAR, "/img/misc/star.png");
 			put(ICON_TYPE.BLUE_CIRCLE, "/img/misc/blue_circle.png");
 			put(ICON_TYPE.USER, "/img/misc/user.png");
+
+			// file extension stuffs
+			put(ICON_TYPE.PDF, "/img/file_ext/pdf.png");
+			put(ICON_TYPE.DOCX, "/img/file_ext/docx.png");
+			put(ICON_TYPE.DOC, "/img/file_ext/doc.png");
+			put(ICON_TYPE.XLS, "/img/file_ext/xls.png");
+			put(ICON_TYPE.XLSX, "/img/file_ext/xlsx.png");
+			put(ICON_TYPE.PPT, "/img/file_ext/ppt.png");
+			put(ICON_TYPE.PPTX, "/img/file_ext/pptx.png");
+			put(ICON_TYPE.TXT, "/img/file_ext/txt.png");
+			put(ICON_TYPE.WINRAR, "/img/file_ext/winrar.png");
+			put(ICON_TYPE.IMAGE, "/img/file_ext/image.png");
+			put(ICON_TYPE.VIDEO, "/img/file_ext/video.png");
+			put(ICON_TYPE.AUDIO, "/img/file_ext/audio.png");
 
 		}
 	});

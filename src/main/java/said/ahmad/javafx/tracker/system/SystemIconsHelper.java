@@ -3,7 +3,10 @@ package said.ahmad.javafx.tracker.system;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
+import java.util.Map;
 
 import javax.swing.filechooser.FileSystemView;
 
@@ -11,8 +14,11 @@ import org.jetbrains.annotations.Nullable;
 
 import javafx.embed.swing.SwingFXUtils;
 import javafx.scene.image.Image;
+import said.ahmad.javafx.tracker.app.look.IconLoader;
 import said.ahmad.javafx.tracker.app.pref.Setting;
 import said.ahmad.javafx.tracker.system.file.PathLayer;
+
+import static said.ahmad.javafx.tracker.app.pref.UserContextMenuDefaultSetting.getInitializedExtensionGroupsMap;
 
 public class SystemIconsHelper {
 
@@ -21,12 +27,39 @@ public class SystemIconsHelper {
 	 *
 	 * @see {@link #getFileExt(String)}
 	 */
-	static HashMap<String, Image> mapOfFileExtToSmallIcon = new HashMap<String, Image>();
+	static HashMap<String, Image> mapOfFileExtToSmallIcon = new HashMap<>();
+	static {
+		Map<String, ArrayList<String>> extensionGroups = getInitializedExtensionGroupsMap();
+		for (String ext : extensionGroups.get("Image")) {
+			mapOfFileExtToSmallIcon.put(ext, IconLoader.getIconImage(IconLoader.ICON_TYPE.IMAGE));
+		}
+		for (String ext : extensionGroups.get("Video")) {
+			mapOfFileExtToSmallIcon.put(ext, IconLoader.getIconImage(IconLoader.ICON_TYPE.VLC));
+		}
+		for (String ext : extensionGroups.get("Audio")) {
+			mapOfFileExtToSmallIcon.put(ext, IconLoader.getIconImage(IconLoader.ICON_TYPE.AUDIO));
+		}
+		for (String ext : extensionGroups.get("Text")) {
+			mapOfFileExtToSmallIcon.put(ext, IconLoader.getIconImage(IconLoader.ICON_TYPE.TXT));
+		}
+		for (String ext : extensionGroups.get("Archive")) {
+			mapOfFileExtToSmallIcon.put(ext, IconLoader.getIconImage(IconLoader.ICON_TYPE.WINRAR));
+		}
+		for (String ext : Arrays.asList("DOC", "RTF")) {
+			mapOfFileExtToSmallIcon.put(ext, IconLoader.getIconImage(IconLoader.ICON_TYPE.DOC));
+		}
+		mapOfFileExtToSmallIcon.put("PDF", IconLoader.getIconImage(IconLoader.ICON_TYPE.PDF));
+		mapOfFileExtToSmallIcon.put("DOCX", IconLoader.getIconImage(IconLoader.ICON_TYPE.DOCX));
+		mapOfFileExtToSmallIcon.put("XLS", IconLoader.getIconImage(IconLoader.ICON_TYPE.XLS));
+		mapOfFileExtToSmallIcon.put("XLSX", IconLoader.getIconImage(IconLoader.ICON_TYPE.XLSX));
+		mapOfFileExtToSmallIcon.put("PPT", IconLoader.getIconImage(IconLoader.ICON_TYPE.PPT));
+		mapOfFileExtToSmallIcon.put("PPTX", IconLoader.getIconImage(IconLoader.ICON_TYPE.PPTX));
+	}
 	static int id = 1;
 
 	public static enum IconsExtensions {
 		DIRECTORY, FILE_UNKOWN;
-	};
+	}
 
 	/**
 	 *
