@@ -7,11 +7,14 @@ import java.util.List;
 import java.util.Map;
 
 import org.apache.commons.lang3.SystemUtils;
+import said.ahmad.javafx.tracker.app.look.IconLoader;
 import said.ahmad.javafx.tracker.datatype.UserContextMenu;
 import said.ahmad.javafx.tracker.system.call.CallMethod;
 import said.ahmad.javafx.tracker.system.call.CommandVariable;
 import said.ahmad.javafx.tracker.system.call.inner.InnerFunctionCall;
 import said.ahmad.javafx.tracker.system.call.inner.InnerFunctionName;
+
+import static said.ahmad.javafx.tracker.datatype.UserContextMenu.INNER_ICON_CONVENTION;
 
 public class UserContextMenuDefaultSetting {
 
@@ -190,6 +193,8 @@ public class UserContextMenuDefaultSetting {
 			winRAR.setPathToExecutable("/path/to/winrar");
 		}
 		winRAR.setParentMenuNames("WinRAR");
+		winRAR.setIconPath(INNER_ICON_CONVENTION + IconLoader.ICON_TYPE.WINRAR.name());
+		winRAR.setParentIconPath(INNER_ICON_CONVENTION + IconLoader.ICON_TYPE.WINRAR.name());
 		return winRAR;
 	}
 

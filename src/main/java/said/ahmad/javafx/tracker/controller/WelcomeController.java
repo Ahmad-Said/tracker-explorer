@@ -451,8 +451,8 @@ public class WelcomeController implements Initializable {
 					for (int i = 0; i < dragTab.getSplitViewStates().size(); i++) {
 						SplitViewState state = dragTab.getSplitViewStates().get(i);
 						while (!state.getBackQueue().isEmpty()) {
-							state.getNextQueue().add(state.getmDirectory());
-							state.setmDirectory(state.getBackQueue().removeLast());
+							state.getNextQueue().add(state.getMDirectory());
+							state.setMDirectory(state.getBackQueue().removeLast());
 						}
 						if (i >= allSplitViewController.size()) {
 							addSplitView();
@@ -810,7 +810,7 @@ public class WelcomeController implements Initializable {
 	public void openFavoriteLocation(FavoriteView favoriteView, SplitViewController splitViewController) {
 		String error = "";
 		for (SplitViewState path : favoriteView.getSplitStates()) {
-			if (!path.getmDirectory().exists()) {
+			if (!path.getMDirectory().exists()) {
 				error += path + "\n\n";
 			}
 		}
