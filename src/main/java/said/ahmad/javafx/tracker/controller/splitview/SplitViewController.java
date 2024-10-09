@@ -745,11 +745,6 @@ public class SplitViewController implements Initializable {
 				if (oldValue.length() > 0) {
 					if (newValue.substring(0, 1).equals(oldValue.substring(0, 1)) || newValue
 							.substring(newValue.length() - 1).equals(oldValue.substring(oldValue.length() - 1))) {
-						// Table.getSelectionModel().getSelectedItems()
-						table.getSelectionModel().clearSelection(sortedData.indexOf(table.getSelectionModel()
-								.getSelectedItems().get(table.getSelectionModel().getSelectedItems().size() - 1)));
-						table.getSelectionModel().select(table.getSelectionModel().getSelectedItems()
-								.get(table.getSelectionModel().getSelectedItems().size() - 2));
 						rollerPrediction++;
 						predictNavigation.setText(oldValue);
 						return;
