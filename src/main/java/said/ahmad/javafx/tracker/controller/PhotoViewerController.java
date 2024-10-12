@@ -55,6 +55,7 @@ import said.ahmad.javafx.tracker.app.look.IconLoader;
 import said.ahmad.javafx.tracker.app.look.IconLoader.ICON_TYPE;
 import said.ahmad.javafx.tracker.app.look.ThemeManager;
 import said.ahmad.javafx.tracker.datatype.ImageInfoHolder;
+import said.ahmad.javafx.tracker.datatype.ImagePosition;
 import said.ahmad.javafx.tracker.fxGraphics.ImageGridItem;
 import said.ahmad.javafx.tracker.system.file.PathLayer;
 import said.ahmad.javafx.tracker.system.file.PathLayerHelper;
@@ -1030,7 +1031,9 @@ public class PhotoViewerController {
 						imageInfo.position);
 			} else {
 				ImageInfoHolder info = new ImageInfoHolder();
-				Pair<Image, Boolean> imagePair = gridItem.setImageAndSetup(toLoadImageFile, null);
+				// load full image if less than 10 MB
+				boolean doLoadFullImage = toLoadImageFile.getSize() < 1024 * 1024 * 5;
+				Pair<Image, Boolean> imagePair = gridItem.setImageAndSetup(toLoadImageFile, doLoadFullImage, true, null);
 				info.position = gridItem.getCurImgPosition();
 				info.image = imagePair.getKey();
 				info.isFullyLoaded = imagePair.getValue();

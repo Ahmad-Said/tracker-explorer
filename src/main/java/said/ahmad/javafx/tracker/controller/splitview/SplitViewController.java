@@ -25,7 +25,6 @@ import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.lang3.SystemUtils;
 import org.jetbrains.annotations.Nullable;
 
-//import com.sun.javafx.scene.control.skin.TableColumnHeader;
 
 import javafx.application.Platform;
 import javafx.collections.FXCollections;
@@ -48,7 +47,6 @@ import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.control.Menu;
 import javafx.scene.control.MenuItem;
-import javafx.scene.control.TableView.TableViewSelectionModel;
 import javafx.scene.control.TextField;
 import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.image.Image;
@@ -893,7 +891,6 @@ public class SplitViewController implements Initializable {
 	 * {@link SplitViewController#upButton this is link example}
 	 *
 	 */
-	// SuppressWarnings Discouraged access: The type 'TableColumnHeader' is not API
 	public void initializeTable() {
 		VBox.setVgrow(fileNotFoundImageView, Priority.ALWAYS);
 		fileNotFoundPlaceHolder.setAlignment(Pos.CENTER);
