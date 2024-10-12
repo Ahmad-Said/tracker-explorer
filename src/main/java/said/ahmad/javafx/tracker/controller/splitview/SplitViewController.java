@@ -2016,6 +2016,10 @@ public class SplitViewController implements Initializable {
 				isRespect &= state;
 			} else if (lowerCaseFilter.contains("audio") && isAudio) {
 				isRespect &= state;
+			} else if (lowerCaseFilter.contains("isfile") && model.getFilePath().isFile()) {
+				isRespect &= state;
+			} else if (lowerCaseFilter.contains("isdir") && model.getFilePath().isDirectory()) {
+				isRespect &= state;
 			} else if (note.contains(lowerCaseFilter)) {
 				isRespect &= state; // search note if exist
 			} else if ((model.getMarkSeen().getText().equals("U") || model.getMarkSeen().getText().equals("-"))
@@ -2215,6 +2219,8 @@ public class SplitViewController implements Initializable {
 			add(";audio");
 			add(";image");
 			add(";vlc");
+			add(";isfile");
+			add(";isdir");
 			add(";andThis");
 			add(";|orThis");
 			add(";!notThis");
