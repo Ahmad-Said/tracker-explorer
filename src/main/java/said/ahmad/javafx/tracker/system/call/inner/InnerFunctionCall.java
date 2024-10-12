@@ -11,6 +11,7 @@ public class InnerFunctionCall {
                     put(InnerFunctionName.MERGE_PDF, new PdfMergerFunction());
                     put(InnerFunctionName.COPY_FULL_PATH, new CopyPathFunction(true));
                     put(InnerFunctionName.COPY_FILE_NAME, new CopyPathFunction(false));
+                    put(InnerFunctionName.COMPARE_FILES, new CompareFilesFunction());
                 }
             }
     );

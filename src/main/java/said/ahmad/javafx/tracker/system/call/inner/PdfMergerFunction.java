@@ -10,13 +10,14 @@ import said.ahmad.javafx.tracker.app.DialogHelper;
 import said.ahmad.javafx.tracker.app.look.IconLoader;
 import said.ahmad.javafx.tracker.datatype.UserContextMenu;
 import said.ahmad.javafx.tracker.system.call.CallMethod;
+import said.ahmad.javafx.tracker.system.call.CallReturnHolder;
 import said.ahmad.javafx.tracker.system.file.PathLayer;
 import said.ahmad.javafx.tracker.system.pdf.PdfMerger;
 
 public class PdfMergerFunction implements CallBackContext {
 
 	@Override
-	public void call(List<PathLayer> selections, UserContextMenu con) {
+	public void call(List<PathLayer> selections, UserContextMenu con, List<CallReturnHolder> callReturn) {
 		try {
 			PathLayer parent = selections.get(0).getParentPath();
 			String parentName = parent.getName();

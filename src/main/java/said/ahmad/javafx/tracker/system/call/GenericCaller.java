@@ -266,14 +266,14 @@ public class GenericCaller {
             InnerFunctionName innerFunctionName = InnerFunctionName
                     .valueOf(con.getPathToExecutable().toUpperCase());
             if (InnerFunctionCall.FUNCTION_CALLS.containsKey(innerFunctionName)) {
-                callReturn.add(new CallReturnHolder(null,
-                        innerFunctionName + ": " + innerFunctionName.getDescription(), null));
                 if (isExecuteProcess)
-                    InnerFunctionCall.FUNCTION_CALLS.get(innerFunctionName).call(selections, con);
+                    InnerFunctionCall.FUNCTION_CALLS.get(innerFunctionName).call(selections, con, callReturn);
+                else
+                    callReturn.add(new CallReturnHolder(innerFunctionName + ": " + innerFunctionName.getDescription(), "", ""));
             } else {
                 // function name isn't implemented
-                callReturn.add(new CallReturnHolder(null, innerFunctionName + ": "
-                        + innerFunctionName.getDescription() + " --> is not implemented yet!", null));
+                callReturn.add(new CallReturnHolder(innerFunctionName + ": "
+                        + innerFunctionName.getDescription() + " --> is not implemented yet!", null, "Function not implemented"));
             }
         } catch (IllegalArgumentException exception) {
             // function name doesn't exist

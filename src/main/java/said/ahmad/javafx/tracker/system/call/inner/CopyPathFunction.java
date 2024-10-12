@@ -6,6 +6,7 @@ import javafx.scene.input.ClipboardContent;
 import said.ahmad.javafx.tracker.app.look.IconLoader;
 import said.ahmad.javafx.tracker.datatype.UserContextMenu;
 import said.ahmad.javafx.tracker.system.call.CallMethod;
+import said.ahmad.javafx.tracker.system.call.CallReturnHolder;
 import said.ahmad.javafx.tracker.system.file.PathLayer;
 
 import java.util.List;
@@ -24,7 +25,7 @@ public class CopyPathFunction implements CallBackContext {
 	}
 
 	@Override
-	public void call(List<PathLayer> selections, UserContextMenu con) {
+	public void call(List<PathLayer> selections, UserContextMenu con, List<CallReturnHolder> callReturn) {
         Platform.runLater(() -> {
             Clipboard clipboard = Clipboard.getSystemClipboard();
             ClipboardContent content = new ClipboardContent();

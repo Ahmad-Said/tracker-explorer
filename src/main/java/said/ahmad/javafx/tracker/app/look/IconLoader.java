@@ -23,7 +23,7 @@ public class IconLoader {
 
 		RENAME, BULK_RENAME, BULK_RENAME_UTILITY,
 
-		COPY_BASE_NAME, PASTE_BASE_NAME,
+		COPY_BASE_NAME, PASTE_BASE_NAME, COMPARE_FILES,
 
 		NEW, FILE, FOLDER, DELETE, RESOURCE_NOT_FOUND,
 
@@ -75,6 +75,7 @@ public class IconLoader {
 			put(ICON_TYPE.BULK_RENAME_UTILITY, "/img/context_menu/bulk_rename_utility.png");
 			put(ICON_TYPE.COPY_BASE_NAME, "/img/context_menu/copy_base_name.png");
 			put(ICON_TYPE.PASTE_BASE_NAME, "/img/context_menu/paste_base_name.png");
+			put(ICON_TYPE.COMPARE_FILES, "/img/context_menu/compare_files.png");
 
 			put(ICON_TYPE.NEW, "/img/context_menu/new.png");
 			put(ICON_TYPE.FILE, "/img/context_menu/file.png");

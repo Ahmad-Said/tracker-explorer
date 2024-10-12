@@ -27,6 +27,12 @@ public class CallReturnHolder {
 		this.workingDir = workingDir;
 	}
 
+	public CallReturnHolder(String command, String processStandardOutput, String processErrorOutput) {
+		this.command = command;
+		this.processStandardOutput = processStandardOutput;
+		this.processErrorOutput = processErrorOutput;
+	}
+
 	/**
 	 * Generate standard and error output of the process if it exists
 	 */
