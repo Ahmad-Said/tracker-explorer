@@ -5,6 +5,9 @@ public class MediaCutData {
 	private int End;
 	private String Title;
 
+    public MediaCutData() {
+
+    }
 	public MediaCutData(double start, double end, String title) {
 		Start = (int) start;
 		End = (int) end;
