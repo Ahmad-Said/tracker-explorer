@@ -140,15 +140,15 @@ jlink {
         vendor = 'Ahmad Said'
         if (myPlatform == 'mac-aarch64') {
             icon = 'src/main/resources/said/ahmad/javafx/tracker/img/app/Tracker Explorer.icns'
-            imageOptions = [
-                    "--type", "dmg",
+            installerType = 'dmg'
+            installerOptions = [
                     "--mac-package-identifier", "said.ahmad.javafx.tracker-explorer",
                     "--mac-package-name", "Tracker Explorer",
             ]
         } else if (myPlatform == 'win') {
             icon = 'src/main/resources/said/ahmad/javafx/tracker/img/app/Tracker Explorer.ico'
-            imageOptions = [
-                    "--type", "exe",
+            installerType = 'exe'
+            installerOptions = [
                     "--win-menu",
                     "--win-menu-group", "Ahmad Said",
                     "--win-shortcut-prompt",
