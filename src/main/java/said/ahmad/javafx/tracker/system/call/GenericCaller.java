@@ -199,7 +199,7 @@ public class GenericCaller {
             String targetFileIfAny,
             List<String> targetListIfAny) {
         StringBuilder callCmd = new StringBuilder();
-        String executable = "\"" +  con.getPathToExecutable() + "\"";
+        String executable = "\"" +  con.getPathToExecutableAsPath().getAbsolutePath() + "\"";
         String prefix = con.getPrefixCommandOptionsEvaluated(selections, prioritySelectionIfAny);
         String postfix = con.getPostfixCommandOptionsEvaluated(selections, prioritySelectionIfAny);
         if (targetFileIfAny != null) {

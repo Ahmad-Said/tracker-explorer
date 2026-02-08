@@ -16,6 +16,7 @@
 * [Tips and Tricks](#tips-and-tricks)
 * [Release Notes](#release-notes)
 
+
 ## General Description
 
 In this application you will track yourself, it is a simple file explorer with 2 main views that can interact between each other, And for each file, we have a status Seen or Unseen and filtering Media ...And so much more!
@@ -199,3 +200,6 @@ scene in order.
 ### Release Notes
 
 [Click Here For Full log](ReleasesNotes.txt)
+
+### Setup the project
+for windows build install wintool from https://github.com/wixtoolset/wix3/releases
